@@ -34,7 +34,7 @@ mkdir -p "$DIST_DIR"
 
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
-cp ./samples/util.py "$BUILD_DIR"
+cp ./samples/model_util.py "$BUILD_DIR"
 cp "./samples/$NAME.py" "$BUILD_DIR"
 cp "./util/testing_util.py" "$BUILD_DIR"
 cp -r "./c8y_api" "$BUILD_DIR"

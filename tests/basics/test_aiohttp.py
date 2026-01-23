@@ -1,6 +1,14 @@
 import pytest
 
-from pyc8y.base import CumulocityRestApi, BasicAuth
+from pyc8y.auth import BasicAuth
+from pyc8y.base import CumulocityRestApi
+
+
+
+@pytest.fixture(name="c8y_httpbin")
+async def fix_httpbin():
+    return CumulocityRestApi("https://httpbin.org", tenant_id="", auth=BasicAuth("user", "auth"))
+
 
 
 @pytest.mark.parametrize("method, json, accept, content_type", [
@@ -12,17 +20,20 @@ from pyc8y.base import CumulocityRestApi, BasicAuth
     ("PUT", {"a":1}, "text/plain", "text/plain"),
 ])
 @pytest.mark.asyncio
-async def test_session_headers(method, json, accept, content_type):
+async def test_session_headers(c8y_httpbin, method, json, accept, content_type):
     """Ensure that session headers are merged with request headers."""
 
-    async with (CumulocityRestApi("https://httpbin.org", tenant_id="", auth=BasicAuth("user", "auth")) as c8y):
-        result = await c8y.request(method, "/anything", accept=accept, content_type=content_type)
-        # -> there is always an Authorization header
-        assert "Authorization" in result["headers"]
-        # -> there is always an Accept header
-        assert result["headers"]["Accept"] == accept or "application/json"
-        # -> body defines whether there is a Content-Type header
-        if json:
-            assert result["headers"]["Content-Type"] == content_type or "application/json"
-        else:
-            assert "Content-Type" not in result["headers"]
+    c8y = c8y_httpbin
+    result = await c8y.request(method, "/anything", accept=accept, content_type=content_type)
+    # -> there is always an Authorization header
+    assert "Authorization" in result["headers"]
+    # -> there is always an Accept header
+    assert result["headers"]["Accept"] == (accept or "application/json")
+    # -> body defines whether there is a Content-Type header
+    if json:
+        assert result["headers"]["Content-Type"] == (content_type or "application/octet-stream")
+    else:
+        assert "Content-Type" not in result["headers"]
+
+    await c8y.request(method, "/anything", accept=accept, content_type=content_type)
+

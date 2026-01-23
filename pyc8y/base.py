@@ -1,13 +1,15 @@
-import base64
+
+from __future__ import annotations
+
 import logging
 import ssl
-from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol
 
 import aiohttp
 import certifi
 import orjson
+
+from pyc8y.auth import Auth
 
 
 ACCEPT_MANAGED_OBJECT = 'application/vnd.com.nsn.cumulocity.managedobject+json'
@@ -75,44 +77,6 @@ class AccessDeniedError(HttpError):
         super().__init__(method, url, 403, message)
 
 
-class Auth(Protocol):
-    """Protocol class for auth providers."""
-
-    def get_username(self):
-        """Read username."""
-        ...
-
-    def build_auth_header(self) -> str:
-        """Build an HTTP auth header."""   # TODO: check if this documentation is visible in docs and code hints
-        ...
-
-
-@dataclass(frozen=True, slots=True)
-class BasicAuth:
-    """Basic auth provider."""
-    username: str
-    password: str
-
-    def get_username(self):
-        return self.username
-
-    def build_auth_header(self) -> str:
-        token = f"{self.username}:{self.password}"
-        return f"Basic {base64.b64encode(token.encode()).decode()}"
-
-
-@dataclass(frozen=True, slots=True)
-class BearerAuth:
-    """Bearer auth provider."""
-    token: str
-
-    def get_username(self):
-        return self.token  # TODO: read from JWT token
-
-    def build_auth_header(self) -> str:
-        return f"Bearer {self.token}"
-
-
 class CumulocityRestApi(object):
 
     def __init__(
@@ -130,16 +94,15 @@ class CumulocityRestApi(object):
         self.processing_mode = processing_mode
         self._session = None
 
-    async def __aenter__(self) -> 'CumulocityRestApi':
-        _ = self.session  # ensure session is created
+    async def __aenter__(self) -> CumulocityRestApi:
+        _ = await self.session  # ensure session is created
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        if self._session and not self._session.closed:
-            await self._session.close()
+        await self.close()
 
     @property
-    def session(self) -> aiohttp.ClientSession:
+    async def session(self) -> aiohttp.ClientSession:
         if not self._session:
             # ensure certifi-based SSL verification
             ssl_context = ssl.create_default_context(cafile=certifi.where())
@@ -163,8 +126,7 @@ class CumulocityRestApi(object):
 
     @property
     def  username(self):
-        return None  # todo resolve from auth
-
+        return self.auth.get_username()
 
     async def request(
             self,
@@ -172,7 +134,7 @@ class CumulocityRestApi(object):
             resource: str,
             params: dict = None,
             json: dict = None,
-            accept: str = None,  # application/json is assumed/automatically inserted
+            accept: str | None = "application/json",
             content_type: str = None,  # application/json is assumed/automatically inserted if there is content
     ) -> dict:
         """Perform an HTTP request.
@@ -196,7 +158,8 @@ class CumulocityRestApi(object):
         """
         if json is not None:
             content_type = content_type or "application/json"
-        async with self.session.request(
+        session = await self.session
+        async with session.request(
                 method=method,
                 url=resource,
                 params=params,
@@ -236,3 +199,7 @@ class CumulocityRestApi(object):
 
     async def delete(self, resource: str, params: dict = None) -> dict:
         return await self.request("DELETE", resource, params)
+
+    async def close(self):
+        if self._session and not self._session.closed:
+            await self._session.close()

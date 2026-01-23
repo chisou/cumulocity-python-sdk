@@ -2,8 +2,8 @@ from datetime import datetime
 from typing import BinaryIO
 
 from pyc8y.base import CumulocityRestApi
-from pyc8y.model.base import CumulocityObject, json_property, datetime_property, id_property
-from pyc8y.model.util import assert_c8y, assert_id
+from pyc8y.model.base import CumulocityObject, json_property, datetime_property, id_property, time_property, \
+    coerce_timestring, CumulocityResource
 
 
 class Event(CumulocityObject):
@@ -31,24 +31,24 @@ class Event(CumulocityObject):
         super().__init__(c8y, **kwargs)
         self.type = type
         self.source = source
-        self.time = ensure_timestring(time)
+        self.time = coerce_timestring(time)
         self.text = text
 
     type = json_property("type")
     source = id_property("source")
     text = json_property("text")
-    time = json_property("time")
-    datetime = datetime_property("datetime")
-    creation_time = json_property("creationTime")
+    time = time_property("time")
+    datetime = datetime_property("time")
+    creation_time = json_property("creationTime", read_only=True)
     creation_datetime = datetime_property("creationTime")
-    update_time = json_property("lastUpdated")
+    update_time = json_property("lastUpdated", read_only=True)
     update_datetime = datetime_property("lastUpdated")
-    last_updated = json_property("lastUpdated")
-    last_updated_datetime = json_property("lastUpdated")
+    last_updated = json_property("lastUpdated", read_only=True)
+    last_updated_datetime = datetime_property("lastUpdated")
 
     @property
     def attachment_path(self) -> str:
-        return f"{self.resource_path}/binaries"
+        return f"{self.object_path}/binaries"
 
     def has_attachment(self) -> bool:
         """Check whether the event has a binary attachment.
@@ -93,10 +93,14 @@ class Event(CumulocityObject):
         """
         assert_c8y(self)
         assert_id(self)
-        return self.c8y.put_file(self.attachment_path, file=file)
+        return self.c8y.put_file(self.attachment_path, file=file, content_type=content_type)
 
     async def delete_attachment(self) -> None:
         """Remove the binary attachment."""
         assert_c8y(self)
         assert_id(self)
         await self.c8y.delete(self.attachment_path)
+
+
+class Events(CumulocityResource[Event]):
+    pass

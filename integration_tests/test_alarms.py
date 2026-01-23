@@ -2,8 +2,6 @@
 
 # pylint: disable=redefined-outer-name
 
-from __future__ import annotations
-
 import datetime
 import random
 from typing import List
@@ -11,20 +9,20 @@ from typing import List
 import pytest
 from tenacity import Retrying, stop_after_attempt, wait_exponential
 
-from c8y_api import CumulocityApi
-from c8y_api.model import Device, Alarm
+from pyc8y import CumulocityApi
+from pyc8y.model import Device, Alarm, Severity
 
 from util.testing_util import RandomNameGenerator
 
 
-def test_CRUD(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
+async def test_CRUD(live_c8y: CumulocityApi, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
     typename = RandomNameGenerator.random_name()
     alarm = Alarm(c8y=live_c8y, type=typename, text=f'{typename} text', source=session_device.id,
-                  time='now', severity=Alarm.Severity.MAJOR)
+                  time='now', severity=Severity.MAJOR)
 
-    created_alarm = alarm.create()
+    created_alarm = await alarm.create()
     try:
         # 1) assert correct creation
         assert created_alarm.id

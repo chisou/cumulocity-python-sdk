@@ -27,3 +27,4 @@ urllib3
 python-dict-display-filter
 jsonpath-ng
 jmespath
+deepdiff

@@ -1,17 +1,8 @@
+import re
 from datetime import datetime, timezone, timedelta
-from typing import Any
+from typing import Any, Iterable
 
-
-def assert_c8y(obj):
-    """Assert that a model object has a Cumulocity connection."""
-    if not obj.c8y:
-        raise ValueError("Cumulocity connection reference must be set to allow direct database access.")
-
-
-def assert_id(obj):
-    """Assert that a model object has a Cumulocity connection."""
-    if not obj.id:
-        raise ValueError("The object ID must be set to allow direct object access.")
+from numpy.random.mtrand import Sequence
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:
@@ -102,16 +93,33 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
     }
 
 
-def to_datetime(value: str | None) -> datetime:
+def to_datetime(value: str) -> datetime:
     """Convert a Cumulocity datetime object to a datetime."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def to_timestring(value: datetime | None) -> str:
+def to_timestring(value: datetime) -> str:
     """Convert a Cumulocity timestring object to a string."""
+    return value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
+
+def now_datetime():
+    """Provide the current time as datetime object."""
+    return datetime.now(timezone.utc)
+
+
+def now_timestring() -> str:
+    """Provide an ISO timestring for the current time."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def is_sequence(obj: Any) -> bool:
+    """Determine if an object is a sequence, i.e. list or tuple."""
+    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes))
 
 def to_pascal_case(name: str) -> str:
-    """Convert a given snake case (default Python style) name to pascal case (default for names in Cumulocity)"""
+    """Convert a given `snake_case` (default Python style) name to `pascalCase`
+    (default for names in Cumulocity)"""
     parts = list(filter(None, name.split('_')))
     if len(parts) == 1:
         return name

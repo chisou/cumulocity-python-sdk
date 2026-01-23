@@ -5,17 +5,19 @@
 from __future__ import annotations
 
 import random
+from copy import deepcopy
 from unittest.mock import Mock
 
+from deepdiff import DeepDiff
 import pytest
 
 from c8y_api import CumulocityRestApi
 from c8y_api.model import ManagedObject
+from pyc8y.model.base import CumulocityObject
 from c8y_api.model._base import (
     SimpleObject,
     ComplexObject,
     CumulocityResource,
-    CumulocityObject,
     get_by_path,
     _DictWrapper,
     _ListWrapper,
@@ -50,6 +52,72 @@ class ComplexTestObject(ComplexObject):
         self.fixed_field = fixed_field
 
     field = SimpleObject.UpdatableProperty('_field')
+
+
+@pytest.mark.parametrize("value", ["new_value", "", True, False, 0, -1, 12, [1, 2, 3], [], {"a": 1}, {"a": {"b": 1}}, {}, None])
+@pytest.mark.parametrize("path", [
+    "string1",
+    "string2",
+    "new_attribute",
+    "integer1",
+    "integer2",
+    "boolean1",
+    "boolean2",
+    "fragmentA.key",
+    "fragmentB.key2",
+    "fragmentA",
+    "fragmentB.new_key",
+    "fragmentC.new_key",
+])
+@pytest.mark.parametrize("mode", ["function", "item"])
+def test_set(mode, path, value):
+    source_json = {
+        "string1": "value",
+        "string2": "",
+        "integer1": 12,
+        "integer2": 0,
+        "boolean1": True,
+        "boolean2": False,
+        "fragmentA": {"key": "value"},
+        "fragmentB": {"key1": "value1", "key2": "value2"},
+    }
+    obj = CumulocityObject.from_json(deepcopy(source_json))
+
+    if mode == "function":
+        obj.set(path, value)
+    elif mode == "item":
+        obj[path] = value
+    else:  # dot notation
+        parts = path.split(".")
+        o = obj
+        for p in parts:
+            a = getattr(o, p)
+            o = a
+        o = value
+
+    new_json = obj.to_json()
+    updated_json = obj.to_json(only_updated=True)
+
+    # -> new value is set in JSON
+    assert get_by_path(new_json, path) == value
+
+    # -> in updated JSON as well
+    assert get_by_path(updated_json, path) == value
+
+    # -> rest of source is not part of update JSON
+    level0 = path.split(".")[0]
+    assert updated_json.keys() == {level0}
+
+    # -> entire branch is copied to update JSON
+    #    (only for fragment changes)
+    if level0 in source_json and level0.startswith("fragment"):
+        diff = DeepDiff(
+            source_json[level0],
+            updated_json[level0],
+        )
+        # -> there is exactly 1 value change diff
+        #    (value changed, item added, type/value changed, item removed)
+        assert len(diff) == 1
 
 
 @pytest.mark.parametrize("json, path, default, expected", [
@@ -295,7 +363,7 @@ def test_simpleobject_parsing():
     assert parsed_obj._to_json(only_updated=True) == expected_diff_json
 
 
-def test_complexobject_parsing():
+def test_object_parsing():
     """Verify that complex object parsing works as expected."""
 
     obj_json = {
@@ -308,13 +376,13 @@ def test_complexobject_parsing():
         'c8y_complex': {'field': 'value'}
     }
 
-    # 1_ parsing the object JSON into a new object instance
-    parsed_obj = ComplexTestObject._from_json(obj_json, ComplexTestObject())
+    # parsing the object JSON into a new object instance
+    parsed_obj = CumulocityObject.from_json(obj_json)
 
     # -> all standard properties are set
     assert parsed_obj.id == obj_json['id']
-    assert parsed_obj.field == obj_json['c8y_field']
-    assert parsed_obj.fixed_field == obj_json['c8y_fixed']
+    assert parsed_obj.c8y_field == obj_json['c8y_field']
+    assert parsed_obj.c8y_fixed == obj_json['c8y_fixed']
     # -> the ignored fragment/elements are not defined
     assert not parsed_obj.has('self')
     assert not parsed_obj.has('c8y_ignored')
@@ -322,21 +390,20 @@ def test_complexobject_parsing():
     assert parsed_obj.c8y_simple == obj_json['c8y_simple']
     assert parsed_obj.c8y_complex.field == obj_json['c8y_complex']['field']
     # -> no update should be recorded
-    assert not parsed_obj._updated_fields
-    assert not parsed_obj._updated_fragments
+    assert not parsed_obj.to_json(only_updated=True)
 
 
-def test_complexobject_instantiation_and_formatting():
+def test_object_instantiation_and_formatting():
     """Verify that complex object instantiation, basic access and JSON
     export works as expected."""
 
     # 1_ when using the constructor and standard functions, the
     # write access is not recorded
-    obj = ComplexTestObject(
+    obj = CumulocityObject(
         field='field value',
         fixed_field=123,
-        c8y_simple=True,
-        c8y_complex={'a': 'valueA', 'b': 'valueB'},
+        simple=True,
+        complex={'a': 'valueA', 'b': 'valueB'},
         additionalField=True,
         additionalFragment={'value1': "A", 'value2': "B"}
     )
@@ -346,9 +413,9 @@ def test_complexobject_instantiation_and_formatting():
     assert obj.field == 'field value'
     assert obj.fixed_field == 123
     # -> all fragments are set
-    assert obj.c8y_simple is True
-    assert obj.c8y_complex.a == 'valueA'
-    assert obj.c8y_complex.b == 'valueB'
+    assert obj.simple is True
+    assert obj.complex.a == 'valueA'
+    assert obj.complex.b == 'valueB'
     assert obj.additionalField is True
     assert obj.additionalFragment.value1 == 'A'
     assert obj.additionalFragment.value2 == 'B'
@@ -357,25 +424,23 @@ def test_complexobject_instantiation_and_formatting():
     assert obj.additional_fragment.value1 == 'A'
     assert obj.additional_fragment.value2 == 'B'
     # -> no update should be recorded
-    assert not obj._updated_fields
-    assert not obj._updated_fragments
+    assert not obj.to_json(only_updated=True)
 
     # 2_ when this is formatted as JSON, only the fragments will be
     # included in the diff JSON
     expected_full_json = {
-        'c8y_field': obj.field,
-        'c8y_fixed': obj.fixed_field,
-        'c8y_simple': True,
-        'c8y_complex': {'a': 'valueA', 'b': 'valueB'},
+        'field': obj.field,
+        'fixed_field': obj.fixed_field,
+        'simple': True,
+        'complex': {'a': 'valueA', 'b': 'valueB'},
         'additionalField': True,
         'additionalFragment': {'value1': "A", 'value2': "B"}
     }
     # -> full JSON should contain all fields
-    assert obj._to_json() == expected_full_json
+    assert obj.to_json() == expected_full_json
     # -> diff JSON should be empty as there are no changes
-    assert not obj.get_updates()
     # pylint: disable=(use-implicit-booleaness-not-comparison
-    assert obj._to_json(only_updated=True) == {}
+    assert obj.to_json(only_updated=True) == {}
 
     # 3_ resetting the update status (twiddling with internals)
     obj._updated_fragments = None
@@ -390,14 +455,35 @@ def test_complexobject_instantiation_and_formatting():
 
     # -> the diff JSON should only contain updated parts
     expected_diff_json = {
-        'c8y_field': obj.field,
-        'c8y_simple': obj.c8y_simple,
-        'c8y_complex': {'a': 'valueA', 'b': 'newB'},  # the 'a' field is unchanged but is included nonetheless
+        'field': obj.field,
+        'simple': obj.simple,
+        'complex': {'a': 'valueA', 'b': 'newB'},  # the 'a' field is unchanged but is included nonetheless
         'additionalField': False,
-        'another_field': True,
+        'anotherField': True,
         'additionalFragment': {'value1': 'AA', 'value2': 'BB'}
     }
-    assert obj._to_json(only_updated=True) == expected_diff_json
+    assert obj.to_json(only_updated=True) == expected_diff_json
+
+
+def test_updating():
+    """Verify that complex object parsing works as expected."""
+    original_json = {
+        "field": 'field value',
+        "fixed_field": 123,
+        "simple": True,
+        "complex": {'a': 'valueA', 'b': 'valueB'},
+        "additionalField": True,
+        "additionalFragment":{'value1': "A", 'value2': "B"}
+    }
+    o = CumulocityObject.from_json(original_json)
+    assert o.field == "field value"
+    assert o.complex.a == "valueA"
+
+    o.field = "updated field"
+    assert o.field == "updated field"
+
+    o.complex.a = "new value"
+    assert o.complex.a == "new value"
 
 
 class ComplexObjectUpdates:
