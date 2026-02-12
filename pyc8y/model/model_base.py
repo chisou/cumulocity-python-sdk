@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from abc import ABC
 from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 import re
-from typing import Any, Generic, TypeVar, Self, AsyncGenerator, Mapping, Callable
+from typing import Any, Generic, TypeVar, Self, AsyncGenerator, Mapping, Callable, ClassVar, Sequence, Iterable
 
-
-from pyc8y.base import CumulocityRestApi
+from pyc8y.base import CumulocityRestApi, BatchError
+from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_util import (
     as_tuple,
     as_record,
@@ -16,6 +17,7 @@ from pyc8y.model.model_util import (
     to_pascal_case,
     now_datetime, to_timestring, now_timestring, is_sequence,
 )
+from pyc8y.types import InventoryMeta, ResourceMeta
 
 T = TypeVar("T", bound="CumulocityObject")
 
@@ -252,8 +254,7 @@ class AttrDict:
 
 class CumulocityObject(Generic[T]):
     """Base class for all Cumulocity database objects."""
-
-    _c8y_api: type[CumulocityResource]
+    _meta: ResourceMeta
 
     def __init__(self, c8y: CumulocityRestApi | None = None, **kwargs):
         self.c8y = c8y
@@ -276,7 +277,7 @@ class CumulocityObject(Generic[T]):
 
     @property
     def object_path(self) -> str:
-        return self._c8y_api.build_object_path(self.id)
+        return self._meta.build_object_path(self.id)
 
     def __repr__(self) -> str:
         return ''.join([   # -> ClassName(id=123, type=abc)
@@ -428,7 +429,7 @@ class CumulocityObject(Generic[T]):
             c8y=self.c8y,
         )
 
-    async def _update(self) -> Self:
+    async def _update(self, inplace: bool = False) -> Self:  # TODO: shouldn't this best update itself?
         """Update the object within the database.
 
         Note: This will only send changed fields to increase performance.
@@ -436,17 +437,20 @@ class CumulocityObject(Generic[T]):
         Returns:
             A fresh object representing the updated state within the database.
         """
+        # TODO: to update itself - it would need to update the ._json variable?
         assert_c8y(self)
         assert_id(self)
-        return self._build(
-            json=await self.c8y.put(
+        object_json = await self.c8y.put(
                 self.object_path,
                 json=self.to_json(True),
-                accept=self._c8y_api.mime_type,
-                content_type=self._c8y_api.mime_type,
-            ),
-            c8y=self.c8y,
+                accept=self._meta.mime_type,
+                content_type=self._meta.mime_type,
         )
+        if inplace:
+            self._source_json = object_json
+            return self
+        return self._build(object_json, c8y=self.c8y)
+
 
     async def _apply_to(self, other_id: str | int) -> Self:
         """Apply changes made to this object to another object in the database.
@@ -461,10 +465,10 @@ class CumulocityObject(Generic[T]):
         assert_c8y(self)
         return self._build(
             json=await self.c8y.put(
-                f"{self._c8y_resource_path}/{other_id}",
+                self._meta.build_object_path(other_id),
                 json=self.to_json(True),
-                accept=self._c8y_mime_type,
-                content_type=self._c8y_mime_type
+                accept=self._meta.mime_type,
+                content_type=self._meta.mime_type
             ),
             c8y=self.c8y
         )
@@ -474,6 +478,19 @@ class CumulocityObject(Generic[T]):
         assert_id(self)
         await self.c8y.delete(self.object_path, params=params)
 
+    async def _reload(self, inplace: bool = False) -> Self:
+        assert_c8y(self)
+        assert_id(self)
+        object_json = await self.c8y.get(
+                self.object_path,
+                accept=self._meta.mime_type,
+        )
+        if inplace:
+            self._source_json = object_json
+            return self
+        return self._build(object_json, c8y=self.c8y)
+
+
     async def delete(self, **_) -> None:  # allow override with parameters
         """Delete the object within the database."""
         await self._delete()
@@ -481,14 +498,20 @@ class CumulocityObject(Generic[T]):
 
 class CumulocityResource(ABC, Generic[T]):
     """Abstract base class for all Cumulocity API resources."""
-
+    _meta = InventoryMeta
     object_type: type[T]
-    resource_path: str
-    mime_type: str
-    collection_name: str
 
     def __init__(self, c8y: CumulocityRestApi):
         self.c8y = c8y
+        self.default_matcher = None
+
+    @property
+    def resource_path(self) -> str:
+        return self._meta.resource_path
+
+    @property
+    def mime_type(self) -> str:
+        return self._meta.mime_type
 
     @classmethod
     def build_object_path(cls, object_id: int | str) -> str:
@@ -500,20 +523,20 @@ class CumulocityResource(ABC, Generic[T]):
         Returns:
             The relative path to the object within Cumulocity.
         """
-        return f"{cls.resource_path}/{object_id}"
+        return cls._meta.build_object_path(object_id)
 
-    def _get_object(self, object_id, **kwargs):
-        return self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
+    async def _get_object(self, object_id, **kwargs):
+        return await self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
 
-    def _get_page(self, page_number: int, **kwargs):
-        result_json = self.c8y.get(self.resource_path, {**kwargs, "currentPage": page_number})  # todo: accept
-        return result_json[self.collection_name]
+    async def _get_page(self, page_number: int, **kwargs):
+        result_json = await self.c8y.get(self.resource_path, {**kwargs, "currentPage": page_number})  # todo: accept
+        return result_json[self._meta.collection_name]
 
-    def _get_count(self, base_query: str) -> int:
+    async def _get_count(self, base_query: str) -> int:
         # the page_size=1 parameter must not be part of the query string
         sep = '&' if '?' in base_query else '?'
         kind = 'Pages' if 'binaries' in base_query else 'Pages'
-        result_json = self.c8y.get(f'{base_query}{sep}pageSize=1&withTotal{kind}=true')
+        result_json = await self.c8y.get(f'{base_query}{sep}pageSize=1&withTotal{kind}=true')
         return result_json['statistics'][f'total{kind}']
 
     async def _iterate(
@@ -522,8 +545,8 @@ class CumulocityResource(ABC, Generic[T]):
             params: dict | None = None,
             page_number: int | None = None,
             limit: int | None = None,
-            # include: str | JsonMatcher | None,
-            # exclude: str | JsonMatcher | None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             as_values: str | tuple[str, Any] | list[str | tuple[str|Any]] | None = None,
     ) -> AsyncGenerator[Any, None]:
         # if no specific page is defined we just start at 1
@@ -533,27 +556,29 @@ class CumulocityResource(ABC, Generic[T]):
         #  - there is no result (i.e. we were at the last page)
         num_results = 0
         # compile/prepare filter if defined
-        # if isinstance(include, str):
-        #     if not self.default_matcher:
-        #         raise ValueError("No default matcher defined (client-side filtering not supported?)")
-        #     include = self.default_matcher(include)
-        # if isinstance(exclude, str):
-        #     if not self.default_matcher:
-        #         raise ValueError("No default matcher defined (client-side filtering not supported?)")
-        #     exclude = self.default_matcher(exclude)
+        if isinstance(include, str):
+            if not self.default_matcher:
+                raise ValueError("No default matcher defined (client-side filtering not supported?)")
+            include = self.default_matcher(include)
+        if isinstance(exclude, str):
+            if not self.default_matcher:
+                raise ValueError("No default matcher defined (client-side filtering not supported?)")
+            exclude = self.default_matcher(exclude)
 
         while True:
             if expression:
                 response_json = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page_number}")
             else:
                 response_json = await self.c8y.get(self.resource_path, {**params, "currentPage": page_number})
-            obj_jsons = [
-                x
-                for x in response_json[self.collection_name]
-                # todo matcher
-            ]
+            obj_jsons = response_json[self._meta.collection_name]
             if not obj_jsons:
                 break
+            if include or exclude:
+                obj_jsons = [
+                    x for x in obj_jsons
+                    if (not include or include.safe_matches(x))
+                       and (not exclude or not exclude.safe_matches(x))
+                ]
             for json in obj_jsons:
                 if limit and num_results >= limit:
                     return
@@ -570,45 +595,77 @@ class CumulocityResource(ABC, Generic[T]):
 
     async def _get(self, object_id: str | int, **kwargs) -> T:
         obj_json = await self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
-        obj = self.object_type(obj_json[self.collection_name])
+        obj = self.object_type(obj_json[self._meta.collection_name])
         obj.c8y = self.c8y
         return obj
 
     async def get(self, object_id: str | int, **_) -> T:
         return await self._get(object_id)
 
+    async def _create(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
+        if len(objects) == 1 and isinstance(objects[0], Iterable):  # should never be a string or something
+            objects = tuple(objects[0])
+        tasks = [
+            asyncio.create_task(
+                self.c8y.post(self.resource_path, json=o.to_json(), accept=None)
+            )
+            for o in objects
+        ]
+        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+        if errors:
+            raise BatchError(errors)
 
-    # def _create(self, jsonify_func, *objects):
-    #     for o in objects:
-    #         self.c8y.post(self.resource, json=jsonify_func(o), accept=None)
-    #
-    # def _create_bulk(self, jsonify_func, collection_name, content_type, *objects):
-    #     bulk_json = {collection_name: [jsonify_func(o) for o in objects]}
-    #     self.c8y.post(self.resource, bulk_json, content_type=content_type)
-    #
-    # def _update(self, jsonify_func, *objects):
-    #     for o in objects:
-    #         self.c8y.put(self.resource + '/' + str(o.id), json=jsonify_func(o), accept=None)
-    #
-    # def _apply_to(self, jsonify_func, model: dict|Any, *object_ids: str|int):
-    #     model_json = model if isinstance(model, dict) else jsonify_func(model)
-    #     for object_id in object_ids:
-    #         self.c8y.put(self.resource + '/' + str(object_id), model_json, accept=None)
-    #
-    # # this one should be ok for all implementations, hence we define it here
-    # def delete(self, *objects: str) -> None:
-    #     """ Delete one or more objects within the database.
-    #
-    #     The objects can be specified as instances of a database object
-    #     (then, the id field needs to be defined) or simply as ID (integers
-    #     or strings).
-    #
-    #     Args:
-    #         *objects (str):  Objects within the database specified by ID
-    #     """
-    #     try:
-    #         object_ids = [o.id for o in objects]  # noqa (id)
-    #     except AttributeError:
-    #         object_ids = objects
-    #     for object_id in object_ids:
-    #         self.c8y.delete(self.build_object_path(object_id))
+    async def _create_bulk(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
+        bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
+        await self.c8y.post(self.resource_path, bulk_json, content_type=self.mime_type)  # TODO: mime type might be different for bulks?
+
+    async def _update(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
+        if len(objects) == 1 and isinstance(objects[0], Iterable):  # should never be a string or something
+            objects = tuple(objects[0])
+        tasks = [
+            asyncio.create_task(
+                self.c8y.put(self.build_object_path(o.id), json=o.to_json(only_updated=True), accept=None)
+            )
+            for o in objects
+        ]
+        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+        if errors:
+            raise BatchError(errors)
+
+    async def _apply_to(self, model: dict | CumulocityObject, *object_ids: str | int) -> None:
+        model_json = model if isinstance(model, dict) else model.to_json(only_updated=True)
+        tasks = [
+            asyncio.create_task(
+                self.c8y.put(self.build_object_path(object_id), model_json, accept=None)
+            )
+            for object_id in object_ids
+        ]
+        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+        if errors:
+            raise BatchError(errors)
+
+    # this one should be ok for all implementations, hence we define it here
+    async def delete(self, *objects: str | int | CumulocityObject) -> None:
+        """ Delete one or more objects within the database.
+
+        The objects can be specified as instances of a database object
+        (then, the id field needs to be defined) or simply as ID (integers
+        or strings).
+
+        Args:
+            *objects (str):  Objects within the database specified by ID
+                or as CumulocityObject instances
+        """
+        try:
+            object_ids = [o.id for o in objects]  # noqa (id)
+        except AttributeError:
+            object_ids = objects
+        tasks = [
+            asyncio.create_task(
+                self.c8y.delete(self.build_object_path(object_id))
+            )
+            for object_id in object_ids
+        ]
+        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+        if errors:
+            raise BatchError(errors)
