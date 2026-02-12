@@ -1,8 +1,7 @@
-import re
-from datetime import datetime, timezone, timedelta
-from typing import Any, Iterable
+# Copyright (c) 2026 Christoph Souris
 
-from numpy.random.mtrand import Sequence
+from datetime import datetime, timezone
+from typing import Any
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:
@@ -112,10 +111,6 @@ def now_timestring() -> str:
     """Provide an ISO timestring for the current time."""
     return datetime.now(timezone.utc).isoformat()
 
-
-def is_sequence(obj: Any) -> bool:
-    """Determine if an object is a sequence, i.e. list or tuple."""
-    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes))
 
 def to_pascal_case(name: str) -> str:
     """Convert a given `snake_case` (default Python style) name to `pascalCase`
