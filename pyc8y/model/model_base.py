@@ -5,9 +5,10 @@ from abc import ABC
 from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 import re
-from typing import Any, Generic, TypeVar, Self, AsyncGenerator, Mapping, Callable, ClassVar, Sequence, Iterable
+from typing import Any, Generic, TypeVar, Self, AsyncGenerator, Mapping, Callable, Iterable
 
 from pyc8y.base import CumulocityRestApi, BatchError
+from pyc8y.base_util import flatten
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_util import (
     as_tuple,
@@ -422,9 +423,9 @@ class CumulocityObject(Generic[T]):
         assert_c8y(self)
         return self._build(
             json=await self.c8y.post(
-                self._c8y_api.resource_path,
+                self._meta.resource_path,
                 json=self.to_json(),
-                accept=self._c8y_api.mime_type,
+                accept=self._meta.object_mime_type,
             ),
             c8y=self.c8y,
         )
@@ -443,8 +444,8 @@ class CumulocityObject(Generic[T]):
         object_json = await self.c8y.put(
                 self.object_path,
                 json=self.to_json(True),
-                accept=self._meta.mime_type,
-                content_type=self._meta.mime_type,
+                accept=self._meta.object_mime_type,
+                content_type=self._meta.object_mime_type,
         )
         if inplace:
             self._source_json = object_json
@@ -467,8 +468,8 @@ class CumulocityObject(Generic[T]):
             json=await self.c8y.put(
                 self._meta.build_object_path(other_id),
                 json=self.to_json(True),
-                accept=self._meta.mime_type,
-                content_type=self._meta.mime_type
+                accept=self._meta.object_mime_type,
+                content_type=self._meta.object_mime_type
             ),
             c8y=self.c8y
         )
@@ -483,7 +484,7 @@ class CumulocityObject(Generic[T]):
         assert_id(self)
         object_json = await self.c8y.get(
                 self.object_path,
-                accept=self._meta.mime_type,
+                accept=self._meta.object_mime_type,
         )
         if inplace:
             self._source_json = object_json
@@ -529,7 +530,11 @@ class CumulocityResource(ABC, Generic[T]):
         return await self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
 
     async def _get_page(self, page_number: int, **kwargs):
-        result_json = await self.c8y.get(self.resource_path, {**kwargs, "currentPage": page_number})  # todo: accept
+        result_json = await self.c8y.get(
+            self.resource_path,
+            params={**kwargs, "currentPage": page_number},
+            accept=self._meta.collection_mime_type
+        )
         return result_json[self._meta.collection_name]
 
     async def _get_count(self, base_query: str) -> int:
@@ -602,50 +607,74 @@ class CumulocityResource(ABC, Generic[T]):
     async def get(self, object_id: str | int, **_) -> T:
         return await self._get(object_id)
 
-    async def _create(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
-        if len(objects) == 1 and isinstance(objects[0], Iterable):  # should never be a string or something
-            objects = tuple(objects[0])
-        tasks = [
-            asyncio.create_task(
-                self.c8y.post(self.resource_path, json=o.to_json(), accept=None)
-            )
-            for o in objects
-        ]
-        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+    async def _create(self, workers: int = None, *objects: CumulocityObject | list[CumulocityObject]) -> None:
+        objects = flatten(objects)
+        fun = lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+
+        if workers is None:
+            for o in objects:
+                await fun(o)
+            return
+
+        errors: list[BaseException] = []
+        for i in range(0, len(objects), workers):
+            batch = objects[i: i + workers]
+            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
+            errors.extend(r for r in results if isinstance(r, BaseException))
+
         if errors:
             raise BatchError(errors)
 
-    async def _create_bulk(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
+    async def _create_bulk(self, *objects: CumulocityObject) -> None:
+        objects = flatten(objects)
         bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
         await self.c8y.post(self.resource_path, bulk_json, content_type=self.mime_type)  # TODO: mime type might be different for bulks?
 
-    async def _update(self, *objects: CumulocityObject | list[CumulocityObject]) -> None:
-        if len(objects) == 1 and isinstance(objects[0], Iterable):  # should never be a string or something
-            objects = tuple(objects[0])
-        tasks = [
-            asyncio.create_task(
-                self.c8y.put(self.build_object_path(o.id), json=o.to_json(only_updated=True), accept=None)
-            )
-            for o in objects
-        ]
-        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+    async def _update(self, workers: int = None, *objects: CumulocityObject) -> None:
+        objects = flatten(objects)
+        fun = lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+
+        if workers is None:
+            for o in objects:
+                await fun(o)
+            return
+
+        errors: list[BaseException] = []
+        for i in range(0, len(objects), workers):
+            batch = objects[i: i + workers]
+            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
+            errors.extend(r for r in results if isinstance(r, BaseException))
+
         if errors:
             raise BatchError(errors)
 
-    async def _apply_to(self, model: dict | CumulocityObject, *object_ids: str | int) -> None:
+    async def _apply_to(self, model: dict | CumulocityObject, workers: int = None, *objects: str | int | CumulocityObject) -> None:
+        objects = flatten(objects)
         model_json = model if isinstance(model, dict) else model.to_json(only_updated=True)
-        tasks = [
-            asyncio.create_task(
-                self.c8y.put(self.build_object_path(object_id), model_json, accept=None)
-            )
-            for object_id in object_ids
-        ]
-        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+
+        try:
+            object_ids = [o.id for o in objects]  # noqa (id)
+        except AttributeError:
+            object_ids = objects
+
+        fun = lambda x: self.c8y.put(self.build_object_path(o), model_json, accept=None)
+
+        if workers is None:
+            for o in object_ids:
+                await fun(o)
+            return
+
+        errors: list[BaseException] = []
+        for i in range(0, len(object_ids), workers):
+            batch = object_ids[i: i + workers]
+            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
+            errors.extend(r for r in results if isinstance(r, BaseException))
+
         if errors:
             raise BatchError(errors)
 
     # this one should be ok for all implementations, hence we define it here
-    async def delete(self, *objects: str | int | CumulocityObject) -> None:
+    async def delete(self, workers: int = None, *objects: str | int | CumulocityObject) -> None:
         """ Delete one or more objects within the database.
 
         The objects can be specified as instances of a database object
@@ -653,19 +682,29 @@ class CumulocityResource(ABC, Generic[T]):
         or strings).
 
         Args:
+            workers (int): Number of workers to use for parallel processing
+                or None to process sequentially.
             *objects (str):  Objects within the database specified by ID
                 or as CumulocityObject instances
         """
+        objects = flatten(objects)
         try:
             object_ids = [o.id for o in objects]  # noqa (id)
         except AttributeError:
             object_ids = objects
-        tasks = [
-            asyncio.create_task(
-                self.c8y.delete(self.build_object_path(object_id))
-            )
-            for object_id in object_ids
-        ]
-        errors = [x for x in await asyncio.gather(*tasks, return_exceptions=True) if isinstance(x, Exception)]
+
+        fun = lambda x:self.c8y.delete(self.build_object_path(o))
+
+        if workers is None:
+            for o in objects:
+                await fun(o)
+            return
+
+        errors: list[BaseException] = []
+        for i in range(0, len(object_ids), workers):
+            batch = object_ids[i: i + workers]
+            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
+            errors.extend(r for r in results if isinstance(r, BaseException))
+
         if errors:
             raise BatchError(errors)
