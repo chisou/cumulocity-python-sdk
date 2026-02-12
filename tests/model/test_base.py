@@ -13,7 +13,7 @@ import pytest
 
 from c8y_api import CumulocityRestApi
 from c8y_api.model import ManagedObject
-from pyc8y.model.base import CumulocityObject
+from pyc8y.model.model_base import CumulocityObject
 from c8y_api.model._base import (
     SimpleObject,
     ComplexObject,
