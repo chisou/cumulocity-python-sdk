@@ -1,9 +1,10 @@
-
-from __future__ import annotations
+# Copyright (c) 2026 Christoph Souris
 
 import logging
 import ssl
+from collections import Counter
 from enum import StrEnum
+from typing import Self
 
 import aiohttp
 import certifi
@@ -11,14 +12,6 @@ import orjson
 
 from pyc8y.auth import Auth
 
-
-ACCEPT_MANAGED_OBJECT = 'application/vnd.com.nsn.cumulocity.managedobject+json'
-ACCEPT_USER = 'application/vnd.com.nsn.cumulocity.user+json'
-ACCEPT_CURRENT_USER = 'application/vnd.com.nsn.cumulocity.currentuser+json'
-ACCEPT_GLOBAL_ROLE = 'application/vnd.com.nsn.cumulocity.group+json'
-CONTENT_AUDIT_RECORD = 'application/vnd.com.nsn.cumulocity.auditrecord+json'
-CONTENT_MANAGED_OBJECT = 'application/vnd.com.nsn.cumulocity.managedobject+json'
-CONTENT_MEASUREMENT_COLLECTION = 'application/vnd.com.nsn.cumulocity.measurementcollection+json'
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +43,11 @@ class HttpMethod(StrEnum):
 class HttpError(Exception):
     """Base class for technical HTTP errors."""
     def __init__(self, method: str, url: str, code: int, message: str):
+        super().__init__(f'HTTP {code}: {method} {url} - {message}')
         self.method = method
         self.url = url
         self.code = code
-        self. message = message
-
-    def __repr__(self):
-        return f'HTTP {self.code}: {self.method} {self.url} - {self.message}'
+        self.message = message
 
 
 class UnauthorizedError(HttpError):
@@ -77,6 +68,22 @@ class AccessDeniedError(HttpError):
         super().__init__(method, url, 403, message)
 
 
+class BatchError(Exception):
+    """Error raised after a batch processing."""
+    def __init__(self, errors: list[Exception]):
+        super().__init__(self._build_message(errors))
+        self.errors = errors
+
+    @staticmethod
+    def _build_message(errors) -> str:
+        counts = Counter(type(e).__name__ for e in errors)
+        parts = [
+            f"{name}({count})" if count > 1 else name
+            for name, count in counts.items()
+        ]
+        return f"Batch processing raised {len(errors)} errors: {', '.join(parts)}"
+
+
 class CumulocityRestApi(object):
 
     def __init__(
@@ -94,7 +101,7 @@ class CumulocityRestApi(object):
         self.processing_mode = processing_mode
         self._session = None
 
-    async def __aenter__(self) -> CumulocityRestApi:
+    async def __aenter__(self) -> Self:
         _ = await self.session  # ensure session is created
         return self
 
