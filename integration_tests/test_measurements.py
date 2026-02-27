@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 import random
 from datetime import datetime, timedelta, timezone
@@ -9,8 +9,8 @@ from typing import List
 
 import pytest
 
-from c8y_api import CumulocityApi
-from c8y_api.model import Device, Measurement, Measurements, Series, Value, Kelvin, Count
+from pyc8y.api import CumulocityClient
+from pyc8y.model import Device, Measurement, Measurements, Series, Value, Kelvin, Count
 
 from util.testing_util import RandomNameGenerator
 
@@ -20,20 +20,20 @@ def get_ids(ms: List[Measurement]) -> List[str]:
     return [m.id for m in ms]
 
 
-@pytest.fixture(scope='session', name='measurement_factory')
-def fix_measurement_factory(live_c8y: CumulocityApi):
+@pytest.fixture(scope="module", name="measurement_factory")
+async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
     """Provide a factory function to create measurements that are cleaned
     up after the session if needed."""
 
     created_devices = []
 
-    def factory_fun(n: int, device=None, type=None, series=None) -> List[Measurement]:
+    async def factory_fun(n: int, device=None, type=None, series=None) -> List[Measurement]:
         type = type or RandomNameGenerator.random_name(2)
         series = series or type
 
         # 1) create device
         if not device:
-            device = Device(c8y=live_c8y, type=f'{type}_device', name=type, test_marker={'name': type}).create()
+            device = await module_factory(Device(c8y=live_c8y, type=f'{type}_device', name=type, test_marker={'name': type}))
             created_devices.append(device)
             logging.info(f'Created device #{device.id}')
 
@@ -46,21 +46,21 @@ def fix_measurement_factory(live_c8y: CumulocityApi):
             # m[series] = {series: Value(random.randint(1000, 9999), '#')}
             m[series] = {'series': Value(random.randint(1000, 9999), '#')}
             m['marker'] = {'id': f'{device.id}_{type}_{series}_{i}'}
-            m = m.create()
+            m = await m.create()
             logging.info(f'Created measurement #{m.id}: {m.to_json()}')
             ms.append(m)
         return ms
 
     yield factory_fun
 
-    for d in created_devices:
-        try:
-            d.delete()
-        except KeyError:
-            logging.warning(f"Device #{d.id} already deleted.")
+    # for d in created_devices:
+    #     try:
+    #         await d.delete()
+    #     except KeyError:
+    #         logging.warning(f"Device #{d.id} already deleted.")
 
 
-def test_select(live_c8y: CumulocityApi, measurement_factory):
+async def test_select(live_c8y: CumulocityClient, measurement_factory):
     """Verify that selection works as expected."""
     # pylint: disable=too-many-statements)
 
@@ -68,37 +68,37 @@ def test_select(live_c8y: CumulocityApi, measurement_factory):
     other_name = f'other_{name}'
 
     # create a couple of measurements (at a new device)
-    created_ms = measurement_factory(10, type=name, series=name)
+    created_ms = await measurement_factory(10, type=name, series=name)
 
     # create a couple of measurements with different source
-    source_ms = measurement_factory(10, type=name, series=name)
+    source_ms = await measurement_factory(10, type=name, series=name)
 
     # create a couple of measurements with different type name
     device_id = created_ms[0].source
-    device = live_c8y.device_inventory.get(created_ms[0].source)
-    type_ms = measurement_factory(10, device=device, type=other_name, series=name)
+    device = await live_c8y.device_inventory.get(created_ms[0].source)
+    type_ms = await measurement_factory(10, device=device, type=other_name, series=name)
 
     # create a couple of measurements with different series name
-    series_ms = measurement_factory(10, device=device, type=name, series=other_name)
+    series_ms = await measurement_factory(10, device=device, type=name, series=other_name)
 
     # (1) all measurement collections can be selected separately
 
     # select by source
-    same_source_ms = live_c8y.measurements.get_all(source=device_id)
+    same_source_ms = await live_c8y.measurements.get_all(source=device_id, limit=100)
     assert len({x.source for x in same_source_ms}) == 1
     assert len({x.type for x in same_source_ms}) == 2
     assert len({x.get_series()[0] for x in same_source_ms}) == 2
     assert len(same_source_ms) == len(created_ms) + len(type_ms) + len(series_ms)
 
     # select by type
-    same_type_ms = live_c8y.measurements.get_all(type=name)
+    same_type_ms = await live_c8y.measurements.get_all(type=name)
     assert len({x.source for x in same_type_ms}) == 2
     assert len({x.type for x in same_type_ms}) == 1
     assert len({x.get_series()[0] for x in same_type_ms}) == 2
     assert len(same_type_ms) == len(created_ms) + len(source_ms) + len(series_ms)
 
     # select by series
-    same_series_ms = live_c8y.measurements.get_all(value_fragment_type=name)
+    same_series_ms = await live_c8y.measurements.get_all(value_fragment_type=name)
     assert len({x.source for x in same_series_ms}) == 2
     assert len({x.type for x in same_series_ms}) == 2
     assert len({x.get_series()[0] for x in same_series_ms}) == 1
@@ -108,58 +108,58 @@ def test_select(live_c8y: CumulocityApi, measurement_factory):
 
     # Delete all with same source and type (fragment is not supported)
     # This would also include the ones having a different series name
-    live_c8y.measurements.delete_by(source=device_id, type=name)
+    await live_c8y.measurements.delete_by(source=device_id, type=name)
     # wait for the deletion to be executed
     n = 10
     while True:
-        if not live_c8y.measurements.get_last(source=device_id, type=name):
+        if not await live_c8y.measurements.get_count(source=device_id, type=name):
             break
         n = n-1
         time.sleep(1 * (10-n))
-    assert not live_c8y.measurements.get_last(source=device_id, type=name)
+    assert not await live_c8y.measurements.get_last(source=device_id, type=name)
 
     # -> there should still be similar measurements at a different device
-    other_source_ms = live_c8y.measurements.get_all(type=name, value_fragment_type=name)
+    other_source_ms = await live_c8y.measurements.get_all(type=name, value_fragment_type=name)
     assert len(other_source_ms) == len(source_ms)
     # -> there should still be differently typed measurements for the same source
-    other_type_ms = live_c8y.measurements.get_all(source=device_id, type=other_name)
+    other_type_ms = await live_c8y.measurements.get_all(source=device_id, type=other_name)
     assert len(other_type_ms) == len(type_ms)
 
     # Delete by type (don't care about the source)
     now = datetime.now(timezone.utc)
     now_truncated = now.replace(hour=now.hour+1, minute=0, second=0, microsecond=0)
-    live_c8y.measurements.delete_by(type=name, date_to=now_truncated)
+    await live_c8y.measurements.delete_by(type=name, date_to=now_truncated)
     # wait for the deletion to be executed
     n = 10
     while True:
-        if not live_c8y.measurements.get_last(type=name):
+        if not await live_c8y.measurements.get_count(type=name):
             break
         n = n-1
         time.sleep(1 * (10-n))
-    assert not live_c8y.measurements.get_last(type=name)
+    assert not await live_c8y.measurements.get_last(type=name)
 
     # -> we should still see some with the other type
-    other_type_ms = live_c8y.measurements.get_all(type=other_name, before=now_truncated)
+    other_type_ms = await live_c8y.measurements.get_all(type=other_name, before=now_truncated)
     assert len(other_type_ms) == len(type_ms)
 
     # Delete remaining measurements
-    live_c8y.measurements.delete_by(type=other_name, date_to=now_truncated)
+    await live_c8y.measurements.delete_by(type=other_name, date_to=now_truncated)
     # wait for the deletion to be executed
     n = 10
     while True:
-        if not live_c8y.measurements.get_last(type=other_name):
+        if not await live_c8y.measurements.get_count(type=other_name):
             break
         n = n-1
         time.sleep(1 * (10-n))
-    assert not live_c8y.measurements.get_last(type=other_name)
+    assert not await live_c8y.measurements.get_last(type=other_name)
 
     # -> no measurements should be left
     sources = [created_ms[0].source, source_ms[1].source]
     for source in sources:
-        assert not live_c8y.measurements.get_all(source=source)
+        assert not await live_c8y.measurements.get_count(source=source)
 
 
-def test_single_page_select(live_c8y: CumulocityApi, measurement_factory):
+def test_single_page_select(live_c8y: CumulocityClient, measurement_factory):
     """Verify that selection works as expected."""
     # create a couple of measurements
     created_ms = measurement_factory(50)
@@ -175,7 +175,7 @@ def test_single_page_select(live_c8y: CumulocityApi, measurement_factory):
 
 
 @pytest.fixture(scope='session', name='sample_series_device')
-def fix_sample_series_device(live_c8y: CumulocityApi, session_device: Device) -> Device:
+def fix_sample_series_device(live_c8y: CumulocityClient, session_device: Device) -> Device:
     """Add measurement series to the sample device."""
     # create 12K measurements, 2 every minute
     start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
@@ -199,7 +199,7 @@ def fix_sample_series_device(live_c8y: CumulocityApi, session_device: Device) ->
 
 
 @pytest.fixture(scope='session')
-def unaggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Device) -> Series:
+def unaggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
     """Provide an unaggregated series result."""
     start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
     return live_c8y.measurements.get_series(source=sample_series_device.id,
@@ -208,7 +208,7 @@ def unaggregated_series_result(live_c8y: CumulocityApi, sample_series_device: De
 
 
 @pytest.fixture(scope='session')
-def aggregated_series_result(live_c8y: CumulocityApi, sample_series_device: Device) -> Series:
+def aggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
     """Provide an aggregated series result."""
     start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
     return live_c8y.measurements.get_series(source=sample_series_device.id,
