@@ -1,26 +1,46 @@
-from __future__ import annotations
-
 import asyncio
-from abc import ABC
 from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 import re
-from typing import Any, Generic, TypeVar, Self, AsyncGenerator, Mapping, Callable, Iterable
+from typing import (
+    Any,
+    Generic,
+    TypeVar,
+    Self,
+    Mapping,
+    Callable,
+    AsyncIterator,
+    Awaitable,
+    Sequence,
+)
 
-from pyc8y.base import CumulocityRestApi, BatchError
-from pyc8y.base_util import flatten
-from pyc8y.model.matcher import JsonMatcher
+from pyc8y.client import CumulocityRestClient, BatchError
+from pyc8y.base_util import flatten, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
     as_record,
     get_by_path,
     to_datetime,
     to_pascal_case,
-    now_datetime, to_timestring, now_timestring, is_sequence,
+    now_datetime,
+    to_timestring,
+    now_timestring,
 )
-from pyc8y.types import InventoryMeta, ResourceMeta
+# trying to import various matchers that need external libraries
+try:
+    from pyc8y.model.matcher import PydfMatcher as DefaultMatcher
+except ImportError:
+    try:
+        from pyc8y.model.matcher import JmesPathMatcher as DefaultMatcher
+    except ImportError:
+        try:
+            from pyc8y.model.matcher import JsonPathMatcher as DefaultMatcher
+        except ImportError:
+            DefaultMatcher = None
+from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec, MatcherSpec, ParamsSpec
 
-T = TypeVar("T", bound="CumulocityObject")
+CO = TypeVar("CO", bound="CumulocityObject")
+
 
 def assert_c8y(obj):
     """Assert that a model object has a Cumulocity connection."""
@@ -112,15 +132,33 @@ def coerce_timestring(value: str | datetime | None, name: str = None) -> str | N
         if value.tzinfo is None:
             value = value.replace(tzinfo = timezone.utc)
         return to_timestring(value)
-    except ValueError:
-        raise ValueError(f"Invalid datetime{param_name()}.")
+    except ValueError as e:
+        raise ValueError(f"Invalid datetime{param_name()} ({e}).")
+
+
+def expand_dotted(kwargs):
+    if not kwargs:
+        return kwargs
+
+    result = {}
+    for key, value in kwargs.items():
+        parts = key.split(".")
+        current = result
+
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+
+        current[parts[-1]] = value
+
+    return result
 
 
 def json_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]
     def setter(self, value):
-        self._update_json[key] = value
+        if value is not None:
+            self._staged_json[key] = value
     return property(getter) if read_only else property(getter, setter)
 
 
@@ -128,7 +166,8 @@ def id_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]["id"]
     def setter(self, value):  # todo: not sure we ever need a setter for ID
-        self._update_json[key] = {"id": value}
+        if value is not None:
+            self._staged_json[key] = {"id": value}
     return property(getter) if read_only else property(getter, setter)
 
 
@@ -136,7 +175,7 @@ def tag_property(key: str, read_only=False) -> property:
     def getter(self):
         return key in self._json
     def setter(self, value):
-        self._update_json[key] = {}
+        self._staged_json[key] = {}
     return property(getter) if read_only else property(getter, setter)
 
 
@@ -144,7 +183,8 @@ def time_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]
     def setter(self, value):
-        self._update_json[key] = coerce_timestring(value, key)
+        if value is not None:
+            self._staged_json[key] = coerce_timestring(value, key)
     return property(getter) if read_only else property(getter, setter)
 
 
@@ -155,9 +195,11 @@ def datetime_property(key: str) -> property:
 
 
 def map_params(
+        *,
         name=None,
         fragment=None,
         bulk_id=None,
+        series=None,
         before=None,
         after=None,
         date_from=None,
@@ -177,7 +219,7 @@ def map_params(
         with_source_devices=None,
         reverse=None,
         **kwargs
-    ) -> dict:
+    ) -> Sequence[tuple[str, str]]:
     if min_age:
         date_to = now_datetime() - coerce_timedelta(min_age)
     if max_age:
@@ -193,25 +235,40 @@ def map_params(
     if (not source) and any([with_source_devices, with_source_assets]):
         raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
 
-    # perform abbreviated -> actual parameter names
-    params = {
-        "name": name,  # TODO: check if OData encoding works as expected
-        "fragmentType": fragment,
-        "bulkOperationId": bulk_id,
-        'dateFrom': date_from,
-        'dateTo': date_to,
-        'createdFrom': created_from,
-        'createdTo': created_to,
-        'lastUpdatedFrom': updated_from,
-        'lastUpdatedTo': updated_to,
-        "revert": reverse,
-        **kwargs,
-    }
-    return {
-        to_pascal_case(k): str(v)
-        for k, v in params.items()
+    series = series if is_sequence(series) else (series,) if series else ()
+    params = (
+        ("name", name),  # TODO, check if OData encoding works as expected
+        ("fragmentType", fragment),
+        ("source", source),
+        ("bulkOperationId", bulk_id),
+        ('dateFrom', date_from),
+        ('dateTo', date_to),
+        ('createdFrom', created_from),
+        ('createdTo', created_to),
+        ('lastUpdatedFrom', updated_from),
+        ('lastUpdatedTo', updated_to),
+        ("revert", encode(reverse)),
+        *(("series", s) for s in series),
+        *((k, encode(v)) for k, v in kwargs.items())
+    )
+    return [
+        (to_pascal_case(k), str(v))
+        for k, v in params
         if v is not None
-    }
+    ]
+
+def encode(value: Any | None) -> Sequence | str | None:
+    if value is None:
+        return None
+    if is_sequence(value):
+        return tuple(encode(x) for x in value)
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return value  # encode?
+    raise ValueError(f"Unexpected value type '{type(value)}'. No idea how to encode.")
 
 
 class AttrDict:
@@ -253,23 +310,22 @@ class AttrDict:
             self._cb()
 
 
-class CumulocityObject(Generic[T]):
+class CumulocityObject:
     """Base class for all Cumulocity database objects."""
     _meta: ResourceMeta
 
-    def __init__(self, c8y: CumulocityRestApi | None = None, **kwargs):
+    def __init__(self, c8y: CumulocityRestClient | None = None, **kwargs):
         self.c8y = c8y
-        self._source_json: dict | None = kwargs
-        self._update_json: dict = {}
-        self._staged_json: dict = {}
+        self._source_json: dict | None = {}
+        self._staged_json: dict | None = expand_dotted(kwargs)
 
     @property
     def _json(self) -> dict:
-        if not self._update_json:
+        if not self._staged_json:
             return self._source_json
         if not self._source_json:
-            return self._update_json
-        return self._source_json | self._update_json
+            return self._staged_json
+        return self._source_json | self._staged_json
 
     @property
     def id(self):
@@ -295,19 +351,19 @@ class CumulocityObject(Generic[T]):
         return self.__repr__()
 
     @classmethod
-    def _build(cls, json: dict, c8y: CumulocityRestApi | None = None) -> Self:
+    def _build(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         obj = cls()  # this might set default values which classifies as "updated"
         obj._source_json = json
-        obj._update_json = {}  # reset all updates
+        obj._staged_json = {}  # reset all updates
         obj.c8y = c8y
         return obj
 
     @classmethod
-    def from_json(cls, json: dict, c8y: CumulocityRestApi | None = None) -> Self:
+    def from_json(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         return cls._build(json, c8y=c8y)
 
     def to_json(self, only_updated=False) -> dict:
-        return self._update_json if only_updated else self._json
+        return self._staged_json if only_updated else self._json
 
     def __contains__(self, path) -> bool:
         current = self._json
@@ -368,14 +424,14 @@ class CumulocityObject(Generic[T]):
         keys = path.split('.')
 
         if len(keys) == 1:  # no path to drill down to -> direct assignment
-            self._update_json[path] = value
+            self._staged_json[path] = value
             return
 
         # copy the entire source branch to allow partial updates
-        if keys[0] not in self._update_json:
+        if keys[0] not in self._staged_json:
             staged = deepcopy(self._source_json.get(keys[0], {}))
         else:
-            staged = self._update_json[keys[0]]
+            staged = self._staged_json[keys[0]]
         current = staged
 
         for i, key in enumerate(keys[1:-1]):
@@ -392,7 +448,7 @@ class CumulocityObject(Generic[T]):
             current = current[key]
 
         current[keys[-1]] = value
-        self._update_json[keys[0]] = staged
+        self._staged_json[keys[0]] = staged
 
     def __setitem__(self, path, value):
         self._set(path, value, fail=True)
@@ -404,7 +460,7 @@ class CumulocityObject(Generic[T]):
         if not is_sequence(other):
             other = (other,)
         for i in other:
-            self._update_json[i.name] = i.items
+            self._staged_json[i.name] = i.items
         return self
 
     def as_tuple(self, *paths: str | tuple[str, Any]) -> tuple:
@@ -457,7 +513,7 @@ class CumulocityObject(Generic[T]):
         """Apply changes made to this object to another object in the database.
 
         Args:
-            other_id (str):  Database ID of the event to update.
+            other_id (str):  Database ID of the object to update.
 
         Returns:
             A fresh object representing the updated object's state within
@@ -467,7 +523,7 @@ class CumulocityObject(Generic[T]):
         return self._build(
             json=await self.c8y.put(
                 self._meta.build_object_path(other_id),
-                json=self.to_json(True),
+                json=self.to_json(only_updated=True),
                 accept=self._meta.object_mime_type,
                 content_type=self._meta.object_mime_type
             ),
@@ -497,25 +553,29 @@ class CumulocityObject(Generic[T]):
         await self._delete()
 
 
-class CumulocityResource(ABC, Generic[T]):
+class CumulocityResource(Generic[CO]):
     """Abstract base class for all Cumulocity API resources."""
     _meta = InventoryMeta
-    object_type: type[T]
+    _object_type: type[CO]
 
-    def __init__(self, c8y: CumulocityRestApi):
+    def __init__(self, c8y: CumulocityRestClient):
         self.c8y = c8y
-        self.default_matcher = None
+        self.default_matcher = DefaultMatcher
 
     @property
     def resource_path(self) -> str:
         return self._meta.resource_path
 
     @property
-    def mime_type(self) -> str:
-        return self._meta.mime_type
+    def object_mime_type(self) -> str:
+        return self._meta.object_mime_type
+
+    @property
+    def collection_mime_type(self) -> str:
+        return self._meta.collection_mime_type
 
     @classmethod
-    def build_object_path(cls, object_id: int | str) -> str:
+    def build_object_path(cls, object_id: str) -> str:
         """Build the path to a specific object of this resource.
 
         Args:
@@ -526,34 +586,50 @@ class CumulocityResource(ABC, Generic[T]):
         """
         return cls._meta.build_object_path(object_id)
 
-    async def _get_object(self, object_id, **kwargs):
-        return await self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
-
-    async def _get_page(self, page_number: int, **kwargs):
-        result_json = await self.c8y.get(
-            self.resource_path,
-            params={**kwargs, "currentPage": page_number},
-            accept=self._meta.collection_mime_type
+    async def _get(self, object_id: str, **kwargs) -> CO:
+        return self._object_type.from_json(
+            await self.c8y.get(
+                self.build_object_path(object_id),
+                params=map_params(**kwargs),
+                accept=self._meta.object_mime_type,
+            ),
+            c8y=self.c8y,  # inject c8y instance
         )
-        return result_json[self._meta.collection_name]
 
-    async def _get_count(self, base_query: str) -> int:
-        # the page_size=1 parameter must not be part of the query string
-        sep = '&' if '?' in base_query else '?'
-        kind = 'Pages' if 'binaries' in base_query else 'Pages'
-        result_json = await self.c8y.get(f'{base_query}{sep}pageSize=1&withTotal{kind}=true')
-        return result_json['statistics'][f'total{kind}']
+    async def _get_last(self, expression: str | None, params: dict | None, as_values) -> CO | Any | tuple[Any] | None:
+        if expression:
+            result_json = await self.c8y.get(
+                f"{self.resource_path}?{expression}&currentPage=1&pageSize=1",
+                accept=self._meta.object_mime_type
+            )
+        else:
+            result_json = await self.c8y.get(self.resource_path, params, accept=self._meta.collection_mime_type)
+        results = result_json[self._meta.collection_name]
+        if not results:
+            return None
+        if as_values:
+            return as_tuple(results[0], as_values)
+        return self._object_type.from_json(results[0], c8y=self.c8y)
+
+    async def _get_count(self, expression: str | None, params: Sequence[tuple[str, str]] | None) -> int:
+        if expression:
+            result_json = await self.c8y.get(f"{self.resource_path}?{expression}&pageSize=1&withTotalPages=true")
+        else:
+            # params are not merged, but we can be sure that page size etc. are not part of params
+            result_json = await self.c8y.get(self.resource_path, (*params, ("pageSize", "1"), ("withTotalPages", "true")))
+        return result_json["statistics"]["totalPages"]
 
     async def _iterate(
             self,
+            *,
             expression: str | None = None,
-            params: dict | None = None,
+            params: ParamsSpec = None,
             page_number: int | None = None,
             limit: int | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            as_values: str | tuple[str, Any] | list[str | tuple[str|Any]] | None = None,
-    ) -> AsyncGenerator[Any, None]:
+            include: MatcherSpec = None,
+            exclude: MatcherSpec = None,
+            as_values: AsValuesSpec = None,
+    ) -> AsyncIterator[CO | Any | tuple[CO]]:
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
         # we will read page after page until
@@ -572,9 +648,9 @@ class CumulocityResource(ABC, Generic[T]):
 
         while True:
             if expression:
-                response_json = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page_number}")
+                response_json = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={current_page}")
             else:
-                response_json = await self.c8y.get(self.resource_path, {**params, "currentPage": page_number})
+                response_json = await self.c8y.get(self.resource_path, (*params, ("currentPage", current_page)))
             obj_jsons = response_json[self._meta.collection_name]
             if not obj_jsons:
                 break
@@ -590,7 +666,7 @@ class CumulocityResource(ABC, Generic[T]):
                 if as_values:
                     yield as_tuple(json, as_values)
                 else:
-                    yield self.object_type.from_json(json, c8y=self.c8y)
+                    yield self._object_type.from_json(json, c8y=self.c8y)
                 num_results = num_results + 1
             # when a specific page was specified we don't read more pages
             if page_number:
@@ -598,113 +674,60 @@ class CumulocityResource(ABC, Generic[T]):
             # continue with next page
             current_page = current_page + 1
 
-    async def _get(self, object_id: str | int, **kwargs) -> T:
-        obj_json = await self.c8y.get(self.build_object_path(object_id), params=map_params(**kwargs))
-        obj = self.object_type(obj_json[self._meta.collection_name])
-        obj.c8y = self.c8y
-        return obj
+    async def _create(self, *objects: CO, workers: int | None = None) -> None:
+        await run_batched(
+            flatten(objects),
+            workers,
+            lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+        )
 
-    async def get(self, object_id: str | int, **_) -> T:
-        return await self._get(object_id)
-
-    async def _create(self, workers: int = None, *objects: CumulocityObject | list[CumulocityObject]) -> None:
-        objects = flatten(objects)
-        fun = lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
-
-        if workers is None:
-            for o in objects:
-                await fun(o)
-            return
-
-        errors: list[BaseException] = []
-        for i in range(0, len(objects), workers):
-            batch = objects[i: i + workers]
-            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
-            errors.extend(r for r in results if isinstance(r, BaseException))
-
-        if errors:
-            raise BatchError(errors)
-
-    async def _create_bulk(self, *objects: CumulocityObject) -> None:
-        objects = flatten(objects)
+    async def _create_bulk(self, *objects: CO) -> None:
+        objects = flatten(objects)  # not documented, but good to have
         bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
-        await self.c8y.post(self.resource_path, bulk_json, content_type=self.mime_type)  # TODO: mime type might be different for bulks?
+        await self.c8y.post(self.resource_path, bulk_json, content_type=self.collection_mime_type)
 
-    async def _update(self, workers: int = None, *objects: CumulocityObject) -> None:
-        objects = flatten(objects)
-        fun = lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+    async def _update(self, *objects: CO, workers: int | None = None) -> None:
+        await run_batched(
+            flatten(objects),
+            workers,
+            lambda x: self.c8y.put(self.build_object_path(x.id), json=x.to_json(only_updated=True), accept=None)
+        )
 
-        if workers is None:
-            for o in objects:
-                await fun(o)
-            return
-
-        errors: list[BaseException] = []
-        for i in range(0, len(objects), workers):
-            batch = objects[i: i + workers]
-            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
-            errors.extend(r for r in results if isinstance(r, BaseException))
-
-        if errors:
-            raise BatchError(errors)
-
-    async def _apply_to(self, model: dict | CumulocityObject, workers: int = None, *objects: str | int | CumulocityObject) -> None:
-        objects = flatten(objects)
+    async def _apply_to(self, model: dict | CO, *objects: str | CO, workers: int | None = None) -> None:
         model_json = model if isinstance(model, dict) else model.to_json(only_updated=True)
-
-        try:
-            object_ids = [o.id for o in objects]  # noqa (id)
-        except AttributeError:
-            object_ids = objects
-
-        fun = lambda x: self.c8y.put(self.build_object_path(o), model_json, accept=None)
-
-        if workers is None:
-            for o in object_ids:
-                await fun(o)
-            return
-
-        errors: list[BaseException] = []
-        for i in range(0, len(object_ids), workers):
-            batch = object_ids[i: i + workers]
-            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
-            errors.extend(r for r in results if isinstance(r, BaseException))
-
-        if errors:
-            raise BatchError(errors)
+        await run_batched(
+            ensure_ids(flatten(objects)),
+            workers,
+            lambda x: self.c8y.put(self.build_object_path(x), model_json, content_type=self._meta.object_mime_type, accept=None)
+        )
 
     # this one should be ok for all implementations, hence we define it here
-    async def delete(self, workers: int = None, *objects: str | int | CumulocityObject) -> None:
-        """ Delete one or more objects within the database.
+    async def _delete(self, *objects: str | CO, workers: int | None = None) -> None:
+        await run_batched(
+            ensure_ids(flatten(objects)),
+            workers,
+            lambda x: self.c8y.delete(self.build_object_path(x)),
+        )
 
-        The objects can be specified as instances of a database object
-        (then, the id field needs to be defined) or simply as ID (integers
-        or strings).
 
-        Args:
-            workers (int): Number of workers to use for parallel processing
-                or None to process sequentially.
-            *objects (str):  Objects within the database specified by ID
-                or as CumulocityObject instances
-        """
-        objects = flatten(objects)
-        try:
-            object_ids = [o.id for o in objects]  # noqa (id)
-        except AttributeError:
-            object_ids = objects
+def ensure_ids(objects):
+    try:
+        return [o.id for o in objects]  # noqa (id)
+    except AttributeError:
+        return objects
 
-        fun = lambda x:self.c8y.delete(self.build_object_path(o))
 
-        if workers is None:
-            for o in objects:
-                await fun(o)
-            return
+async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[Any], Awaitable[Any]]) -> None:
+    if workers is None:
+        for thing in things:
+            await op(thing)
+        return
 
-        errors: list[BaseException] = []
-        for i in range(0, len(object_ids), workers):
-            batch = object_ids[i: i + workers]
-            results = await asyncio.gather(*(fun(o) for o in batch), return_exceptions=True)
-            errors.extend(r for r in results if isinstance(r, BaseException))
+    errors: list[BaseException] = []
+    for i in range(0, len(things), workers):
+        batch = things[i : i + workers]
+        results = await asyncio.gather(*(op(thing) for thing in batch), return_exceptions=True)
+        errors.extend(r for r in results if isinstance(r, BaseException))
 
-        if errors:
-            raise BatchError(errors)
+    if errors:
+        raise BatchError(errors)

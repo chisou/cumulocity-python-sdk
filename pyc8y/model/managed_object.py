@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Self, Coroutine, Mapping
 
-from model import Inventory
-from pyc8y.base import CumulocityRestApi
-# from pyc8y.model.administration import User, Users
-from pyc8y.model.inventory import Inventory
-from pyc8y.model.base import CumulocityObject, json_property, time_property, datetime_property, assert_c8y, assert_id, \
-    tag_property
+from pyc8y.client import CumulocityRestClient
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    json_property,
+    time_property,
+    datetime_property,
+    assert_c8y,
+    assert_id,
+    tag_property,
+)
+from pyc8y.types import InventoryMeta
 
 
 @dataclass
@@ -25,8 +29,9 @@ class ObjectReference:
 
 
 def references_property(key: str) -> property:
+    # TODO: Other references than managed objects?
     def getter(self):
-        return [ObjectReference(x["id"], x.get("name", None)) for x in self._source_json[key]["references"]]
+        return [ObjectReference(x['managedObject']["id"], x["managedObject"].get("name", None)) for x in self._source_json[key]["references"]]
     return property(getter)
 
 @dataclass
@@ -99,12 +104,11 @@ class ManagedObject(CumulocityObject):
 
     See also https://cumulocity.com/guides/reference/inventory/#managed-object
     """
-
-    _c8y_api = Inventory
+    _meta = InventoryMeta
 
     def __init__(
             self,
-            c8y: CumulocityRestApi = None,
+            c8y: CumulocityRestClient = None,
             type: str = None,
             name: str = None,
             owner: str = None,
@@ -116,7 +120,7 @@ class ManagedObject(CumulocityObject):
         creation using += or [] syntax.
 
         Args:
-            c8y (CumulocityRestApi):  Cumulocity connection reference; needs
+            c8y (CumulocityRestClient):  Cumulocity connection reference; needs
                 to be set for direct manipulation (create, delete)
             type (str):  ManagedObject type
             name (str):  ManagedObject name
@@ -152,26 +156,18 @@ class ManagedObject(CumulocityObject):
     parent_assets = references_property("assetParents")
     parent_additions = references_property("additionParents")
 
-    @property
-    def is_device(self):
-        return "c8y_IsDevice" in self._json
-
-    @property
-    def is_binary(self):
-        return "c8y_IsBinary" in self._json
-
-    async def reload(self) -> Self:
+    async def reload(self, inplace: bool = False) -> Self:
         """Reload this object's data from database.
 
+        Args:
+            inplace (bool):  If `True`, this object's data will be reloaded;
+                otherwise a new instance is created from the reloaded data.
+
+
         Returns:
-            New instance built from latest data.
+            New instance built from latest data or `self` if inplace is True.
         """
-        assert_c8y(self)
-        assert_id(self)
-        return type(self)._build(
-            json=await self.c8y.get(Inventory.build_object_path(self.id)),
-            c8y=self.c8y,
-        )
+        return await self._reload(inplace)
 
     async def create(self) -> Self:
         """ Create a new representation of this object within the database.
@@ -188,16 +184,20 @@ class ManagedObject(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> ManagedObject:
+    async def update(self, inplace: bool = True) -> ManagedObject:
         """ Write changes to the database.
+
+        Args:
+            inplace (bool):  If `True`, this object's data will be updated;
+                otherwise a new instance is created from the updated data.
 
         Returns:
             A fresh ManagedObject instance representing the updated
-            object within the database.
+            object within the database or `self` if inplace is True.
 
         See also function Inventory.update which doesn't parse the result.
         """
-        return await self._update()
+        return await self._update(inplace)
 
     async def apply_to(self, other_id: str | int) -> ManagedObject:
         """Apply the details of this object to another object in the database.
@@ -262,6 +262,10 @@ class ManagedObject(CumulocityObject):
         """
         await self._assign_child("childDevices", child)
 
+    # todo: kick out or not?
+    add_child_device = assign_child_device
+    add_child_device.__doc__ = assign_child_device.__doc__
+
     async def assign_child_addition(self, child: ManagedObject | str | int):
         """ Link a child addition to this managed object.
 
@@ -272,6 +276,10 @@ class ManagedObject(CumulocityObject):
             child (ManagedObject|str|int): Child addition or its object ID
         """
         await self._assign_child("childAdditions", child)
+
+    # todo: kick out or not?
+    add_child_addition = assign_child_addition
+    add_child_addition.__doc__ = assign_child_addition.__doc__
 
     async def unassign_child_asset(self, child: ManagedObject | str | int):
         """Remove the link to a child asset.
@@ -370,7 +378,7 @@ class Device(ManagedObject):
         https://cumulocity.com/guides/reference/device-management/
     """
 
-    def __init__(self, c8y: CumulocityRestApi = None,
+    def __init__(self, c8y: CumulocityRestClient = None,
                  type: str = None, name: str = None, owner: str = None, **kwargs):  # noqa
         """ Create a new Device instance.
 
@@ -379,7 +387,7 @@ class Device(ManagedObject):
         after creation, using += or [] syntax.
 
         Args:
-            c8y (CumulocityRestApi):  Cumulocity connection reference; needs
+            c8y (CumulocityRestClient):  Cumulocity connection reference; needs
                 to be set for direct manipulation (create, delete)
             type (str):  Device type
             name (str):  Device name
@@ -391,7 +399,7 @@ class Device(ManagedObject):
             Device instance
         """
         super().__init__(c8y=c8y, type=type, name=name, owner=owner, **kwargs)
-        self.__update_json["c8y_IsDevice"] = {}
+        self._staged_json["c8y_IsDevice"] = {}
 
     def get_username(self) -> str:
         """Return the device username.
@@ -460,8 +468,8 @@ class DeviceGroup(ManagedObject):
         https://cumulocity.com/guides/users-guide/device-management/#grouping-devices
     """
 
-    ROOT_TYPE = 'c8y_DeviceGroup'
-    CHILD_TYPE = 'c8y_DeviceSubGroup'
+    ROOT_TYPE = "c8y_DeviceGroup"  # TODO: -> types.py?
+    CHILD_TYPE = "c8y_DeviceSubGroup"
 
     def __init__(self, c8y=None, root: bool = False, name: str = None, owner: str = None, **kwargs):
         """ Build a new DeviceGroup object.
@@ -475,7 +483,7 @@ class DeviceGroup(ManagedObject):
         creation, using += or [] syntax.
 
         Args:
-            c8y (CumulocityRestApi):  Cumulocity connection reference; needs
+            c8y (CumulocityRestClient):  Cumulocity connection reference; needs
                 to be set for direct manipulation (create, delete)
             root (bool):  Whether the group is a root group (default is False)
             name (str):  Device name
@@ -488,7 +496,7 @@ class DeviceGroup(ManagedObject):
         """
         super().__init__(c8y=c8y, type=self.ROOT_TYPE if root else self.CHILD_TYPE,
                          name=name, owner=owner, **kwargs)
-        self._update_json["c8Y_IsDeviceGroup"] = {}
+        self._staged_json["c8Y_IsDeviceGroup"] = {}
 
     async def create_child(self, name: str, owner: str = None, **kwargs) -> DeviceGroup:
         """ Create and assign a child group.
@@ -525,7 +533,7 @@ class DeviceGroup(ManagedObject):
         """
         return await self._create()
 
-    async def update(self) -> DeviceGroup:
+    async def update(self, **_) -> DeviceGroup:
         """ Write changed to the database.
 
         Note: Removing child groups is currently not supported.

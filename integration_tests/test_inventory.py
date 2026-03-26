@@ -7,10 +7,10 @@ from typing import List
 
 import pytest
 
-from pyc8y import CumulocityApi
+from pyc8y import CumulocityClient
 from pyc8y.model import Event, ManagedObject, Device
 from pyc8y.model.matcher import jsonpath
-from pyc8y.model.measurements import Measurement, Value
+from pyc8y.model.measurement import Measurement, Value
 from pyc8y.model.model_base import ensure_ids
 
 from util.testing_util import RandomNameGenerator
@@ -58,7 +58,7 @@ async def fix_similar_objects(module_factory) -> List[ManagedObject]:
     return objects
 
 
-async def test_get_all(live_c8y: CumulocityApi):
+async def test_get_all(live_c8y: CumulocityClient):
     """Verify that the get_all query works as expected."""
     # (1) get all devices
     devices = await live_c8y.device_inventory.get_all(limit=100)
@@ -78,7 +78,7 @@ async def test_get_all(live_c8y: CumulocityApi):
     ('name', lambda mo: mo.type + '*'),
     ('fragment', lambda mo: mo.type + '_fragment')
 ])
-async def test_get_by_something(live_c8y: CumulocityApi, similar_objects: List[ManagedObject], key, value_fun):
+async def test_get_by_something(live_c8y: CumulocityClient, similar_objects: List[ManagedObject], key, value_fun):
     """Verify that managed objects can be selected by common type."""
     kwargs = {key: value_fun(similar_objects[0])}
     selected_mos = await live_c8y.inventory.get_all(**kwargs)
@@ -92,7 +92,7 @@ async def test_get_by_something(live_c8y: CumulocityApi, similar_objects: List[M
     ('$filter=name eq {}', lambda mo: mo.type + '*'),
     ('has({})', lambda mo: mo.type + '_fragment'),
 ])
-async def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[ManagedObject], query: str, value_fun):
+async def test_get_by_query(live_c8y: CumulocityClient, similar_objects: List[ManagedObject], query: str, value_fun):
     """Verify that the selection by query works as expected."""
     query = query.replace('{}', value_fun(similar_objects[0]))
     selected_mos = await live_c8y.inventory.get_all(query=query)
@@ -100,7 +100,7 @@ async def test_get_by_query(live_c8y: CumulocityApi, similar_objects: List[Manag
     assert await live_c8y.inventory.get_count(query=query) == len(similar_objects)
 
 
-async def test_filtering(live_c8y: CumulocityApi, safe_create):
+async def test_filtering(live_c8y: CumulocityClient, safe_create):
     """Verify that client side filtering works as expected."""
     async def create_test_object(n):
         return await safe_create(ManagedObject(
@@ -132,7 +132,7 @@ async def test_filtering(live_c8y: CumulocityApi, safe_create):
     )
 
 
-async def test_get_single_by_query(live_c8y: CumulocityApi, module_factory):
+async def test_get_single_by_query(live_c8y: CumulocityClient, module_factory):
     """Verify that the get_by function works as expected."""
     basename = RandomNameGenerator.random_name(2)
     typename = basename
@@ -158,7 +158,7 @@ async def test_get_single_by_query(live_c8y: CumulocityApi, module_factory):
     assert "ambiguous" in str(error).lower()
 
 
-async def test_get_availability(live_c8y: CumulocityApi, session_device: Device):
+async def test_get_availability(live_c8y: CumulocityClient, session_device: Device):
     """Verify that the latest availability can be retrieved."""
     # set a required update interval
     session_device['c8y_RequiredAvailability'] = {'responseInterval': 10}
@@ -238,7 +238,7 @@ async def fix_asset_hierarchy_root_id(module_factory):
     return obj.id
 
 
-async def test_references(live_c8y: CumulocityApi, asset_hierarchy_root_id):
+async def test_references(live_c8y: CumulocityClient, asset_hierarchy_root_id):
     """Verify that parent references are handles as expected.
 
     This test uses the "asset_hierarchy" fixture which defines a root
@@ -283,7 +283,7 @@ async def test_references(live_c8y: CumulocityApi, asset_hierarchy_root_id):
 
 
 @pytest.mark.parametrize('child_type', ['asset', 'device', 'addition'])
-async def test_parent_references(live_c8y: CumulocityApi, asset_hierarchy_root_id, child_type):
+async def test_parent_references(live_c8y: CumulocityClient, asset_hierarchy_root_id, child_type):
     """Verify that parent references are handles as expected.
 
     This test uses the "asset_hierarchy" fixture which defines a root
@@ -310,7 +310,7 @@ async def test_parent_references(live_c8y: CumulocityApi, asset_hierarchy_root_i
     assert parents[0].name == parents2[0].name
 
 
-async def test_deletion(live_c8y: CumulocityApi, safe_create):
+async def test_deletion(live_c8y: CumulocityClient, safe_create):
     """Verify that deletion works as expected.
 
     This test creates a managed object tree (root plus child asset, child device and child addition).
@@ -363,7 +363,7 @@ async def test_deletion(live_c8y: CumulocityApi, safe_create):
         await device.reload()
 
 
-async def test_device_deletion(live_c8y: CumulocityApi, safe_create):
+async def test_device_deletion(live_c8y: CumulocityClient, safe_create):
     """Verify that device deletion works as expected.
 
     This test creates a device tree (root plus child asset, child device and child addition).
@@ -417,7 +417,7 @@ async def test_device_deletion(live_c8y: CumulocityApi, safe_create):
 
 
 @pytest.fixture(name="object_with_measurements", scope="function")
-async def fix_object_with_measurements(live_c8y: CumulocityApi, mutable_object: ManagedObject) -> ManagedObject:
+async def fix_object_with_measurements(live_c8y: CumulocityClient, mutable_object: ManagedObject) -> ManagedObject:
     """Provide a managed object with predefined measurements."""
     ms = [
         Measurement(
@@ -436,25 +436,25 @@ async def fix_object_with_measurements(live_c8y: CumulocityApi, mutable_object: 
     return mutable_object
 
 
-async def test_get_supported_measurements(live_c8y: CumulocityApi, object_with_measurements: ManagedObject):
+async def test_get_supported_measurements(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurements can be retrieved."""
     result = await live_c8y.inventory.get_supported_measurements(object_with_measurements.id)
     assert set(result) == {'c8y_Counter', 'c8y_Integers'}
 
 
-async def test_get_supported_measurements_2(live_c8y: CumulocityApi, object_with_measurements: ManagedObject):
+async def test_get_supported_measurements_2(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurements can be retrieved."""
     result = await object_with_measurements.get_supported_measurements()
     assert set(result) == {'c8y_Counter', 'c8y_Integers'}
 
 
-async def test_get_supported_series(live_c8y: CumulocityApi, object_with_measurements: ManagedObject):
+async def test_get_supported_series(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurement series can be retrieved."""
     result = await live_c8y.inventory.get_supported_series(object_with_measurements.id)
     assert set(result) == {'c8y_Counter.N', 'c8y_Integers.V1', 'c8y_Integers.V2'}
 
 
-async def test_get_supported_series_2(live_c8y: CumulocityApi, object_with_measurements: ManagedObject):
+async def test_get_supported_series_2(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurement series can be retrieved."""
     result = await object_with_measurements.get_supported_series()
     assert set(result) == {'c8y_Counter.N', 'c8y_Integers.V1', 'c8y_Integers.V2'}

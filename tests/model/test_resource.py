@@ -6,9 +6,20 @@ from urllib.parse import urlencode
 
 import pytest
 
-from c8y_api.model import CumulocityResource
+from pyc8y.model.model_base import CumulocityResource, map_params
 
 from util.testing_util import RandomNameGenerator
+
+
+@pytest.mark.parametrize("kwargs, expected", [
+    ({"type": "some_type"}, {"type": "some_type"}),
+    ({"source": "some_source"}, {"source": "some_source"}),
+], ids=[
+    "type",
+    "source",
+])
+def test_map_params(kwargs, expected):
+    assert expected == map_params(**kwargs)
 
 
 def test_build_base_query():
@@ -62,8 +73,7 @@ def test_build_base_query():
             expected_params[api_key] = str(expected_params[api_key]).lower()
 
     # (1) init mock resource and build query
-    resource = CumulocityResource(Mock(), 'res')
-    base_query = urlencode(resource._map_params(**kwargs))
+    base_query = urlencode(map_params(**kwargs))
 
     # -> all expected params are there
     for key, value in expected_params.items():
