@@ -1,6 +1,4 @@
-# Copyright (c) 2025 Cumulocity GmbH
-
-# pylint: disable=redefined-outer-name
+# Copyright (c) 2026 Christoph Souris
 
 import logging
 import os
@@ -10,12 +8,8 @@ from typing import List, Callable, Any, Generator
 import pytest
 from dotenv import load_dotenv
 from pytest_asyncio import is_async_test
-from requests.auth import HTTPBasicAuth
 
-from pyc8y.api import CumulocityApi
-from pyc8y.app import c8y_keys, SimpleCumulocityApp
-from pyc8y.base import CumulocityRestApi
-# from pyc8y.model import Application, Device, ManagedObject
+from pyc8y.app import c8y_keys, SimpleCumulocityApp, CumulocityClient
 from pyc8y.model import Device, ManagedObject
 
 from util.testing_util import RandomNameGenerator
@@ -127,7 +121,7 @@ async def live_c8y(request, test_environment):
 
 
 @pytest.fixture(scope='function')
-def safe_create(logger, live_c8y, request):
+async def safe_create(logger, live_c8y, request):
     """Wrap a created Cumulocity object so that it will automatically be deleted
     after a test regardless of an exception or failure.
 
@@ -135,10 +129,10 @@ def safe_create(logger, live_c8y, request):
     object was not deleted and needed to be cleaned up."""
     objects_with_node = []
 
-    def create_and_register(obj) -> Any:
+    async def create_and_register(obj) -> Any:
         if not obj.c8y:
             obj.c8y = live_c8y
-        o = obj.create()
+        o = await obj.create()
         objects_with_node.append((o, request.node.name))
         return o
 
@@ -147,7 +141,7 @@ def safe_create(logger, live_c8y, request):
     for o, node in objects_with_node:
         try:
             # Deletion should through a KeyError if object was already deleted
-            o.delete()
+            await o.delete()
             logger.warning(f"{type(o).__name__} object #{o.id} was not deleted by test '{node}'.")
         except KeyError:
             pass
@@ -155,8 +149,8 @@ def safe_create(logger, live_c8y, request):
             logger.error(f"Caught exception ignored due to safe call: {e} (node: {node})")
 
 
-@pytest.fixture(scope='module')
-async def module_factory(logger, live_c8y: CumulocityApi, request):
+@pytest.fixture(scope="module")
+async def module_factory(logger, live_c8y: CumulocityClient, request):
     """Provides a generic object factory function which ensures that created
     objects are removed after the module testing.
 
@@ -181,6 +175,37 @@ async def module_factory(logger, live_c8y: CumulocityApi, request):
             logger.info(f"Removed {obj.__class__.__name__} #{obj.id} from module {node}.")
         except KeyError:
             logger.warning(f"{obj.__class__.__name__} object #{obj.id} (module {node}) could not be removed (not found).")
+
+
+@pytest.fixture(scope="module")
+async def session_factory(logger, live_c8y: CumulocityClient, request):
+    """Provides a generic object factory function which ensures that created
+    objects are removed after the module testing.
+
+    Deletion is _not_ expected by the test code."""
+
+    created = []
+
+    async def factory_fun(new_obj, context_request=request):
+        if not new_obj.c8y:
+            new_obj.c8y = live_c8y
+        created_obj = await new_obj.create()
+
+        inner_node = context_request.module.__name__ if hasattr(context_request, "module") else "session"
+        if hasattr(context_request, "function"):
+            inner_node = f"{inner_node}:{context_request.function.__name__}"
+        logger.info(f"Created {created_obj.__class__.__name__} object #{created_obj.id} in {inner_node} context.")
+        created.append((created_obj, inner_node))
+        return created_obj
+
+    yield factory_fun
+
+    for obj, node in created:
+        try:
+            await obj.delete()
+            logger.info(f"Removed {obj.__class__.__name__} #{obj.id} from {node} context.")
+        except KeyError:
+            logger.warning(f"{obj.__class__.__name__} object #{obj.id} ({node} context) could not be removed (not found).")
 
 #
 #
@@ -262,14 +287,14 @@ def sample_object(logger, live_c8y, random_name, auto_delete):
 
 
 @pytest.fixture(scope='session')
-def session_device(logger: logging.Logger, live_c8y: CumulocityApi):
+async def session_device(logger: logging.Logger, live_c8y: CumulocityClient):
     """Provide an sample device, just for testing purposes."""
 
     typename = RandomNameGenerator.random_name()
-    device = Device(live_c8y, type=typename, name=typename, com_cumulocity_model_Agent={}).create()
+    device = await Device(live_c8y, type=typename, name=typename, com_cumulocity_model_Agent={}).create()
     logger.info(f"Created test device #{device.id}, name={device.name}")
 
     yield device
 
-    device.delete()
+    await device.delete()
     logger.info(f"Deleted test device #{device.id}")
