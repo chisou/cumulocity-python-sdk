@@ -6,19 +6,19 @@ from typing import Sequence, Any
 
 def is_sequence(obj: Any) -> bool:
     """Determine if an object is a sequence, i.e. list or tuple."""
-    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes))
+    return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray))
 
 
-def flatten(items: list[list | tuple] | list | tuple) -> tuple:
+def flatten(items: Sequence[Any] | Sequence[Sequence[Any]]) -> tuple[Any, ...]:
     """Ensure a flat list.
 
     Args:
-        items (list | tuple): A list or list of lists of items.
+        items (Sequence): A sequence or 1-element sequence of sequence.
 
     Returns:
-        Tuple of the list items.
+        Tuple of the sequence items.
     """
-    if len(items) == 1 and isinstance(items[0], (list, tuple)):
+    if len(items) == 1 and is_sequence(items[0]):
         return tuple(items[0])
     return tuple(items)  # always tuple for consistency
 

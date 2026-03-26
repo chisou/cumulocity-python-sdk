@@ -1,18 +1,32 @@
+# Copyright (c) 2026 Christoph Souris
+
 from abc import ABC
-from typing import ClassVar
+from datetime import datetime, timedelta
+from enum import StrEnum
+from typing import ClassVar, Sequence, Any
 
+from c8y_api.model import JsonMatcher
 
-class MimeType:
-    MANAGED_OBJECT = "application/vnd.com.nsn.cumulocity.managedobject+json"
-    MANAGED_OBJECT_COLLECTION = "application/vnd.com.nsn.cumulocity.managedobjectcollection+json"
-    USER = 'application/vnd.com.nsn.cumulocity.user+json'
-    CURRENT_USER = 'application/vnd.com.nsn.cumulocity.currentuser+json'
-    GLOBAL_ROLE = 'application/vnd.com.nsn.cumulocity.group+json'
-    AUDIT_RECORD = 'application/vnd.com.nsn.cumulocity.auditrecord+json'
-    MEASUREMENT = "application/vnd.com.nsn.cumulocity.measurement+json"
-    MEASUREMENT_COLLECTION = 'application/vnd.com.nsn.cumulocity.measurementcollection+json'
+IdSpec = str | None
+ParamsSpec = Sequence[tuple[str, str]] | None
+AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None
+MatcherSpec = str | JsonMatcher | None
+DatetimeSpec = str | datetime | None
+TimedeltaSpec = str | timedelta | None
+
+class MimeType(StrEnum):
+    ALARM = "application/vnd.com.nsn.cumulocity.alarm+json"
+    ALARM_COLLECTION = "application/vnd.com.nsn.cumulocity.alarmcollection+json"
+    AUDIT_RECORD = "application/vnd.com.nsn.cumulocity.auditrecord+json"
+    CURRENT_USER = "application/vnd.com.nsn.cumulocity.currentuser+json"
     EVENT = "application/vnd.com.nsn.cumulocity.event+json"
     EVENT_COLLECTION = "application/vnd.com.nsn.cumulocity.eventcollection+json"
+    GLOBAL_ROLE = "application/vnd.com.nsn.cumulocity.group+json"
+    MANAGED_OBJECT = "application/vnd.com.nsn.cumulocity.managedobject+json"
+    MANAGED_OBJECT_COLLECTION = "application/vnd.com.nsn.cumulocity.managedobjectcollection+json"
+    MEASUREMENT = "application/vnd.com.nsn.cumulocity.measurement+json"
+    MEASUREMENT_COLLECTION = "application/vnd.com.nsn.cumulocity.measurementcollection+json"
+    USER = "application/vnd.com.nsn.cumulocity.user+json"
 
 
 class ResourceMeta(ABC):
@@ -26,18 +40,25 @@ class ResourceMeta(ABC):
         return f"{cls.resource_path}/{object_id}"
 
 
-class MeasurementsMeta(ABC):
+class MeasurementsMeta(ResourceMeta):
     object_mime_type = MimeType.MEASUREMENT
     collection_mime_type = MimeType.MEASUREMENT_COLLECTION
     resource_path = "measurement/measurements"
     collection_name = "measurements"
 
 
-class EventsMeta(ABC):
+class EventsMeta(ResourceMeta):
     object_mime_type = MimeType.EVENT
     collection_mime_type = MimeType.EVENT_COLLECTION
     resource_path = "event/events"
     collection_name = "events"
+
+
+class AlarmMeta(ResourceMeta):
+    object_mime_type = MimeType.ALARM
+    collection_mime_type = MimeType.ALARM_COLLECTION
+    resource_path = "alarm/alarms"
+    collection_name = "alarms"
 
 
 class InventoryMeta(ResourceMeta):

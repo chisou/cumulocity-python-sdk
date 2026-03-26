@@ -4,7 +4,7 @@ import logging
 import ssl
 from collections import Counter
 from enum import StrEnum
-from typing import Self
+from typing import Self, Sequence
 
 import aiohttp
 import certifi
@@ -52,25 +52,25 @@ class HttpError(Exception):
 
 class UnauthorizedError(HttpError):
     """Error raised for unauthorized access."""
-    def __init__(self, method: str, url: str = None, message: str = "Unauthorized."):
+    def __init__(self, method: str, url: str = None, message: str | None = "Unauthorized."):
         super().__init__(method, url, 401, message)
 
 
 class MissingTfaError(UnauthorizedError):
     """Error raised for unauthorized access."""
-    def __init__(self, method: str, url: str = None, message: str = "Missing TFA Token."):
+    def __init__(self, method: str, url: str = None, message: str | None = "Missing TFA Token."):
         super().__init__(method, url, message)
 
 
 class AccessDeniedError(HttpError):
     """Error raised for denied access."""
-    def __init__(self, method: str, url: str = None, message: str = "Access denied."):
+    def __init__(self, method: str, url: str = None, message: str | None = "Access denied."):
         super().__init__(method, url, 403, message)
 
 
 class BatchError(Exception):
     """Error raised after a batch processing."""
-    def __init__(self, errors: list[Exception]):
+    def __init__(self, errors: list[BaseException]):
         super().__init__(self._build_message(errors))
         self.errors = errors
 
@@ -84,7 +84,7 @@ class BatchError(Exception):
         return f"Batch processing raised {len(errors)} errors: {', '.join(parts)}"
 
 
-class CumulocityRestApi(object):
+class CumulocityRestClient(object):
 
     def __init__(
             self,
@@ -105,7 +105,7 @@ class CumulocityRestApi(object):
         _ = await self.session  # ensure session is created
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc_value, traceback):
         await self.close()
 
     @property
@@ -134,6 +134,44 @@ class CumulocityRestApi(object):
     @property
     def  username(self):
         return self.auth.get_username()
+
+    @classmethod
+    async def authenticate(
+            cls,
+            base_url: str,
+            tenant_id: str,
+            username: str,
+            password: str,
+            tfa_token: str = None,
+    ) -> (str, str):
+        """Authenticate a user using OAI Secure login method.
+
+        Args:
+            base_url (str):  Cumulocity base URL, e.g. https://cumulocity.com
+            tenant_id (str):  The ID of the tenant to connect to
+            username (str):  Username
+            password (str):  User password
+            tfa_token (str):  Currently valid two-factor authorization token
+
+        Returns:
+            A string tuple of JWT auth token and corresponding XRSF token.
+        """
+        url = f'{base_url.rstrip("/")}/tenant/oauth?tenant_id={tenant_id}'
+        form_data = {'grant_type': 'PASSWORD', 'username': username, 'password': password, 'tfa_token': tfa_token}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url=url, data=form_data, timeout=60.0) as response:
+                response_json = orjson.loads(await response.text() or "") or {}
+                if response.status == 401:
+                    response_json = orjson.loads(await response.text()) or {}
+                    message = response_json.get("message", None)
+                    # 1st request might fail due to missing TFA code
+                    if any(x in message for x in ['TOTP', 'TFA']):
+                        raise MissingTfaError(HttpMethod.POST, str(response.url), message)
+                    raise UnauthorizedError(HttpMethod.POST, str(response.url), message)
+                if response.status != 200:
+                    message = response_json.get("message", "Invalid request!")
+                    raise HttpError(HttpMethod.POST, str(response.url), response.status, message)
+                return response.cookies['authorization'], response.cookies['XSRF-TOKEN']
 
     async def request(
             self,
@@ -178,7 +216,7 @@ class CumulocityRestApi(object):
                 method,
                 r.status,
                 resource,
-                "-" if not params else ", ".join(f"{k}={v}" for k, v in params.items()),
+                "-" if not params else ", ".join(f"{k}={v}" for k, v in params),
                 "-" if not json else orjson.dumps(json),
             )
             if r.status == 401:
@@ -189,22 +227,22 @@ class CumulocityRestApi(object):
                 raise KeyError(f"No such object: {resource}")
             if 500 <= r.status <= 599:
                 raise ValueError(f"Invalid {method} request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status not in (200, 201, 204):
+            if r.status not in (200, 201, 202, 204):
                 raise ValueError(f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status in (200, 201):
+            if r.status in (200, 201) and r.content_length:
                 return orjson.loads(await r.read())
             return {}
 
-    async def get(self, resource: str, params: dict = None, accept: str = None) -> dict:
+    async def get(self, resource: str, params: dict | Sequence[tuple[str | str]] | None = None, accept: str = None) -> dict:
         return await self.request("GET", resource, params, None, accept=accept)
 
-    async def post(self, resource: str, json: dict, accept: str = None, content_type: str = None) -> dict:
+    async def post(self, resource: str, json: dict | Sequence[tuple[str | str]] | None , accept: str = None, content_type: str = None) -> dict:
         return await self.request("POST", resource, None, json, accept=accept, content_type=content_type)
 
-    async def put(self, resource: str, json: dict, params: dict = None, accept: str = None, content_type: str = None) -> dict:
+    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str | str]] | None = None, accept: str = None, content_type: str = None) -> dict:
         return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
 
-    async def delete(self, resource: str, params: dict = None) -> dict:
+    async def delete(self, resource: str, params: dict | Sequence[tuple[str | str]] | None = None) -> dict:
         return await self.request("DELETE", resource, params)
 
     async def close(self):
