@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import BinaryIO
 
-from pyc8y.base import CumulocityRestApi
-from pyc8y.model.base import CumulocityObject, json_property, datetime_property, id_property, time_property, \
-    coerce_timestring, CumulocityResource
+from pyc8y.client import CumulocityRestClient
+from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, time_property, \
+    coerce_timestring, CumulocityResource, assert_c8y, assert_id
+from pyc8y.types import EventsMeta
 
 
 class Event(CumulocityObject):
@@ -14,14 +15,11 @@ class Event(CumulocityObject):
 
     See also: https://cumulocity.com/api/#tag/Events
     """
-
-    _c8y_resource = "/event/events"
-    _c8y_accept = "application/vnd.com.nsn.cumulocity.event+json"
-    _c8y_content = "application/vnd.com.nsn.cumulocity.event+json"
+    _meta = EventsMeta
 
     def __init__(
             self,
-            c8y: CumulocityRestApi = None,
+            c8y: CumulocityRestClient = None,
             type: str = None,   # noqa (type)
             time: str | datetime = None,
             source: str = None,
@@ -103,4 +101,10 @@ class Event(CumulocityObject):
 
 
 class Events(CumulocityResource[Event]):
-    pass
+    _meta = EventsMeta
+    _object_type = Event
+
+
+    async def create(self, *events: Event, workers: int | None = None) -> None:
+        await super()._create(workers=workers, *events)
+
