@@ -4,7 +4,7 @@ import os
 import dotenv
 from pytest_benchmark.plugin import benchmark
 
-from pyc8y.base import CumulocityRestApi, BasicAuth
+from pyc8y.client import CumulocityRestClient, BasicAuth
 
 
 # @pytest.mark.asyncio(loop_scope='function')
@@ -12,7 +12,7 @@ def test(benchmark):
     dotenv.load_dotenv()
 
     async def run():
-        async with CumulocityRestApi(
+        async with CumulocityRestClient(
                 base_url=os.environ['C8Y_BASEURL'],
                 tenant_id=os.environ['C8Y_TENANT'],
                 auth=BasicAuth(

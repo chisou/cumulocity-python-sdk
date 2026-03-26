@@ -1,13 +1,13 @@
 import pytest
 
 from pyc8y.auth import BasicAuth
-from pyc8y.base import CumulocityRestApi
+from pyc8y.client import CumulocityRestClient
 
 
 
 @pytest.fixture(name="c8y_httpbin")
 async def fix_httpbin():
-    return CumulocityRestApi("https://httpbin.org", tenant_id="", auth=BasicAuth("user", "auth"))
+    return CumulocityRestClient("https://httpbin.org", tenant_id="", auth=BasicAuth("user", "auth"))
 
 
 
