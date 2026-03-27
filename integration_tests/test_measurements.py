@@ -10,7 +10,7 @@ from typing import List
 
 import pytest
 
-from pyc8y.api import CumulocityClient
+from pyc8y.app import CumulocityClient
 from pyc8y.model import Device, Measurement, Series, Value, Kelvin, Count
 from pyc8y.model.measurement import AggregationType
 
