@@ -1,21 +1,18 @@
 # Copyright (c) 2026 Christoph Souris
 
-from __future__ import annotations
-
 import getpass
 import time
 from abc import abstractmethod, ABC
 import logging
 import os
-from typing import Mapping
+from typing import Mapping, Self
 from urllib.parse import urlparse
 
 from cachetools import TTLCache
 
-from pyc8y import CumulocityRestClient
-from pyc8y.auth import parse_auth, BearerAuth, BasicAuth, JWT, Auth
-from pyc8y.client import Auth, UnauthorizedError, MissingTfaError, HttpError
-from pyc8y.model import Measurements, Alarms, Events, Inventory, DeviceInventory, DeviceGroupInventory
+from pyc8y.auth import parse_auth, BearerAuth, BasicAuth, JWT
+from pyc8y.client import CumulocityClient
+from pyc8y.rest import Auth, UnauthorizedError, MissingTfaError, HttpError, CumulocityRestClient
 
 _sentinel = object()
 
@@ -130,31 +127,6 @@ class _CumulocityAppBase(ABC):
             raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
 
 
-class CumulocityClient(CumulocityRestClient):
-    """Main Cumulocity client.
-
-    Provides usage centric access to a Cumulocity instance.
-    """
-
-    def __init__(
-            self,
-            base_url: str,
-            tenant_id: str,
-            auth: Auth,
-            application_key: str = None,
-            processing_mode: str = None
-    ):
-        super().__init__(base_url, tenant_id, auth, application_key, processing_mode)
-        self.measurements = Measurements(self)
-        self.alarms = Alarms(self)
-        self.events = Events(self)
-        self.inventory = Inventory(self)
-        self.device_inventory = DeviceInventory(self)
-        self.group_inventory = DeviceGroupInventory(self)
-        self.device_groups = self.group_inventory  # todo: cleanup?
-        self.devicegroups = self.group_inventory
-
-
 class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
     """Application-like Cumulocity API.
 
@@ -219,7 +191,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
         return CumulocityClient(base_url=self.base_url, tenant_id=self.tenant_id, auth=auth,
                                 application_key=self.application_key, processing_mode=self.processing_mode)
 
-    def __enter__(self) -> SimpleCumulocityApp:
+    def __aenter__(self) -> Self:
         return self
 
 
@@ -382,7 +354,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             self._tenant_instances[tenant_id] = instance
             return instance
 
-    def __enter__(self) -> MultiTenantCumulocityApp:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, __exc_type, __exc_value, __traceback):
@@ -496,7 +468,7 @@ class CumulocityApp(CumulocityClient):
         os.environ['C8Y_TOKEN'] = token
         super().__init__(base_url=base_url, tenant_id=tenant_id, auth=BearerAuth(token))
 
-    def __aenter__(self) -> CumulocityApp:
+    def __aenter__(self) -> Self:
         super().__aenter__()
         return self
 

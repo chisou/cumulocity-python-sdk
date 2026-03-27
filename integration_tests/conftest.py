@@ -9,7 +9,8 @@ import pytest
 from dotenv import load_dotenv
 from pytest_asyncio import is_async_test
 
-from pyc8y.app import c8y_keys, SimpleCumulocityApp, CumulocityClient
+from pyc8y.app import c8y_keys, SimpleCumulocityApp
+from pyc8y.client import CumulocityClient
 from pyc8y.model import Device, ManagedObject
 
 from util.testing_util import RandomNameGenerator

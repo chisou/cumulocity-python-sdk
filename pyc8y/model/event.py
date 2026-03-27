@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import BinaryIO
 
-from pyc8y.client import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, time_property, \
     coerce_timestring, CumulocityResource, assert_c8y, assert_id
 from pyc8y.types import EventsMeta

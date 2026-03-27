@@ -7,7 +7,7 @@ from typing import List
 import pytest
 from tenacity import Retrying, stop_after_attempt, wait_exponential
 
-from pyc8y.app import CumulocityClient
+from pyc8y.client import CumulocityClient
 from pyc8y.model.alarm import Alarm, Severity, Status
 from pyc8y.model.managed_object import Device
 

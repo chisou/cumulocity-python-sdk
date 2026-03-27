@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import AsyncGenerator, TypedDict, Unpack, Any, AsyncIterator, Sequence, Self
 
-from pyc8y.client import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, CumulocityResource, \
     assert_c8y, map_params, time_property

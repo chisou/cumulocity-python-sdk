@@ -1,7 +1,7 @@
 import pytest
 
 from pyc8y.auth import BasicAuth
-from pyc8y.client import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 
 
 

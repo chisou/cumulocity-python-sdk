@@ -4,7 +4,7 @@ import os
 import dotenv
 from pytest_benchmark.plugin import benchmark
 
-from pyc8y.client import CumulocityRestClient, BasicAuth
+from pyc8y.rest import CumulocityRestClient, BasicAuth
 
 
 # @pytest.mark.asyncio(loop_scope='function')

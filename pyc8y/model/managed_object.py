@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Self, Coroutine, Mapping
 
-from pyc8y.client import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     json_property,
