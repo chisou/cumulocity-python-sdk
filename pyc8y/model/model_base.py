@@ -14,7 +14,7 @@ from typing import (
     Sequence,
 )
 
-from pyc8y.client import CumulocityRestClient, BatchError
+from pyc8y.rest import CumulocityRestClient, BatchError
 from pyc8y.base_util import flatten, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
@@ -220,6 +220,25 @@ def map_params(
         reverse=None,
         **kwargs
     ) -> Sequence[tuple[str, str]]:
+    def multi(*xs):
+        return sum(bool(x) for x in xs) > 1
+
+    if multi(min_age, before, date_to):
+        raise ValueError("Only one of 'min_age', 'before' and 'date_to' query parameters must be used.")
+    if multi(max_age, after, date_from):
+        raise ValueError("Only one of 'max_age', 'after' and 'date_from' query parameters must be used.")
+    if multi(created_from, created_after):
+        raise ValueError("Only one of 'created_from' and 'created_after' query parameters must be used.")
+    if multi(created_to, created_before):
+        raise ValueError("Only one of 'created_to' and 'created_before' query parameters must be used.")
+    if multi(last_updated_from, updated_after):
+        raise ValueError("Only one of 'last_updated_from' and 'updated_after' query parameters must be used.")
+    if multi(last_updated_to, updated_before):
+        raise ValueError("Only one of 'last_updated_to' and 'updated_before' query parameters must be used.")
+
+    if (not source) and any([with_source_devices, with_source_assets]):
+        raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
+
     if min_age:
         date_to = now_datetime() - coerce_timedelta(min_age)
     if max_age:
