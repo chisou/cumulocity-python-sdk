@@ -1,9 +1,11 @@
+# Copyright (c) 2026 Christoph Souris
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator, Any
 
-from pyc8y.client import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
@@ -371,7 +373,7 @@ class Measurement(CumulocityObject):
             value_json = {"value": s[1]}
             if len(s) > 2:
                 value_json["unit"] = s[2]  # noqa (type inference issue)
-            self._source_json.setdefault(name0, {})[name1] = value_json
+            self._staged_json.setdefault(name0, {})[name1] = value_json
 
     type = json_property("type")
     source = id_property("source")
@@ -663,26 +665,28 @@ class Measurements(CumulocityResource[Measurement]):
             Async iterator for matching Measurement objects or values/value
                 tuples if the `as_values` parameter is defined.
         """
-        series_type, series_value = self._collate_series_params(
-            series=series,
-            value_fragment_type=value_fragment_type,
-            value_fragment_series=value_fragment_series,
-        )
-        params = map_params(
-            type=type,
-            source=source,
-            valueFragmentType=series_type,
-            valueFragmentSeries=series_value,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            page_size=page_size,
-            **kwargs,
-        )
+        params = ()
+        if not expression:
+            series_type, series_value = self._collate_series_params(
+                series=series,
+                value_fragment_type=value_fragment_type,
+                value_fragment_series=value_fragment_series,
+            )
+            params = map_params(
+                type=type,
+                source=source,
+                valueFragmentType=series_type,
+                valueFragmentSeries=series_value,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                page_size=page_size,
+                **kwargs,
+            )
         return super()._iterate(
             expression=expression,
             params=params,
@@ -836,6 +840,10 @@ class Measurements(CumulocityResource[Measurement]):
             *,
             type: str | None = None,
             source: str | int | None = None,
+            value_fragment_type: str | None = None,  # todo: this is not supported at the moment
+            value_fragment_series: str | None = None,  # todo: this is not supported at the moment
+            series: str | None = None, # todo: this is not supported at the moment
+            fragment: str | None = None,
             date_from: str | datetime | None = None,
             date_to: str | datetime | None = None,
             before: str | datetime | None = None,
@@ -858,6 +866,13 @@ class Measurements(CumulocityResource[Measurement]):
                 are ignored if this is provided
             type (str):  Alarm type
             source (str|int):  Database ID of a source device
+            value_fragment_type (str):  The series' value fragment name
+                (e.g. c8y_Environment)
+            value_fragment_series (str):  The series' name (within the
+                value fragment, e.g. Temperature)
+            series (str):  Full name of a present series within a value
+                fragment e.g. "c8y_Environment.Temperature"
+            fragment (str):  Name of a present custom/standard fragment
             before (datetime|str):  Datetime object or ISO date/time string.
                 Only measurements assigned to a time before this date are
                 returned.
@@ -874,9 +889,17 @@ class Measurements(CumulocityResource[Measurement]):
         if expression:
             await self.c8y.delete(f"{self.resource_path}/?{expression}")
         else:
+            series_type, series_value = self._collate_series_params(
+                series=series,
+                value_fragment_type=value_fragment_type,
+                value_fragment_series=value_fragment_series,
+            )
             params = map_params(
                 type=type,
                 source=source,
+                fragmentType=fragment,
+                valueFragmentType=series_type,
+                valueFragmentSeries=series_value,
                 date_from=date_from,
                 date_to=date_to,
                 before=before,

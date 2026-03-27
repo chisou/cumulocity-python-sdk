@@ -1,15 +1,20 @@
 # Copyright (c) 2025 Cumulocity GmbH
+
 import itertools
+from contextlib import suppress
 from datetime import datetime, timedelta
 import json
 import os
-from unittest.mock import Mock, patch
-from urllib.parse import unquote_plus
+from unittest.mock import Mock, patch, AsyncMock
+from urllib.parse import unquote_plus, urlencode
 
 import pytest
 
-from c8y_api import CumulocityApi
-from c8y_api.model import Measurement, Measurements, Series
+from pyc8y.auth import BasicAuth
+from pyc8y.client import CumulocityClient
+# from pyc8y.client import CumulocityClient
+# from pyc8y.auth import BasicAuth
+from pyc8y.model.measurement import Measurement, Measurements, Series
 
 from tests.utils import isolate_last_call_arg
 
@@ -21,7 +26,7 @@ def test_measurement_parsing():
         'self': 'https://...',
         'type': 'c8y_Measurement',
         'source': {'id': '54321', 'self': 'https://...'},
-        'time': '2020-31-12T22:33:44,567Z',
+        'time': '2020-12-31T22:33:44,567Z',
         'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
     }
     m = Measurement.from_json(measurement_json)
@@ -29,19 +34,32 @@ def test_measurement_parsing():
     assert m.id == '12345'
     assert m.source == '54321'
     assert m.type == 'c8y_Measurement'
-    assert m.time == '2020-31-12T22:33:44,567Z'
-    assert m.c8y_Measurement.c8y_temperature.value == 12.3
+    assert m.time == '2020-12-31T22:33:44,567Z'
+    assert m["c8y_Measurement.c8y_temperature.value"] == 12.3
 
-    expected_full_json = {
-        'type': m.type,
-        'source': {'id': m.source},
-        'time': m.time,
-        'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
+    assert m.to_json() == measurement_json
+
+
+def test_measurement_serialization():
+    """Verify that serialization of a Measurement works as expected."""
+    m = Measurement(
+        type="c8y_TestType",
+        source="12345",
+        time="2020-12-31T22:33:44Z",
+        series=[
+            ("fragment.series", 1, "#"),
+            ("fragment.series2", 2),
+        ],
+        fragment = {"series3": {"value": 3}}
+    )
+    assert m.to_json()["fragment"] == {
+        "series": {"value": 1, "unit": "#"},
+        "series2": {"value": 2},
+        "series3": {"value": 3}
     }
-    assert m.to_full_json() == expected_full_json
 
 
-def test_measurement_parsing_as_values():
+async def test_measurement_parsing_as_values():
     """Verify that parsing Measurements directly as values works as expected."""
     measurements_json = {
         'measurements': [
@@ -50,39 +68,43 @@ def test_measurement_parsing_as_values():
                 'self': 'https://...',
                 'type': 'c8y_Measurement',
                 'source': {'id': '54321', 'self': 'https://...'},
-                'time': '2020-31-12T22:33:44,567Z',
+                'time': '2020-12-31T22:33:44,567Z',
                 'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 12.3}}
             }, {
                 'id': '12346',
                 'self': 'https://...',
                 'type': 'c8y_Measurement',
                 'source': {'id': '54321', 'self': 'https://...'},
-                'time': '2020-31-12T22:33:44,568Z',
+                'time': '2020-12-31T22:33:44,568Z',
                 'c8y_Measurement': {'c8y_temperature': {'unit': 'x', 'value': 34.5}}
             }
         ]
     }
-    c8y = CumulocityApi(base_url='base', tenant_id='t12345', username='user', password='pass')
-    c8y.get = Mock(side_effect=(measurements_json, {'measurements': []}))
-    result = c8y.measurements.get_all(as_values=['id', 'type', 'time', 'c8y_Measurement.c8y_temperature.value'])
+    c8y = CumulocityClient(base_url='base', tenant_id='t12345', auth=BasicAuth("user", "pass"))
+    c8y.get = AsyncMock(side_effect=(measurements_json, {'measurements': []}))
+    result = await c8y.measurements.get_all(as_values=['id', 'type', 'time', 'c8y_Measurement.c8y_temperature.value'])
 
     assert result == [
-        ('12345', 'c8y_Measurement', '2020-31-12T22:33:44,567Z', 12.3),
-        ('12346', 'c8y_Measurement', '2020-31-12T22:33:44,568Z', 34.5),
+        ('12345', 'c8y_Measurement', '2020-12-31T22:33:44,567Z', 12.3),
+        ('12346', 'c8y_Measurement', '2020-12-31T22:33:44,568Z', 34.5),
     ]
 
 
-def isolate_call_url(fun, **kwargs):
+async def isolate_call_url(fun, **kwargs):
     """Call an Applications API function and isolate the request URL for further assertions."""
-    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(side_effect=[{'measurements': x, 'statistics': {'totalPages': 1}} for x in ([{}], [])])
-    c8y.delete = Mock(return_value={'measurements': [], 'statistics': {'totalPages': 1}})
-    with patch('c8y_api.model.Measurement.from_json') as parse_mock:
+    c8y = CumulocityClient(base_url='some.host.com', tenant_id='t123', auth=BasicAuth('user', 'pass'))
+    c8y.get = AsyncMock(side_effect=[{'measurements': x, 'statistics': {'totalPages': 1}} for x in ([{}], [])])
+    c8y.delete = AsyncMock(return_value={'measurements': [], 'statistics': {'totalPages': 1}})
+    with patch('pyc8y.model.Measurement.from_json') as parse_mock:
         parse_mock.return_value = Measurement()
-        fun(c8y.measurements, **kwargs)
+        await fun(c8y.measurements, **kwargs)
     resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
     resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
-    return unquote_plus(resource)
+    with suppress(KeyError):
+        params = None
+        params = isolate_last_call_arg(c8y.get, 'params', 1) if c8y.get.called else None
+        params = params or (isolate_last_call_arg(c8y.delete, 'params', 1) if c8y.delete.called else None)
+    return unquote_plus(resource) if not params else f"{resource}?{urlencode(params)}"
 
 
 @pytest.mark.parametrize('fun', [
@@ -123,12 +145,12 @@ def isolate_call_url(fun, **kwargs):
     'min_age+max_age',
     'kwargs',
 ])
-def test_select(fun, params, expected, not_expected):
+async def test_select(fun, params, expected, not_expected):
     """Verify that the select function's parameters are processed as expected."""
     if fun is Measurements.get_last:
         params = {k: v for k, v in params.items() if k not in ['date_from', 'after', 'max_age']}
         expected = list(filter(lambda x: 'dateFrom' not in x, expected))
-    resource = isolate_call_url(fun, **params)
+    resource = await isolate_call_url(fun, **params)
     for e in expected:
         assert e in resource
     for ne in not_expected:
@@ -151,11 +173,11 @@ def test_select(fun, params, expected, not_expected):
     'date_to+before',
     'date_to+min_age',
 ])
-def test_select_invalid_combinations(fun, args, errors):
+async def test_select_invalid_combinations(fun, args, errors):
     """Verify that invalid query filter combinations are raised as expected."""
     with pytest.raises(ValueError) as error:
         params = {x: x.upper() for x in args}
-        isolate_call_url(fun, **params)
+        await isolate_call_url(fun, **params)
     assert all(e in str(error) for e in errors)
 
 @pytest.mark.parametrize('params, expected, not_expected', [
@@ -165,12 +187,12 @@ def test_select_invalid_combinations(fun, args, errors):
     ({'series': ['A', 'B']}, ['series=A', 'series=B'], ['source', ',']),
     ({'aggregation': 'A'}, ['aggregationType=A'], ['series=']),
     ({'reverse': True}, ['revert=true'], ['reverse']),
-    ({'before': 'BEFORE', 'after': 'AFTER'}, ['dateFrom=AFTER', 'dateTo=BEFORE'], ['source', 'series=']),
-    ({'date_from': 'FROM', 'date_to': 'TO'}, ['dateFrom=FROM', 'dateTo=TO'], ['date_to', 'date_from']),
+    ({'before': '2021-01-31', 'after': '2020-01-31'}, ['dateFrom=2020-01-31', 'dateTo=2021-01-31'], ['source', 'series=']),
+    ({'date_from': '2020-01-31', 'date_to': '2021-01-31'}, ['dateFrom=2020-01-31', 'dateTo=2021-01-31'], ['date_to', 'date_from']),
 ])
-def test_get_series_parameters(params, expected, not_expected):
+async def test_get_series_parameters(params, expected, not_expected):
     """Verify that the get_series function parameters are translated as expected."""
-    resource = isolate_call_url(Measurements.get_series, **params)
+    resource = await isolate_call_url(Measurements.get_series, **params)
     for e in expected:
         assert e in resource
     for e in not_expected:
