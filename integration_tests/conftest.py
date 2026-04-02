@@ -3,15 +3,17 @@
 import logging
 import os
 import sys
-from typing import List, Callable, Any, Generator
+from typing import Any
 
 import pytest
 from dotenv import load_dotenv
 from pytest_asyncio import is_async_test
 
 from pyc8y.app import c8y_keys, SimpleCumulocityApp
+from pyc8y.auth import BasicAuth
 from pyc8y.client import CumulocityClient
 from pyc8y.model import Device, ManagedObject
+from pyc8y.model.application import Application
 
 from util.testing_util import RandomNameGenerator
 
@@ -208,75 +210,78 @@ async def session_factory(logger, live_c8y: CumulocityClient, request):
         except KeyError:
             logger.warning(f"{obj.__class__.__name__} object #{obj.id} ({node} context) could not be removed (not found).")
 
-#
-#
-# @pytest.fixture(scope='session')
-# def app_factory(logger, live_c8y) -> Generator[Callable[[str, List[str]], CumulocityApi], None, None]:
-#     """Provide a application (microservice) factory which creates a
-#     microservice application within Cumulocity, registers itself as
-#     subscribed tenant and returns the application's bootstrap user.
-#
-#     All created microservice applications are removed after the tests.
-#     The factory users must ensure the uniqueness of the application
-#     names within the entire test session.
-#
-#     Args:
-#         logger:  (injected) test logger.
-#         live_c8y:  (injected) connection to a live Cumulocity instance; the
-#             user must be allowed to create microservice applications.
-#
-#     Returns:
-#         A factory function with two arguments, application name (string) and
-#         application roles (list of strings).
-#     """
-#     created: List[Application] = []
-#
-#     def factory_fun(name: str, roles: List[str]):
-#
-#         # (1) Verify this application is not registered, yet
-#         if live_c8y.applications.get_all(name=name):
-#             raise ValueError(f"Microservice application named '{name}' seems to be already registered.")
-#
-#         # (2) Create application stub in Cumulocity
-#         settings = [{
-#                 "defaultValue": "",
-#                 "key": x,
-#             } for x in ("keyA", "keyB")]
-#         app = Application(live_c8y, name=name, key=f'{name}-key',
-#                           type=Application.MICROSERVICE_TYPE,
-#                           availability=Application.PRIVATE_AVAILABILITY,
-#                           manifest={"settings": settings},
-#                           required_roles=roles).create()
-#         created.append(app)
-#
-#         # (3) Subscribe to newly created microservice
-#         subscription_json = {'application': {'self': f'{live_c8y.base_url}/application/applications/{app.id}'}}
-#         live_c8y.post(f'/tenant/tenants/{live_c8y.tenant_id}/applications', json=subscription_json)
-#         logger.info(f"Microservice application '{name}' (ID {app.id}) created. "
-#                     f"Tenant '{live_c8y.tenant_id}' subscribed.")
-#
-#         # (4) read bootstrap user details
-#         bootstrap_user_json = live_c8y.get(f'/application/applications/{app.id}/bootstrapUser')
-#
-#         # (5) create bootstrap instance
-#         bootstrap_c8y = CumulocityApi(base_url=live_c8y.base_url,
-#                                       tenant_id=bootstrap_user_json['tenant'],
-#                                       auth=HTTPBasicAuth(bootstrap_user_json['name'], bootstrap_user_json['password']))
-#         logger.info(f"Bootstrap instance created.  Tenant {bootstrap_c8y.tenant_id}, "
-#               f"User: {bootstrap_c8y.auth.username}, "
-#               f"Password: {bootstrap_c8y.auth.password}")
-#
-#         return bootstrap_c8y
-#
-#     yield factory_fun
-#
-#     # unregister application
-#     for a in created:
-#         try:
-#             live_c8y.applications.delete(a.id)
-#             logger.info(f"Microservice application '{a.name}' (ID {a.id}) deleted.")
-#         except KeyError:
-#             logger.warning(f"Application #{a.id} could not be removed (not found).")
+
+
+@pytest.fixture(scope='session')
+async def app_factory(logger, live_c8y: CumulocityClient):
+    """Provide an application (microservice) factory which creates a
+    microservice application within Cumulocity, registers itself as
+    subscribed tenant and returns the application's bootstrap client.
+
+    All created microservice applications are removed after the tests.
+    The factory users must ensure the uniqueness of the application
+    names within the entire test session.
+
+    Args:
+        logger:  (injected) test logger.
+        live_c8y:  (injected) connection to a live Cumulocity instance; the
+            user must be allowed to create microservice applications.
+
+    Returns:
+        An async factory function accepting parameters application name
+        (string) and required roles (list of string).
+    """
+    created: list[Application] = []
+
+    async def factory_fun(name: str, roles: list[str]) -> CumulocityClient:
+
+        # (1) Verify this application is not registered, yet
+        if await live_c8y.applications.get_all(name=name):
+            raise ValueError(f"Microservice application named '{name}' seems to be already registered.")
+
+        # (2) Create application stub in Cumulocity
+        settings = [{'defaultValue': '', 'key': x} for x in ('keyA', 'keyB')]
+        app = await Application(
+            live_c8y,
+            name=name,
+            key=f'{name}-key',
+            type=Application.MICROSERVICE_TYPE,
+            availability=Application.PRIVATE_AVAILABILITY,
+            manifest={'settings': settings},
+            required_roles=roles,
+        ).create()
+        created.append(app)
+
+        # (3) Subscribe to newly created microservice
+        subscription_json = {'application': {'id': app.id}}
+        await live_c8y.post(f'tenant/tenants/{live_c8y.tenant_id}/applications',
+                            json=subscription_json)
+        logger.info(f"Microservice application '{name}' (ID {app.id}) created. "
+                    f"Tenant '{live_c8y.tenant_id}' subscribed.")
+
+        # (4) Read bootstrap user details
+        bootstrap_user_json = await live_c8y.get(f'application/applications/{app.id}/bootstrapUser')
+
+        # (5) Create bootstrap instance
+        bootstrap_c8y = CumulocityClient(
+            base_url=live_c8y.base_url,
+            tenant_id=bootstrap_user_json['tenant'],
+            auth=BasicAuth(bootstrap_user_json['name'], bootstrap_user_json['password']),
+        )
+        logger.info(f"Bootstrap instance created. Tenant: {bootstrap_c8y.tenant_id}, "
+                    f"User: {bootstrap_user_json['name']}")
+
+        return bootstrap_c8y
+
+    yield factory_fun
+
+    # unregister applications
+    for a in created:
+        try:
+            await a.delete()
+            logger.info(f"Microservice application '{a.name}' (ID {a.id}) deleted.")
+        except KeyError:
+            logger.warning(f"Application #{a.id} could not be removed (not found).")
 
 
 @pytest.fixture(scope='function')
