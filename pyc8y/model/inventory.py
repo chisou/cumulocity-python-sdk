@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Self, AsyncGenerator, Any, AsyncIterator, Sequence, TypeVar, Unpack
+from typing import Self, AsyncGenerator, Any, AsyncIterator, Sequence, TypeVar
 
 from c8y_api.model import JsonMatcher
 from pyc8y.rest import CumulocityRestClient, BatchError
@@ -13,7 +13,7 @@ from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
 from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, assert_c8y, \
     assert_id, \
     tag_property, CumulocityResource, map_params, CO
-from pyc8y.types import MimeType, InventoryMeta, InventoryFilter, AsValuesSpec, MatcherSpec
+from pyc8y.types import MimeType, InventoryMeta
 
 
 @dataclass
@@ -626,8 +626,25 @@ class Inventory(CumulocityResource[MO]):
             self,
             expression: str = None,
             *,
-            as_values: AsValuesSpec = None,
-            **kwargs: Unpack[InventoryFilter]) -> MO | Any | tuple[Any]:
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            only_roots: bool = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
+            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            **kwargs) -> MO | Any | tuple[Any]:
         """ Query the database for a specific managed object.
 
         This function is a special version of the `select` function assuming a single
@@ -641,6 +658,23 @@ class Inventory(CumulocityResource[MO]):
         """
         result = await self.get_all(
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
             page_size=2,
             as_values=as_values,
             **kwargs)
@@ -652,7 +686,17 @@ class Inventory(CumulocityResource[MO]):
     async def get_count(
             self,
             expression: str = None,
-            **kwargs: Unpack[InventoryFilter],
+            *,
+            query: str = None,
+            ids: str | Sequence[str] = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: Sequence[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            **kwargs
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -664,6 +708,15 @@ class Inventory(CumulocityResource[MO]):
         params = map_params(
             **self._collate_filter_params(
                 only_devices=self._only_devices,
+                query=query,
+                ids=ids,
+                type=type,
+                parent=parent,
+                fragment=fragment,
+                fragments=fragments,
+                name=name,
+                owner=owner,
+                text=text,
                 **kwargs,
             )
         ) if not expression else {}
@@ -673,13 +726,30 @@ class Inventory(CumulocityResource[MO]):
             self,
             expression: str = None,
             *,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            only_roots: bool = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher = None,
+            exclude: str | JsonMatcher = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: AsValuesSpec = None,
-            **kwargs: Unpack[InventoryFilter],
+            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            **kwargs
     ) -> list[MO | Any | tuple[Any]]:
         """ Query the database for managed objects and return the results
         as list.
@@ -693,6 +763,23 @@ class Inventory(CumulocityResource[MO]):
         """
         return [x async for x in self.select(
                 expression=expression,
+                query=query,
+                ids=ids,
+                order_by=order_by,
+                type=type,
+                parent=parent,
+                fragment=fragment,
+                fragments=fragments,
+                name=name,
+                owner=owner,
+                text=text,
+                only_roots=only_roots,
+                with_children=with_children,
+                with_children_count=with_children_count,
+                skip_children_names=skip_children_names,
+                with_groups=with_groups,
+                with_parents=with_parents,
+                with_latest_values=with_latest_values,
                 limit=limit,
                 include=include,
                 exclude=exclude,
@@ -706,13 +793,30 @@ class Inventory(CumulocityResource[MO]):
             self,
             expression: str = None,
             *,
+            query: str = None,
+            ids: list[str | int] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            only_roots: bool = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher = None,
+            exclude: str | JsonMatcher = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: AsValuesSpec = None,
-            **kwargs: Unpack[InventoryFilter],
+            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            **kwargs
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
             """ Query the database for managed objects and iterate over the
             results.
@@ -754,6 +858,23 @@ class Inventory(CumulocityResource[MO]):
             return self._select(
                 device_mode=self._only_devices,
                 expression=expression,
+                query=query,
+                ids=ids,
+                order_by=order_by,
+                type=type,
+                parent=parent,
+                fragment=fragment,
+                fragments=fragments,
+                name=name,
+                owner=owner,
+                text=text,
+                only_roots=only_roots,
+                with_children=with_children,
+                with_children_count=with_children_count,
+                skip_children_names=skip_children_names,
+                with_groups=with_groups,
+                with_parents=with_parents,
+                with_latest_values=with_latest_values,
                 limit=limit,
                 include=include,
                 exclude=exclude,
@@ -998,45 +1119,96 @@ class DeviceGroupInventory(Inventory):
     async def get_count(  # noqa (changed signature)
             self,
             expression: str = None,
-            **kwargs: Unpack[InventoryFilter]) -> int:
+            *,
+            query: str = None,
+            ids: list[str | int] = None,
+            parent: str | int = None,
+            type: str = None,
+            fragment: str = None,
+            fragments: list[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            **kwargs) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
-        kwargs['type'] = kwargs.get('type') or (DeviceGroup.CHILD_TYPE if kwargs.get('parent') else None)
-        fragment = kwargs.pop('fragment', None)
-        fragments = kwargs.pop('fragments', None)
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
         if fragments:
-            kwargs['fragments'] = ["c8y_IsDeviceGroup", *fragments]
+            fragments = ["c8y_IsDeviceGroup", *fragments]
         elif fragment:
-            kwargs['fragments'] = ["c8y_IsDeviceGroup", fragment]
+            fragments = ["c8y_IsDeviceGroup", fragment]
         else:
-            kwargs['fragment'] = "c8y_IsDeviceGroup"
+            fragment = "c8y_IsDeviceGroup"
 
-        return await super().get_count(expression=expression, **kwargs)
+        return await super().get_count(
+                expression=expression,
+                query=query,
+                ids=ids,
+                type=type,
+                parent=parent,
+                fragment=fragment,
+                fragments=fragments,
+                name=name,
+                owner=owner,
+                text=text,
+                **kwargs)
 
     def select(  # noqa (changed signature)
             self,
             expression: str = None,
             *,
+            query: str = None,
+            ids: Sequence[str] = None,
+            order_by: str = None,
+            type: str = None,
+            parent: str = None,
+            fragment: str = None,
+            fragments: Sequence[str] = None,
+            name: str = None,
+            owner: str = None,
+            text: str = None,
+            only_roots: bool = None,
+            with_children: bool = None,
+            with_children_count: bool = None,
+            skip_children_names: bool = None,
+            with_groups: bool = None,
+            with_parents: bool = None,
+            with_latest_values: bool = None,
             limit: int = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher = None,
+            exclude: str | JsonMatcher = None,
             page_size: int = 100,
             page_number: int = None,
-            as_values: AsValuesSpec = None,
-            **kwargs: Unpack[InventoryFilter],
+            as_values: str | tuple | list[str | tuple] = None,
+            **kwargs
     ) -> AsyncIterator[DeviceGroup | Any | tuple[Any]]:
         # pylint: disable=arguments-differ, arguments-renamed
-        kwargs['type'] = kwargs.get('type') or (DeviceGroup.CHILD_TYPE if kwargs.get('parent') else None)
-        fragment = kwargs.pop('fragment', None)
-        fragments = kwargs.pop('fragments', None)
+        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
         if fragments:
-            kwargs['fragments'] = ["c8y_IsDeviceGroup", *fragments]
+            fragments = ["c8y_IsDeviceGroup", *fragments]
         elif fragment:
-            kwargs['fragments'] = ["c8y_IsDeviceGroup", fragment]
+            fragments = ["c8y_IsDeviceGroup", fragment]
         else:
-            kwargs['fragment'] = "c8y_IsDeviceGroup"
+            fragment = "c8y_IsDeviceGroup"
 
         return super().select(
             expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
             limit=limit,
             include=include,
             exclude=exclude,
