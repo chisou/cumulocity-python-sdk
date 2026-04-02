@@ -10,6 +10,7 @@ from typing import List
 
 import pytest
 
+from pyc8y.base_util import is_sequence
 from pyc8y.client import CumulocityClient
 from pyc8y.model import Device, Measurement, Series, Value, Kelvin, Count
 from pyc8y.model.measurement import AggregationType
@@ -313,3 +314,91 @@ async def test_get_and_collect_series(live_c8y, sample_series_device):
             before='now'
         )
         assert collected == directly_collected
+
+
+@pytest.mark.parametrize('aggregation_function', [
+    'min',
+    ['max', 'avg'],
+    ("avg", "sum", "count"),
+])
+async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
+    """Verify that the new aggregation functions work as expected."""
+    for series_name in sample_series_device["c8y_SupportedSeries"]:
+        series = await live_c8y.measurements.get_series(
+            source=sample_series_device.id,
+            series=series_name,
+            aggregation_function=aggregation_function,
+            aggregation_interval="1h",
+            after='1970-01-01',
+            before='now'
+        )
+
+        # collect all functions
+        collected = series.collect(value=aggregation_function)
+        # -> each element is a tuple (of all queried series)
+        assert isinstance(collected[0], tuple)
+        # -> each value holds the values of all aggregation function
+        if isinstance(aggregation_function, str):  # single function
+            assert isinstance(collected[0][0], float)
+        else:
+            assert isinstance(collected[0][0], tuple)
+            assert isinstance(collected[0][0][0], float)
+
+        # collect individual function results
+        aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
+        for fun in aggregation_function:
+            collected = series.collect(series=series_name, value=fun)
+            # -> the values are held directly
+            assert isinstance(collected[0], float)
+
+
+@pytest.mark.parametrize('aggregation_function', [
+    'min',
+    ['max', 'avg'],
+    ("avg", "sum", "count"),
+])
+async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
+    """Verify that the new aggregation functions work as expected."""
+    series = await live_c8y.measurements.get_series(
+        source=sample_series_device.id,
+        series=sample_series_device["c8y_SupportedSeries"],
+        aggregation_function=aggregation_function,
+        aggregation_interval="1h",
+        after='1970-01-01',
+        before='now'
+    )
+
+    # collect all functions
+    collected = series.collect(value=aggregation_function)
+    # -> each element is a tuple (of all queried series)
+    assert isinstance(collected[0], tuple)
+    # -> each value holds the values of all aggregation function
+    if isinstance(aggregation_function, str):  # single function
+        assert isinstance(collected[0][0], float)
+    else:
+        assert isinstance(collected[0][0], tuple)
+        assert isinstance(collected[0][0][0], float)
+
+    # collect individual function results
+    aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
+    for series_name in sample_series_device["c8y_SupportedSeries"]:
+        for fun in aggregation_function:
+            collected = series.collect(series=series_name, value=fun)
+            # -> the values are held directly
+            assert isinstance(collected[0], float)
+
+    # collect multiple individual function results
+    if is_sequence(aggregation_function) and len(aggregation_function) > 2:
+        subsets = [
+            [aggregation_function[0], aggregation_function[1]],
+            [aggregation_function[1], aggregation_function[2]],
+            [aggregation_function[0], aggregation_function[2]],
+        ]
+
+        for series_name in sample_series_device["c8y_SupportedSeries"]:
+            for subset in subsets:
+                collected = series.collect(series=series_name, value=subset)
+                # -> each row contains 2 values
+                assert isinstance(collected[0], tuple)
+                assert len(collected[0]) == 2
+
