@@ -17,6 +17,8 @@ TimedeltaSpec = str | timedelta | None
 class MimeType(StrEnum):
     ALARM = "application/vnd.com.nsn.cumulocity.alarm+json"
     ALARM_COLLECTION = "application/vnd.com.nsn.cumulocity.alarmcollection+json"
+    APPLICATION = "application/vnd.com.nsn.cumulocity.application+json"
+    APPLICATION_COLLECTION = "application/vnd.com.nsn.cumulocity.applicationcollection+json"
     AUDIT_RECORD = "application/vnd.com.nsn.cumulocity.auditrecord+json"
     CURRENT_USER = "application/vnd.com.nsn.cumulocity.currentuser+json"
     EVENT = "application/vnd.com.nsn.cumulocity.event+json"
@@ -59,6 +61,13 @@ class AlarmMeta(ResourceMeta):
     collection_mime_type = MimeType.ALARM_COLLECTION
     resource_path = "alarm/alarms"
     collection_name = "alarms"
+
+
+class ApplicationsMeta(ResourceMeta):
+    object_mime_type = MimeType.APPLICATION
+    collection_mime_type = MimeType.APPLICATION_COLLECTION
+    resource_path = "application/applications"
+    collection_name = "applications"
 
 
 class InventoryMeta(ResourceMeta):

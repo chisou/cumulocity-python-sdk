@@ -3,7 +3,7 @@
 import json
 import os
 
-from c8y_api.model import Application
+from pyc8y.model.application import Application
 
 
 def test_parsing():
@@ -14,6 +14,10 @@ def test_parsing():
     application = Application.from_json(application_json)
 
     assert application.id == application_json['id']
+    assert application.name == application_json['name']
+    assert application.key == application_json['key']
     assert application.type == application_json['type']
     assert application.availability == application_json['availability']
+    assert application.context_path == application_json['contextPath']
+    assert application.active_version_id == application_json['activeVersionId']
     assert application.owner == application_json['owner']['tenant']['id']
