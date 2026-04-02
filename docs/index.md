@@ -1,4 +1,4 @@
-The Cumulocity Python API (`c8y_api`) module is a pure Python implementation
+The Cumulocity Python API (`pyc8y`) module is a pure Python implementation
 of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 
 [→ Getting started with the Cumulocity Python API](getting-started.md)
@@ -17,76 +17,76 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 
 {% include "intro-main.md" %}
 
-[→ Inventory][c8y_api.model.Inventory]<br>
-[→ DeviceInventory][c8y_api.model.DeviceInventory]<br>
-[→ Identity][c8y_api.model.Identity]<br>
-[→ Binaries][c8y_api.model.Binaries]<br>
-[→ Measurements][c8y_api.model.Measurements]<br>
-[→ Events][c8y_api.model.Events]<br>
-[→ Alarms][c8y_api.model.Alarms]<br>
-[→ Users][c8y_api.model.Users]<br>
-[→ GlobalRoles][c8y_api.model.GlobalRoles]<br>
-[→ InventoryRoles][c8y_api.model.InventoryRoles]<br>
-[→ Subscriptions][c8y_api.model.Subscriptions]<br>
-[→ Tokens][c8y_api.model.Tokens]<br>
-[→ Operations][c8y_api.model.Operations]<br>
-[→ BulkOperations][c8y_api.model.BulkOperations]<br>
-[→ Applications][c8y_api.model.Applications]<br>
-[→ TenantOptions][c8y_api.model.TenantOptions]<br>
-[→ AuditRecords][c8y_api.model.AuditRecords]<br>
+[→ Inventory][pyc8y.model.Inventory]<br>
+[→ DeviceInventory][pyc8y.model.DeviceInventory]<br>
+[→ Identity][pyc8y.model.Identity]<br>
+[→ Binaries][pyc8y.model.Binaries]<br>
+[→ Measurements][pyc8y.model.Measurements]<br>
+[→ Events][pyc8y.model.Events]<br>
+[→ Alarms][pyc8y.model.Alarms]<br>
+[→ Users][pyc8y.model.Users]<br>
+[→ GlobalRoles][pyc8y.model.GlobalRoles]<br>
+[→ InventoryRoles][pyc8y.model.InventoryRoles]<br>
+[→ Subscriptions][pyc8y.model.Subscriptions]<br>
+[→ Tokens][pyc8y.model.Tokens]<br>
+[→ Operations][pyc8y.model.Operations]<br>
+[→ BulkOperations][pyc8y.model.BulkOperations]<br>
+[→ Applications][pyc8y.model.Applications]<br>
+[→ TenantOptions][pyc8y.model.TenantOptions]<br>
+[→ AuditRecords][pyc8y.model.AuditRecords]<br>
 
 
 ## Object Models
 
 {% include "intro-model.md" %}
 
-[→ ManagedObject][c8y_api.model.ManagedObject]<br>
-[→ Device][c8y_api.model.Device]<br>
-[→ DeviceGroup][c8y_api.model.DeviceGroup]<br>
-[→ ExternalId][c8y_api.model.ExternalId]<br>
-[→ Binary][c8y_api.model.Binary]<br>
-[→ Measurement][c8y_api.model.Measurement]<br>
-[→ Event][c8y_api.model.Event]<br>
-[→ Alarm][c8y_api.model.Alarm]<br>
-[→ Series][c8y_api.model.Series]<br>
-[→ Subscription][c8y_api.model.Subscription]<br>
-[→ Availability][c8y_api.model.Availability]<br>
-[→ Fragment][c8y_api.model.Fragment]<br>
-[→ NamedObject][c8y_api.model.NamedObject]<br>
-[→ User][c8y_api.model.User]<br>
-[→ CurrentUser][c8y_api.model.CurrentUser]<br>
-[→ TfaSettings][c8y_api.model.TfaSettings]<br>
-[→ GlobalRole][c8y_api.model.GlobalRole]<br>
-[→ Permission][c8y_api.model.Permission]<br>
-[→ ReadPermission][c8y_api.model.ReadPermission]<br>
-[→ WritePermission][c8y_api.model.WritePermission]<br>
-[→ AnyPermission][c8y_api.model.AnyPermission]<br>
-[→ Operation][c8y_api.model.Operation]<br>
-[→ BulkOperation][c8y_api.model.BulkOperation]<br>
-[→ Application][c8y_api.model.Application]<br>
-[→ ApplicationSetting][c8y_api.model.ApplicationSetting]<br>
-[→ ApplicationSubscription][c8y_api.model.ApplicationSubscription]<br>
-[→ TenantOption][c8y_api.model.TenantOption]<br>
-[→ AuditRecord][c8y_api.model.AuditRecord]<br>
-[→ Change][c8y_api.model.Change]<br>
+[→ ManagedObject][pyc8y.model.ManagedObject]<br>
+[→ Device][pyc8y.model.Device]<br>
+[→ DeviceGroup][pyc8y.model.DeviceGroup]<br>
+[→ ExternalId][pyc8y.model.ExternalId]<br>
+[→ Binary][pyc8y.model.Binary]<br>
+[→ Measurement][pyc8y.model.Measurement]<br>
+[→ Event][pyc8y.model.Event]<br>
+[→ Alarm][pyc8y.model.Alarm]<br>
+[→ Series][pyc8y.model.Series]<br>
+[→ Subscription][pyc8y.model.Subscription]<br>
+[→ Availability][pyc8y.model.Availability]<br>
+[→ Fragment][pyc8y.model.Fragment]<br>
+[→ NamedObject][pyc8y.model.NamedObject]<br>
+[→ User][pyc8y.model.User]<br>
+[→ CurrentUser][pyc8y.model.CurrentUser]<br>
+[→ TfaSettings][pyc8y.model.TfaSettings]<br>
+[→ GlobalRole][pyc8y.model.GlobalRole]<br>
+[→ Permission][pyc8y.model.Permission]<br>
+[→ ReadPermission][pyc8y.model.ReadPermission]<br>
+[→ WritePermission][pyc8y.model.WritePermission]<br>
+[→ AnyPermission][pyc8y.model.AnyPermission]<br>
+[→ Operation][pyc8y.model.Operation]<br>
+[→ BulkOperation][pyc8y.model.BulkOperation]<br>
+[→ Application][pyc8y.model.Application]<br>
+[→ ApplicationSetting][pyc8y.model.ApplicationSetting]<br>
+[→ ApplicationSubscription][pyc8y.model.ApplicationSubscription]<br>
+[→ TenantOption][pyc8y.model.TenantOption]<br>
+[→ AuditRecord][pyc8y.model.AuditRecord]<br>
+[→ Change][pyc8y.model.Change]<br>
 
 
 ## Measurement Additions
 
 {% include "intro-measurements.md" %}
  
-[→ Units][c8y_api.model.Units]<br>
-[→ Celsius][c8y_api.model.Celsius]<br>
-[→ Centimeters][c8y_api.model.Centimeters]<br>
-[→ Count][c8y_api.model.Count]<br>
-[→ CubicMeters][c8y_api.model.CubicMeters]<br>
-[→ Grams][c8y_api.model.Grams]<br>
-[→ Kelvin][c8y_api.model.Kelvin]<br>
-[→ Kilograms][c8y_api.model.Kilograms]<br>
-[→ Liters][c8y_api.model.Liters]<br>
-[→ Meters][c8y_api.model.Meters]<br>
-[→ Percentage][c8y_api.model.Percentage]<br>
-[→ Value][c8y_api.model.Value]<br>
+[→ Units][pyc8y.model.Units]<br>
+[→ Celsius][pyc8y.model.Celsius]<br>
+[→ Centimeters][pyc8y.model.Centimeters]<br>
+[→ Count][pyc8y.model.Count]<br>
+[→ CubicMeters][pyc8y.model.CubicMeters]<br>
+[→ Grams][pyc8y.model.Grams]<br>
+[→ Kelvin][pyc8y.model.Kelvin]<br>
+[→ Kilograms][pyc8y.model.Kilograms]<br>
+[→ Liters][pyc8y.model.Liters]<br>
+[→ Meters][pyc8y.model.Meters]<br>
+[→ Percentage][pyc8y.model.Percentage]<br>
+[→ Value][pyc8y.model.Value]<br>
 
 
 ## Auxiliary Tools

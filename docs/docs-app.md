@@ -4,7 +4,7 @@
 
 ---
 
-::: c8y_api.app
+::: pyc8y
     options:
         show_root_heading: false
         show_root_toc_entry: false

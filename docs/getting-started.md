@@ -1,7 +1,7 @@
 # Getting started with the Cumulocity Python API
 
 In this article, we want to give you a step-by-step introduction to the
-possibilities of the Cumulocity Python API, the `c8y_api` module. We
+possibilities of the Cumulocity Python API, the `pyc8y` module. We
 will create a simple application, read device metadata, and create and
 investigate alarms.
 
@@ -103,11 +103,11 @@ a code editor of your choice. For this guide we won't need anything
 more sophisticated.
 
 Our entry point to the world of Cumulocity IoT is through the
-`CumulocityApi` class which can be imported from the `c8y_api` library
+`CumulocityApi` class which can be imported from the `pyc8y` library
 using
 
 ``` python
-from c8y_api import CumulocityApi
+from pyc8y import CumulocityApi
 
 c8y = CumulocityApi(
       base_url='',    # the url of your Cumulocity tenant here
@@ -170,11 +170,11 @@ with Cumulocity IoT you might know about its flexible information model.
 We will make use of it by creating an alarm with custom fragments.
 
 An alarm can be created by creating an `Alarm` object and posting it.
-The `Alarm` class can be imported from the `c8y_api.model` package. We
+The `Alarm` class can be imported from the `pyc8y.model` package. We
 also import the standard `datetime` class to time the alarm properly:
 
 ``` python
-from c8y_api.model import Alarm
+from pyc8y.model import Alarm
 from datetime import datetime, timezone
 ```
 

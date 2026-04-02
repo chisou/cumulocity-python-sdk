@@ -4,12 +4,12 @@
 
 ---
 
-::: c8y_api
+::: pyc8y
     options:
         show_root_heading: false
         show_root_toc_entry: false
         members:
-            - CumulocityApi
-            - CumulocityRestApi
+            - CumulocityClient
+            - CumulocityRestClient
             - CumulocityDeviceRegistry
 
