@@ -2,14 +2,16 @@
 
 ### Breaking changes
 
-#### Minor changes
-
-* All ID are now required to be `string`s. Integers are no longer supported.
+#### Major changes
 
 * Dot notation to custom attributes and fragments has been removed to reduce complexity and increase transparency.  
   Custom fields and fragments can now be addressed using the index operator `[]` or the `get` function. Both support
   dot/path notation within. The `get` functions allows the definition of a proper default value whereas the `[]` index
   operator will raise a `KeyError` if any part of the specified path is not available.
+
+#### Minor changes
+
+* All ID are now required to be `string`s. Integers are no longer supported.
 
 * Cumulocity objects featuring a last updated date: The Python attributes were renamed to 
   `update_time`/`update_datetime` (previously `updated_time`/`updated_datetime`).
