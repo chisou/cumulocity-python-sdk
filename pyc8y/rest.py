@@ -211,14 +211,17 @@ class CumulocityRestClient(object):
                 data=orjson.dumps(json) if json else None,
                 headers={k: v for k, v in {"Accept": accept, "Content-Type": content_type}.items() if v}
         ) as r:
-            logger.debug(
-                "%s %s %s %s %s",
-                method,
-                r.status,
-                resource,
-                "-" if not params else ", ".join(f"{k}={v}" for k, v in params),
-                "-" if not json else orjson.dumps(json),
-            )
+            if logger.isEnabledFor(logging.ERROR):
+                if params:
+                    param_tuples = params.items() if isinstance(params, dict) else params
+                logger.debug(
+                    "%s %s %s %s %s",
+                    method,
+                    r.status,
+                    resource,
+                    "-" if not params else ", ".join(f"{k}={v}" for k, v in param_tuples),
+                    "-" if not json else orjson.dumps(json),
+                )
             if r.status == 401:
                 raise UnauthorizedError(method, resource, message=(await r.json())['message'])
             if r.status == 403:
@@ -233,16 +236,16 @@ class CumulocityRestClient(object):
                 return orjson.loads(await r.read())
             return {}
 
-    async def get(self, resource: str, params: dict | Sequence[tuple[str | str]] | None = None, accept: str = None) -> dict:
+    async def get(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None, accept: str = None) -> dict:
         return await self.request("GET", resource, params, None, accept=accept)
 
-    async def post(self, resource: str, json: dict | Sequence[tuple[str | str]] | None , accept: str = None, content_type: str = None) -> dict:
+    async def post(self, resource: str, json: dict | Sequence[tuple[str, str]] | None , accept: str = None, content_type: str = None) -> dict:
         return await self.request("POST", resource, None, json, accept=accept, content_type=content_type)
 
-    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str | str]] | None = None, accept: str = None, content_type: str = None) -> dict:
+    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str, str]] | None = None, accept: str = None, content_type: str = None) -> dict:
         return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
 
-    async def delete(self, resource: str, params: dict | Sequence[tuple[str | str]] | None = None) -> dict:
+    async def delete(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> dict:
         return await self.request("DELETE", resource, params)
 
     async def close(self):

@@ -56,8 +56,8 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
 
     # 4) assert deletion
     with pytest.raises(KeyError) as e:
-        await live_c8y.alarms.get(created_alarm.id)
-        assert created_alarm.id in str(e)
+        live_c8y.alarms.get(created_alarm.id)
+    assert created_alarm.id in str(e)
 
 
 async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)

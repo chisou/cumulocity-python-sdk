@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from idlelib.window import add_windows_to_menu
-from typing import Self, AsyncGenerator, Any, AsyncIterator, Sequence, TypeVar
+from typing import Self, AsyncGenerator, Any, AsyncIterator, Sequence, TypeVar, Unpack
 
 from c8y_api.model import JsonMatcher
 from pyc8y.rest import CumulocityRestClient, BatchError
@@ -14,7 +13,7 @@ from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
 from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, assert_c8y, \
     assert_id, \
     tag_property, CumulocityResource, map_params, CO
-from pyc8y.types import MimeType, InventoryMeta
+from pyc8y.types import MimeType, InventoryMeta, InventoryFilter, AsValuesSpec, MatcherSpec
 
 
 @dataclass
@@ -627,25 +626,8 @@ class Inventory(CumulocityResource[MO]):
             self,
             expression: str = None,
             *,
-            query: str = None,
-            ids: list[str | int] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: str = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
-            **kwargs) -> MO | Any | tuple[Any]:  # todo: is this helpful? does autocomplete still work?
+            as_values: AsValuesSpec = None,
+            **kwargs: Unpack[InventoryFilter]) -> MO | Any | tuple[Any]:
         """ Query the database for a specific managed object.
 
         This function is a special version of the `select` function assuming a single
@@ -659,23 +641,6 @@ class Inventory(CumulocityResource[MO]):
         """
         result = await self.get_all(
             expression=expression,
-            query=query,
-            ids=ids,
-            order_by=order_by,
-            type=type,
-            parent=parent,
-            fragment=fragment,
-            fragments=fragments,
-            name=name,
-            owner=owner,
-            text=text,
-            only_roots=only_roots,
-            with_children=with_children,
-            with_children_count=with_children_count,
-            skip_children_names=skip_children_names,
-            with_groups=with_groups,
-            with_parents=with_parents,
-            with_latest_values=with_latest_values,
             page_size=2,
             as_values=as_values,
             **kwargs)
@@ -687,17 +652,7 @@ class Inventory(CumulocityResource[MO]):
     async def get_count(
             self,
             expression: str = None,
-            *,
-            query: str = None,
-            ids: str | Sequence[str] = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: Sequence[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            **kwargs
+            **kwargs: Unpack[InventoryFilter],
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -709,15 +664,6 @@ class Inventory(CumulocityResource[MO]):
         params = map_params(
             **self._collate_filter_params(
                 only_devices=self._only_devices,
-                query=query,
-                ids=ids,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
                 **kwargs,
             )
         ) if not expression else {}
@@ -727,30 +673,13 @@ class Inventory(CumulocityResource[MO]):
             self,
             expression: str = None,
             *,
-            query: str = None,
-            ids: list[str | int] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: str = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: MatcherSpec = None,
+            exclude: MatcherSpec = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
-            **kwargs
+            as_values: AsValuesSpec = None,
+            **kwargs: Unpack[InventoryFilter],
     ) -> list[MO | Any | tuple[Any]]:
         """ Query the database for managed objects and return the results
         as list.
@@ -764,60 +693,26 @@ class Inventory(CumulocityResource[MO]):
         """
         return [x async for x in self.select(
                 expression=expression,
-                query=query,
-                ids=ids,
-                order_by=order_by,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                only_roots=only_roots,
-                with_children=with_children,
-                with_children_count=with_children_count,
-                skip_children_names=skip_children_names,
-                with_groups=with_groups,
-                with_parents=with_parents,
-                with_latest_values=with_latest_values,
                 limit=limit,
                 include=include,
                 exclude=exclude,
                 page_size=page_size,
                 page_number=page_number,
                 as_values=as_values,
-                **kwargs
+                **kwargs,
             )]
 
     def select(  # not async, because it is just a pass-through. still returns an AsyncIterator
             self,
             expression: str = None,
             *,
-            query: str = None,
-            ids: list[str | int] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: str = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: MatcherSpec = None,
+            exclude: MatcherSpec = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
-            **kwargs
+            as_values: AsValuesSpec = None,
+            **kwargs: Unpack[InventoryFilter],
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
             """ Query the database for managed objects and iterate over the
             results.
@@ -833,37 +728,6 @@ class Inventory(CumulocityResource[MO]):
                 expression (str):  Arbitrary filter expression which will be
                     passed to Cumulocity without change; all other filters
                     are ignored if this is provided
-                query (str):  Complex query to execute; all other filters are
-                    ignored if such a custom query is provided
-                ids (List[str|int]): Specific object ID to select.
-                order_by (str):  Field/expression to sort the results.
-                type (str):  Object type
-                parent (str):  Parent object in the asset hierarchy (ID).
-                fragment (str):  Name of a present custom/standard fragment
-                fragments (list[str]): Additional fragments present within objects
-                name (str):  Name of the object
-                    Note: The Cumulocity REST API does not support filtering for
-                    names directly; this is a convenience parameter which will
-                    translate all filters into a query string.
-                owner (str):  Username of the object owner
-                text (str): Text value of any object property.
-                only_roots (bool): Whether to include only objects that don't have
-                    any parent
-                with_children (bool):  Whether children with ID and name should be
-                    included with each returned object
-                with_children_count (bool): When set to true, the returned result
-                    will contain the total number of children in the respective
-                    child additions, assets and devices sub fragments.
-                skip_children_names (bool):  If true, returned references of child
-                    devices won't contain their names.
-                with_groups (bool): Whether to include additional information about
-                    the groups to which the searched object belongs to.
-                    This results in setting the assetParents property with
-                    additional information about the groups.
-                with_parents (bool): Whether to include a device's parents.
-                with_latest_values (bool):  If true the platform includes the
-                    fragment `c8y_LatestMeasurements, which contains the latest
-                    measurement values reported by the device to the platform.
                 limit (int): Limit the number of results to this number.
                 include (str | JsonMatcher): Matcher/expression to filter the query
                     results (on client side). The inclusion is applied first.
@@ -890,23 +754,6 @@ class Inventory(CumulocityResource[MO]):
             return self._select(
                 device_mode=self._only_devices,
                 expression=expression,
-                query=query,
-                ids=ids,
-                order_by=order_by,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                only_roots=only_roots,
-                with_children=with_children,
-                with_children_count=with_children_count,
-                skip_children_names=skip_children_names,
-                with_groups=with_groups,
-                with_parents=with_parents,
-                with_latest_values=with_latest_values,
                 limit=limit,
                 include=include,
                 exclude=exclude,
@@ -1151,94 +998,45 @@ class DeviceGroupInventory(Inventory):
     async def get_count(  # noqa (changed signature)
             self,
             expression: str = None,
-            query: str = None,
-            ids: list[str | int] = None,
-            parent: str | int = None,
-            type: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            **kwargs) -> int:
+            **kwargs: Unpack[InventoryFilter]) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
-        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        kwargs['type'] = kwargs.get('type') or (DeviceGroup.CHILD_TYPE if kwargs.get('parent') else None)
+        fragment = kwargs.pop('fragment', None)
+        fragments = kwargs.pop('fragments', None)
         if fragments:
-            fragments = ["c8y_IsDeviceGroup", *fragments] if fragments else None
+            kwargs['fragments'] = ["c8y_IsDeviceGroup", *fragments]
         elif fragment:
-            fragments = ["c8y_IsDeviceGroup", fragment]
+            kwargs['fragments'] = ["c8y_IsDeviceGroup", fragment]
         else:
-            fragment = "c8y_IsDeviceGroup"
+            kwargs['fragment'] = "c8y_IsDeviceGroup"
 
-        return await self.get_count(
-                expression=expression,
-                query=query,
-                ids=ids,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                **kwargs)
+        return await super().get_count(expression=expression, **kwargs)
 
     def select(  # noqa (changed signature)
             self,
             expression: str = None,
-            query: str = None,
-            ids: Sequence[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: Sequence[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: str = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
+            *,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: MatcherSpec = None,
+            exclude: MatcherSpec = None,
             page_size: int = 100,
             page_number: int = None,
-            as_values: str | tuple | list[str | tuple] = None,
-            **kwargs
+            as_values: AsValuesSpec = None,
+            **kwargs: Unpack[InventoryFilter],
     ) -> AsyncIterator[DeviceGroup | Any | tuple[Any]]:
         # pylint: disable=arguments-differ, arguments-renamed
-        type = type or (DeviceGroup.CHILD_TYPE if parent else None)
+        kwargs['type'] = kwargs.get('type') or (DeviceGroup.CHILD_TYPE if kwargs.get('parent') else None)
+        fragment = kwargs.pop('fragment', None)
+        fragments = kwargs.pop('fragments', None)
         if fragments:
-            fragments = ["c8y_IsDeviceGroup", *fragments] if fragments else None
+            kwargs['fragments'] = ["c8y_IsDeviceGroup", *fragments]
         elif fragment:
-            fragments = ["c8y_IsDeviceGroup", fragment]
+            kwargs['fragments'] = ["c8y_IsDeviceGroup", fragment]
         else:
-            fragment = "c8y_IsDeviceGroup"
+            kwargs['fragment'] = "c8y_IsDeviceGroup"
 
         return super().select(
             expression=expression,
-            query=query,
-            ids=ids,
-            order_by=order_by,
-            type=type,
-            parent=parent,
-            fragment=fragment,
-            fragments=fragments,
-            name=name,
-            owner=owner,
-            text=text,
-            only_roots=only_roots,
-            with_children=with_children,
-            with_children_count=with_children_count,
-            skip_children_names=skip_children_names,
-            with_groups=with_groups,
-            with_parents=with_parents,
-            with_latest_values=with_latest_values,
             limit=limit,
             include=include,
             exclude=exclude,

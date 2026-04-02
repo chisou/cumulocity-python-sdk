@@ -3,7 +3,7 @@
 from abc import ABC
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import ClassVar, Sequence, Any
+from typing import ClassVar, Sequence, Any, TypedDict
 
 from c8y_api.model import JsonMatcher
 
@@ -76,3 +76,64 @@ class InventoryMeta(ResourceMeta):
     resource_path = "inventory/managedObjects"
     collection_name = "managedObjects"
 
+
+class InventoryFilter(TypedDict, total=False):
+    """Filter parameters for inventory queries.
+
+    Attributes:
+        query (str):  Complex query to execute; all other filters are
+            ignored if such a custom query is provided
+        ids (List[str|int]): Specific object ID to select.
+        order_by (str):  Field/expression to sort the results.
+        type (str):  Object type
+        parent (str):  Parent object in the asset hierarchy (ID).
+        fragment (str):  Name of a present custom/standard fragment
+        fragments (list[str]): Additional fragments present within objects
+        name (str):  Name of the object
+            Note: The Cumulocity REST API does not support filtering for
+            names directly; this is a convenience parameter which will
+            translate all filters into a query string.
+        owner (str):  Username of the object owner
+        text (str): Text value of any object property.
+    """
+    query: str
+    ids: list[str | int]
+    type: str
+    parent: str
+    fragment: str
+    fragments: list[str]
+    name: str
+    owner: str
+    text: str
+
+
+class InventorySelectFilter(InventoryFilter, total=False):
+    """Filter parameters for inventory select queries.
+
+    Attributes:
+        only_roots (bool): Whether to include only objects that don't have
+            any parent
+        with_children (bool):  Whether children with ID and name should be
+            included with each returned object
+        with_children_count (bool): When set to true, the returned result
+            will contain the total number of children in the respective
+            child additions, assets and devices sub fragments.
+        skip_children_names (bool):  If true, returned references of child
+            devices won't contain their names.
+        with_groups (bool): Whether to include additional information about
+            the groups to which the searched object belongs to.
+            This results in setting the assetParents property with
+            additional information about the groups.
+        with_parents (bool): Whether to include a device's parents.
+        with_latest_values (bool):  If true the platform includes the
+            fragment `c8y_LatestMeasurements, which contains the latest
+            measurement values reported by the device to the platform.
+    """
+    order_by: str
+    only_roots: bool
+    with_children: bool
+    with_children_count: bool
+    skip_children_names: bool
+    with_groups: bool
+    with_parents: bool
+    with_latest_values: bool

@@ -200,6 +200,7 @@ def map_params(
         fragment=None,
         bulk_id=None,
         series=None,
+        aggregation_function=None,
         before=None,
         after=None,
         date_from=None,
@@ -255,6 +256,7 @@ def map_params(
         raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
 
     series = series if is_sequence(series) else (series,) if series else ()
+    aggregation_function = aggregation_function if is_sequence(aggregation_function) else (aggregation_function,) if aggregation_function else ()
     params = (
         ("name", name),  # TODO, check if OData encoding works as expected
         ("fragmentType", fragment),
@@ -268,6 +270,7 @@ def map_params(
         ('lastUpdatedTo', updated_to),
         ("revert", encode(reverse)),
         *(("series", s) for s in series),
+        *(("aggregationFunction", f) for f in aggregation_function),
         *((k, encode(v)) for k, v in kwargs.items())
     )
     return [

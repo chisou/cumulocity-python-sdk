@@ -29,4 +29,5 @@ class CumulocityClient(CumulocityRestClient):
         self.events = Events(self)
         self.inventory = Inventory(self)
         self.device_inventory = DeviceInventory(self)
+        self.group_inventory = DeviceGroupInventory(self)
         self.measurements = Measurements(self)

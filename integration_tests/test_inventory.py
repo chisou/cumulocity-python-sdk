@@ -7,7 +7,7 @@ from typing import List
 
 import pytest
 
-from pyc8y import CumulocityClient
+from pyc8y.client import CumulocityClient
 from pyc8y.model import Event, ManagedObject, Device
 from pyc8y.model.matcher import jsonpath
 from pyc8y.model.measurement import Measurement, Value
@@ -61,7 +61,7 @@ async def fix_similar_objects(module_factory) -> List[ManagedObject]:
 async def test_get_all(live_c8y: CumulocityClient):
     """Verify that the get_all query works as expected."""
     # (1) get all devices
-    devices = await live_c8y.device_inventory.get_all(limit=100)
+    devices = await live_c8y.device_inventory.get_all(limit=100, )
     assert all("c8y_IsDevice" in d for d in devices)
     # (2) get all managed objects
     objects = await live_c8y.inventory.get_all(limit=100)

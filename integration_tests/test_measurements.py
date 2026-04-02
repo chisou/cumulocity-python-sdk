@@ -222,15 +222,27 @@ async def fix_aggregated_series_result(live_c8y: CumulocityClient, sample_series
         after=start_time, before='now'
     )
 
+@pytest.fixture(name="new_aggregated_series_result", scope='session')
+async def fix_new_aggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
+    """Provide an aggregated series result."""
+    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    return await live_c8y.measurements.get_series(
+        source=sample_series_device.id,
+        series=sample_series_device["c8y_SupportedSeries"],
+        aggregation_function=["min", "max"],
+        aggregation_interval="1h",
+        after=start_time, before='now'
+    )
 
-@pytest.mark.parametrize("name", ["aggregated", "unaggregated"])
+@pytest.mark.parametrize("name", ["aggregated", "unaggregated", "new_aggregated"])
 @pytest.mark.asyncio(loop_scope="session")
-async def test_collect_single_series(name, aggregated_series_result, unaggregated_series_result):
+async def test_collect_single_series(name, aggregated_series_result, unaggregated_series_result, new_aggregated_series_result):
     """Verify that collecting a single value (min or max) from a
     series works as expected."""
     series_result = {
         "aggregated": aggregated_series_result,
-        "unaggregated": unaggregated_series_result
+        "unaggregated": unaggregated_series_result,
+        "new_aggregated": new_aggregated_series_result,
     }[name]
     for spec in series_result.specs:
         values = series_result.collect(series=spec.series, value='min')
@@ -244,14 +256,15 @@ async def test_collect_single_series(name, aggregated_series_result, unaggregate
         assert all(a<b for a,b in zip(values, values[1:]))
 
 
-@pytest.mark.parametrize("name", ["aggregated", "unaggregated"])
+@pytest.mark.parametrize("name", ["aggregated", "unaggregated", "new_aggregated"])
 @pytest.mark.asyncio(loop_scope="session")
-async def test_collect_multiple_series(name, aggregated_series_result, unaggregated_series_result):
+async def test_collect_multiple_series(name, aggregated_series_result, unaggregated_series_result, new_aggregated_series_result):
     """Verify that collecting a single value (min or max) for multiple
     series works as expected."""
     series_result = {
         "aggregated": aggregated_series_result,
-        "unaggregated": unaggregated_series_result
+        "unaggregated": unaggregated_series_result,
+        "new_aggregated": new_aggregated_series_result,
     }[name]
     series_names = [s.series for s in series_result.specs]
     values = series_result.collect(series=series_names, value='min')

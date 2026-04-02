@@ -17,6 +17,22 @@
   `update_time`/`update_datetime` (previously `updated_time`/`updated_datetime`).
 
 
+## Version 3.7.2
+
+* Switched to MkDocs for documentation.
+* Fixed [Issue #91](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/91) 
+* Fixed [issue #92](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/92)
+
+## Version 3.7.1
+
+* Adding `clear_tenant_cache` function to `MultiTenantCumulocityApp` to explicitly wipe unsubscribed tenants.
+* Fixed [Issue #87](https://github.com/Cumulocity-IoT/cumulocity-python-api/issues/87)
+
+## Version 3.7.0
+
+* Adding `aggregation_function` and `aggregation_interval` parameters to the `Measurements.get_series` function
+  to support the latest series aggregation features as described in the
+  [Cumulocity OpenAPI Documentation](https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource).
 
 ## Version 3.6.0
 

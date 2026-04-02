@@ -414,7 +414,7 @@ class Measurement(CumulocityObject):
         Returns:  A fresh Measurement object representing what was
             created within the database (including the ID).
         """
-        return self._create()
+        return await self._create()
 
 
 class Measurements(CumulocityResource[Measurement]):
@@ -701,6 +701,8 @@ class Measurements(CumulocityResource[Measurement]):
             *,
             source: str = None,
             aggregation: str = None,
+            aggregation_function: str | Sequence[str] = None,
+            aggregation_interval: str = None,
             series: str | Sequence[str] = None,
             before: str | datetime = None,
             after: str | datetime = None,
@@ -717,6 +719,10 @@ class Measurements(CumulocityResource[Measurement]):
                 are ignored if this is provided
             source (str):  Database ID of a source device
             aggregation (str):  Aggregation type
+            aggregation_function (str):  Aggregation function, e.g. "min",
+                "max", "avg", "sum", "count". Needs aggregation_interval.
+            aggregation_interval (str):  Aggregation interval for the
+                aggregation function.
             series (str|Sequence[str]):  Series' to query
             before (datetime|str):  Datetime object or ISO date/time string.
                 Only measurements assigned to a time before this date are
@@ -744,6 +750,8 @@ class Measurements(CumulocityResource[Measurement]):
             params = map_params(
                 source=source,
                 aggregationType=aggregation,  # this is a non-mapped parameter
+                aggregationInterval=aggregation_interval,  # this is a non-mapped parameter
+                aggregation_function=aggregation_function,  # this needs special list handling
                 series=series,
                 before=before,
                 after=after,

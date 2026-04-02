@@ -17,7 +17,7 @@ class Inventory(CumulocityResource):
     This class can be used for get, search for, create, update and
     delete managed objects within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-API
+    See also: https://cumulocity.com/api/core/#tag/Inventory-API
     """
 
     def __init__(self, c8y):
@@ -546,7 +546,7 @@ class DeviceInventory(Inventory):
     This class can be used for get, search for, create, update and
     delete device objects within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-API
+    See also: https://cumulocity.com/api/core/#tag/Inventory-API
     """
 
     def request(self, id: str):  # noqa (id)
@@ -554,7 +554,7 @@ class DeviceInventory(Inventory):
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
-            _not_ the database ID.
+                _not_ the database ID.
         """
         self.c8y.post('/devicecontrol/newDeviceRequests', {'id': id})
 
@@ -563,7 +563,7 @@ class DeviceInventory(Inventory):
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
-            _not_ the database ID.
+                _not_ the database ID.
         """
         self.c8y.put('/devicecontrol/newDeviceRequests/' + str(id), {'status': 'ACCEPTED'})
 
@@ -866,7 +866,7 @@ class DeviceGroupInventory(Inventory):
     This class can be used for get, search for, create, update and
     delete device groups within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/#tag/Inventory-API
+    See also: https://cumulocity.com/api/core/#tag/Inventory-API
     """
 
     def get(self, group_id: str):
