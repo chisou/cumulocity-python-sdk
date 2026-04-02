@@ -229,7 +229,7 @@ class CumulocityRestClient(object):
                 raise ValueError(f"Invalid {method} request. Status: {r.status}, Response:\n {await r.text()}")
             if r.status not in (200, 201, 202, 204):
                 raise ValueError(f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status in (200, 201) and r.content_length:
+            if r.status in (200, 201) and r.content_length != 0:
                 return orjson.loads(await r.read())
             return {}
 
