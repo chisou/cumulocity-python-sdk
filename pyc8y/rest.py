@@ -4,7 +4,7 @@ import logging
 import ssl
 from collections import Counter
 from enum import StrEnum
-from typing import Self, Sequence
+from typing import Self, Sequence, Any
 
 import aiohttp
 import certifi
@@ -14,7 +14,6 @@ from pyc8y.auth import Auth
 
 
 logger = logging.getLogger(__name__)
-
 
 def loggable_params(params):
     """Provide a log-friendly formatted string of HTTP parameters."""
@@ -116,7 +115,6 @@ class CumulocityRestClient(object):
             # initialize default session parameters
             headers = {
                 "Authorization": self.auth.build_auth_header(),
-                "Accept": "application/json",  # default, can be overridden per request
             }
             if self.application_key:
                 headers["X-Cumulocity-Application-Key"] = self.application_key
@@ -177,10 +175,10 @@ class CumulocityRestClient(object):
             self,
             method: str,
             resource: str,
-            params: dict = None,
-            json: dict = None,
+            params: tuple[str, Any] | dict | None = None,
+            json: dict | None = None,
             accept: str | None = "application/json",
-            content_type: str = None,  # application/json is assumed/automatically inserted if there is content
+            content_type: str | None = None,
     ) -> dict:
         """Perform an HTTP request.
 
@@ -189,9 +187,9 @@ class CumulocityRestClient(object):
             resource(str): The resource path.
             params (dict): Additional request parameters
             json (dict): JSON body (nested dict)
-            accept(str): Accept header value; `application/json` is assumed/automatically inserted if None
+            accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
             content_type(str): Content-Type header value; `application/json` is assumed/automatically inserted
-                if `json` is provided.
+                if omitted and `json` is provided.
 
         Returns:
             The JSON response (nested dict), {} if no response body is returned.
@@ -204,12 +202,17 @@ class CumulocityRestClient(object):
         if json is not None:
             content_type = content_type or "application/json"
         session = await self.session
+        additional_headers = {}
+        if accept is not None:
+            additional_headers["Accept"] = accept
+        if content_type is not None:
+            additional_headers["Content-Type"] = content_type
         async with session.request(
                 method=method,
                 url=resource,
                 params=params,
                 data=orjson.dumps(json) if json else None,
-                headers={k: v for k, v in {"Accept": accept, "Content-Type": content_type}.items() if v}
+                headers=additional_headers,
         ) as r:
             if logger.isEnabledFor(logging.ERROR):
                 if params:
@@ -236,13 +239,13 @@ class CumulocityRestClient(object):
                 return orjson.loads(await r.read())
             return {}
 
-    async def get(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None, accept: str = None) -> dict:
+    async def get(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None, accept: str | None = "application/json") -> dict:
         return await self.request("GET", resource, params, None, accept=accept)
 
-    async def post(self, resource: str, json: dict | Sequence[tuple[str, str]] | None , accept: str = None, content_type: str = None) -> dict:
+    async def post(self, resource: str, json: dict | Sequence[tuple[str, str]] | None, accept: str | None = "application/json", content_type: str | None = None) -> dict:
         return await self.request("POST", resource, None, json, accept=accept, content_type=content_type)
 
-    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str, str]] | None = None, accept: str = None, content_type: str = None) -> dict:
+    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str, str]] | None = None, accept: str | None = "application/json", content_type: str | None = None) -> dict:
         return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
 
     async def delete(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> dict:
