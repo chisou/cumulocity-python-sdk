@@ -1,46 +1,56 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 
-from c8y_api import CumulocityApi
-from c8y_api.model import AuditRecord
-from c8y_api.model._util import _DateUtil  # noqa
+from pyc8y.client import CumulocityClient
+from pyc8y.model.audit import AuditRecord, Severity
+from pyc8y.model.managed_object import Device
 
 from util.testing_util import RandomNameGenerator
 
 
-def test_CR(live_c8y: CumulocityApi, session_device):  # noqa (case)
-    """Verify that basic creation, lookup and update of Audit Records
-     works as expected."""
+async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
+    """Verify that basic creation and lookup of Audit Records works as expected."""
 
     name = RandomNameGenerator.random_name()
 
     # (1) create audit record
-    before = _DateUtil.now()
-    record = AuditRecord(live_c8y, type=f'{name}_type', source=session_device.id, time='now',
-                         severity=AuditRecord.Severity.INFORMATION,
-                         activity=f'{name} activity', text=f'detailed {name} text',
-                         application=f'{name}_app', user=live_c8y.username).create()
-    after = _DateUtil.now()
+    before = datetime.now(timezone.utc)
+    record = await AuditRecord(
+        live_c8y,
+        type=f'{name}_type',
+        source=session_device.id,
+        time='now',
+        severity=Severity.INFORMATION,
+        activity=f'{name} activity',
+        text=f'detailed {name} text',
+        application=f'{name}_app',
+        user=live_c8y.username,
+    ).create()
+    after = datetime.now(timezone.utc)
 
     # -> there should be at least 1 audit record with that source
-    records = live_c8y.audit_records.get_all(source=session_device.id)
+    records = await live_c8y.audit.get_all(source=session_device.id)
     assert len(records) >= 1
     assert records[0].id == record.id
 
     # -> there should be exactly one audit record with that application/user
-    records = live_c8y.audit_records.get_all(application=record.application,
-                                             user=record.user)
+    records = await live_c8y.audit.get_all(
+        application=record.application,
+        user=record.user,
+    )
     assert len(records) == 1
     assert records[0].id == record.id
 
     # -> there should be at least one audit record within that timeframe
-    records = live_c8y.audit_records.get_all(before=after, after=before)
+    records = await live_c8y.audit.get_all(before=after, after=before)
     assert len(records) >= 1
     assert record.id in [r.id for r in records]
 
     # -> there should be at least one audit record within the last 5 seconds
-    records = live_c8y.audit_records.get_all(min_age=timedelta(microseconds=0.1),
-                                             max_age=timedelta(seconds=5.0))
+    records = await live_c8y.audit.get_all(
+        min_age=timedelta(microseconds=0.1),
+        max_age=timedelta(seconds=5.0),
+    )
     assert len(records) >= 1
     assert record.id in [r.id for r in records]

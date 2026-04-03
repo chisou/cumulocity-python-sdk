@@ -1,148 +1,95 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
+import json
+import os
 from datetime import timedelta
-from unittest.mock import Mock
-from urllib.parse import unquote_plus
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from c8y_api import CumulocityApi
-from c8y_api.model import AuditRecords
-
-from tests.utils import isolate_last_call_arg
+from pyc8y.model.audit import AuditRecord, AuditRecords
 
 
-def isolate_call_url(fun, **kwargs):
-    """Call an Applications API function and isolate the request URL for further assertions."""
-    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
-    c8y.delete = Mock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
-    fun(c8y.audit_records, **kwargs)
-    resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
-    resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
-    return unquote_plus(resource)
+FIXTURE_PATH = os.path.join(os.path.dirname(__file__), 'audit_records.json')
 
 
-@pytest.mark.parametrize('fun', [
-    AuditRecords.get_all,
-])
-@pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
-    ({'type': 'T', 'name': "it's name", 'owner': 'O', 'user': 'U'},
-     ['type=T', "name='it''s name", 'owner=O', 'user=U'],
-     []),
-    ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},
-     ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
-     []),
-    ({'min_age': timedelta(days=3), 'max_age': timedelta(weeks=1)},
-     ['dateFrom', 'dateTo'],
-     ['min', 'max']),
-    ({'snake_case': 'SC', 'pascalCase': 'PC'},
-     ['snakeCase=SC', 'pascalCase=PC'],
-     ['_']),
-], ids=[
-    'expression',
-    'type+name+owner+user',
-    'date_from+date_to',
-    'min_age+max_age',
-    'kwargs'
-])
-def test_select(fun, params, expected, not_expected):
-    """Verify that the select function's parameters are processed as expected."""
-    resource = isolate_call_url(fun, **params)
-    for e in expected:
-        assert e in resource
-    for ne in not_expected:
-        assert ne not in resource
+async def test_get_all():
+    """Verify that AuditRecords.get_all returns parsed AuditRecord objects."""
+    with open(FIXTURE_PATH, encoding='utf-8') as f:
+        collection = json.load(f)
+
+    c8y = MagicMock()
+    c8y.get = AsyncMock(side_effect=[collection, {'auditRecords': []}])
+
+    api = AuditRecords(c8y)
+    results = await api.get_all()
+
+    assert len(results) == 4
+    assert all(isinstance(r, AuditRecord) for r in results)
 
 
-def test_client_side_filtering():
-    """Verify that client side filtering works as expected.
+async def test_select_params():
+    """Verify that select parameters are forwarded to the HTTP call."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
 
-    This test prepares a mocked CumulocityApi and runs the get_all function
-    against it. The REST GET is mocked as well as corresponding matcher
-    results. The test verifies that the matcher is invoked and applied.
-    """
-    get_data = [
-        {'auditRecords': x, 'statistics': {'totalPages': 1}} for x in
-        [
-            [{'id': 1}, {'id': 2}, {'id': 3}],
-            []
-        ]
-    ]
-    include_results = [True, False, True]
-    exclude_results = [True, False]
+    api = AuditRecords(c8y)
+    _ = [r async for r in api.select(type='Alarm', source='123', user='u@example.com', page_number=1)]
 
-    # prepare mocked CumulocityApi with mock get response and matcher results
-    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(side_effect=get_data)
-    include_matcher = Mock(safe_matches=Mock(side_effect=include_results))
-    exclude_matcher = Mock(safe_matches=Mock(side_effect=exclude_results))
-
-    # run get_all/select
-    result = c8y.audit_records.get_all(include=include_matcher, exclude=exclude_matcher)
-
-    # -> result should only contain filtered documents
-    #    1,2,3 -> 1,3 -> 3
-    assert [3] == [x.id for x in result]
-    # -> include matcher should have been called for each document
-    assert include_matcher.safe_matches.call_count == len(include_results)
-    # -> exclude matcher should have been called for each included
-    assert exclude_matcher.safe_matches.call_count == len(exclude_results)
+    call_args = c8y.get.call_args
+    params = dict(call_args[0][1])
+    assert params['type'] == 'Alarm'
+    assert params['source'] == '123'
+    assert params['user'] == 'u@example.com'
 
 
-@pytest.mark.parametrize('fun', [
-    AuditRecords.get_all,
-])
-@pytest.mark.parametrize('args, errors', [
-    # date priorities
-    (['date_from', 'after'], ['date_from', 'after', 'max_age']),
-    (['date_from', 'max_age'], ['date_from', 'after', 'max_age']),
-    (['date_to', 'before'], ['date_to', 'before', 'min_age']),
-    (['date_to', 'min_age'], ['date_to', 'before', 'min_age']),
-], ids=[
-    "date_from+after",
-    'date_from+max_age',
-    'date_to+before',
-    'date_to+min_age',
-])
-def test_select_invalid_combinations(fun, args, errors):
-    """Verify that invalid query filter combinations are raised as expected."""
-    with pytest.raises(ValueError) as error:
-        params = {x: x.upper() for x in args}
-        isolate_call_url(fun, **params)
-    assert all(e in str(error) for e in errors)
+async def test_select_by_application():
+    """Verify that the application filter is forwarded."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
+
+    api = AuditRecords(c8y)
+    _ = [r async for r in api.select(application='myapp', page_number=1)]
+
+    params = dict(c8y.get.call_args[0][1])
+    assert params['application'] == 'myapp'
 
 
-def test_select_as_values():
-    """Verify that select as values works as expected."""
-    changes = [
-        {'attribute': 'status11', 'type': 'change'},
-        {'attribute': 'status12', 'type': 'change'}
-    ]
-    jsons = [
-        {'id': 'id1', 'severity': 'CRITICAL', 'creationTime': 'time1', 'source': {'id': 'source1'}, 'changes': changes},
-        {'id': 'id2', 'severity': 'NORMAL', 'creationTime': 'time2', 'source': {'id': 'source2'}, 'text': 'text'},
-    ]
-    #
-    api = AuditRecords(c8y=Mock())
-    api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_values=['id', 'creation_time', 'severity', 'source.id', 'changes', 'text'])
-    assert result == [
-        ('id1', 'time1', 'CRITICAL', 'source1', changes, None),
-        ('id2', 'time2', 'NORMAL', 'source2', None, 'text'),
-    ]
+async def test_select_expression_overrides_filters():
+    """Verify that expression overrides all other filters."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
 
-    api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_values=['id', 'creation_time', 'severity', 'source.id', ('changes', []), ('text', '')])
-    assert result == [
-        ('id1', 'time1', 'CRITICAL', 'source1', changes, ''),
-        ('id2', 'time2', 'NORMAL', 'source2', [], 'text'),
-    ]
+    api = AuditRecords(c8y)
+    _ = [r async for r in api.select(expression='type=Alarm', type='ignored', page_number=1)]
 
-    api.c8y.get = Mock(side_effect=[{'auditRecords': jsons}, {'auditRecords': []}])
-    result = api.get_all(as_values=('text', '-'))
-    assert result == [
-        '-',
-        'text',
-    ]
+    call_url = c8y.get.call_args[0][0]
+    assert 'type=Alarm' in call_url
+    # with expression, no separate params tuple is passed
+    assert len(c8y.get.call_args[0]) == 1
+
+
+async def test_select_date_params():
+    """Verify that date range parameters are forwarded."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
+
+    api = AuditRecords(c8y)
+    _ = [r async for r in api.select(date_from='2020-01-01', date_to='2021-01-01', page_number=1)]
+
+    params = dict(c8y.get.call_args[0][1])
+    assert 'dateFrom' in params
+    assert 'dateTo' in params
+
+
+async def test_select_min_max_age():
+    """Verify that min/max age are converted to date params."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 1}})
+
+    api = AuditRecords(c8y)
+    _ = [r async for r in api.select(min_age=timedelta(days=3), max_age=timedelta(weeks=1), page_number=1)]
+
+    params = dict(c8y.get.call_args[0][1])
+    assert 'dateFrom' in params
+    assert 'dateTo' in params

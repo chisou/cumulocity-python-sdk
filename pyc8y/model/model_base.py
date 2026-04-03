@@ -651,12 +651,10 @@ class CumulocityResource(Generic[CO]):
             include: MatcherSpec = None,
             exclude: MatcherSpec = None,
             as_values: AsValuesSpec = None,
+            workers: int | None = None,
     ) -> AsyncIterator[CO | Any | tuple[CO]]:
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
-        # we will read page after page until
-        #  - we reached the limit, or
-        #  - there is no result (i.e. we were at the last page)
         num_results = 0
         # compile/prepare filter if defined
         if isinstance(include, str):
@@ -668,33 +666,43 @@ class CumulocityResource(Generic[CO]):
                 raise ValueError("No default matcher defined (client-side filtering not supported?)")
             exclude = self.default_matcher(exclude)
 
-        while True:
+        async def fetch_page(page: int) -> list:
             if expression:
-                response_json = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={current_page}")
+                result = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page}")
             else:
-                response_json = await self.c8y.get(self.resource_path, (*params, ("currentPage", current_page)))
-            obj_jsons = response_json[self._meta.collection_name]
-            if not obj_jsons:
+                result = await self.c8y.get(self.resource_path, (*params, ("currentPage", page)))
+            return result[self._meta.collection_name]
+
+        # parallel page fetching only makes sense when not pinned to a single page
+        use_workers = workers and workers > 1 and not page_number
+
+        while True:
+            # fetch one batch of pages — either `workers` pages in parallel or one sequentially
+            if use_workers:
+                all_pages = await asyncio.gather(*[fetch_page(current_page + i) for i in range(workers)])
+            else:
+                all_pages = [await fetch_page(current_page)]
+
+            done = False
+            for obj_jsons in all_pages:
+                if not obj_jsons:
+                    done = True
+                    break
+                if include or exclude:
+                    obj_jsons = [
+                        x for x in obj_jsons
+                        if (not include or include.safe_matches(x))
+                           and (not exclude or not exclude.safe_matches(x))
+                    ]
+                for json in obj_jsons:
+                    if limit and num_results >= limit:
+                        return
+                    yield as_tuple(json, as_values) if as_values else self._object_type.from_json(json, c8y=self.c8y)
+                    num_results += 1
+
+            if done or page_number:
                 break
-            if include or exclude:
-                obj_jsons = [
-                    x for x in obj_jsons
-                    if (not include or include.safe_matches(x))
-                       and (not exclude or not exclude.safe_matches(x))
-                ]
-            for json in obj_jsons:
-                if limit and num_results >= limit:
-                    return
-                if as_values:
-                    yield as_tuple(json, as_values)
-                else:
-                    yield self._object_type.from_json(json, c8y=self.c8y)
-                num_results = num_results + 1
-            # when a specific page was specified we don't read more pages
-            if page_number:
-                break
-            # continue with next page
-            current_page = current_page + 1
+            current_page += workers if use_workers else 1
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
