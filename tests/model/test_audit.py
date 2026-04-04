@@ -7,9 +7,15 @@ from pyc8y.model.audit import AuditRecord, Type, Severity, Change
 from tests.model.conftest import load_sample_file
 
 
+SAMPLES_JSON = load_sample_file("audit_records.json")
 
 
-@pytest.mark.parametrize('sample_json', load_sample_file("audit_records.json")['auditRecords'])
+@pytest.fixture(scope="module", name="samples_json")
+def fix_samples_json():
+    return SAMPLES_JSON
+
+
+@pytest.mark.parametrize('sample_json', SAMPLES_JSON['auditRecords'])
 def test_parsing(sample_json):
     """Verify that parsing an AuditRecord from JSON works."""
     record = AuditRecord.from_json(sample_json)
@@ -93,10 +99,9 @@ def test_empty_changes():
     assert len(record.to_json()['changes']) == 0
 
 
-def test_changes_are_immutable():
+def test_changes_are_immutable(samples_json):
     """Verify that the changes property returns an immutable sequence."""
-    fixture = load_sample_file("audit_records.json")
-    record = AuditRecord.from_json(fixture['auditRecords'][1])
+    record = AuditRecord.from_json(samples_json['auditRecords'][1])
     changes = record.changes
     assert isinstance(changes, tuple)
 
@@ -114,8 +119,7 @@ def test_change_roundtrip():
     assert restored.type == 'SomeType'
 
 
-def test_custom_fragment():
+def test_custom_fragment(samples_json):
     """Verify that custom fragments are accessible via subscript."""
-    fixture =load_sample_file("audit_records.json")
-    record = AuditRecord.from_json(fixture['auditRecords'][3])
+    record = AuditRecord.from_json(samples_json['auditRecords'][3])
     assert record['c8y_Metadata']['action'] == 'SUBSCRIBE'

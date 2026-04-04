@@ -1,7 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
 
-import json
-import os
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock
 
@@ -9,20 +7,20 @@ import pytest
 
 from pyc8y.model.audit import AuditRecord, AuditRecords
 
+from tests.model.conftest import load_sample_file
 
-FIXTURE_PATH = os.path.join(os.path.dirname(__file__), 'audit_records.json')
+
+@pytest.fixture
+def sample_json():
+    return load_sample_file("audit_records.json")
 
 
-async def test_get_all():
+async def test_get_all(sample_json):
     """Verify that AuditRecords.get_all returns parsed AuditRecord objects."""
-    with open(FIXTURE_PATH, encoding='utf-8') as f:
-        collection = json.load(f)
-
     c8y = MagicMock()
-    c8y.get = AsyncMock(side_effect=[collection, {'auditRecords': []}])
+    c8y.get = AsyncMock(side_effect=[sample_json, {'auditRecords': []}])
 
-    api = AuditRecords(c8y)
-    results = await api.get_all()
+    results = await AuditRecords(c8y).get_all()
 
     assert len(results) == 4
     assert all(isinstance(r, AuditRecord) for r in results)
@@ -36,8 +34,7 @@ async def test_select_params():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(type='Alarm', source='123', user='u@example.com', page_number=1)]
 
-    call_args = c8y.get.call_args
-    params = dict(call_args[0][1])
+    params = dict(c8y.get.call_args[0][1])
     assert params['type'] == 'Alarm'
     assert params['source'] == '123'
     assert params['user'] == 'u@example.com'
@@ -65,7 +62,6 @@ async def test_select_expression_overrides_filters():
 
     call_url = c8y.get.call_args[0][0]
     assert 'type=Alarm' in call_url
-    # with expression, no separate params tuple is passed
     assert len(c8y.get.call_args[0]) == 1
 
 
