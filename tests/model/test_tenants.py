@@ -1,47 +1,66 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
-from unittest.mock import Mock
-from urllib.parse import unquote_plus
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from c8y_api import CumulocityApi
-from c8y_api.model import Tenants
+from pyc8y.model.tenants import Tenant, Tenants
 
-from tests.utils import isolate_last_call_arg
-
-
-def isolate_call_url(fun, **kwargs):
-    """Call an Applications API function and isolate the request URL for further assertions."""
-    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(return_value={'tenants': [], 'statistics': {'totalPages': 1}})
-    c8y.delete = Mock(return_value={'tenants': [], 'statistics': {'totalPages': 1}})
-    fun(c8y.tenants, **kwargs)
-    resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
-    resource = resource or (isolate_last_call_arg(c8y.delete, 'resource', 0) if c8y.delete.called else None)
-    return unquote_plus(resource)
+from tests.model.conftest import load_sample_file
 
 
-@pytest.mark.parametrize('fun', [
-    Tenants.get_all,
-])
-@pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': 'EX', 'parent': 'P'}, ['?EX'], ['parent']),
-    ({'parent': 'P', 'domain': 'D', 'company': 'C'},
-     ['parent=P', 'domain=D', 'company=C'],
-     []),
-    ({'snake_case': 'SC', 'pascalCase': 'PC'},
-     ['snakeCase=SC', 'pascalCase=PC'],
-     ['_']),
-], ids=[
-    'expression',
-    'parent+domain+company',
-    'kwargs'
-])
-def test_select(fun, params, expected, not_expected):
-    """Verify that the select function's parameters are processed as expected."""
-    resource = isolate_call_url(fun, **params)
-    for e in expected:
-        assert e in resource
-    for ne in not_expected:
-        assert ne not in resource
+@pytest.fixture
+def tenants():
+    return load_sample_file("tenants.json")
+
+
+async def test_get_all(tenants):
+    """Verify that Tenants.get_all returns parsed Tenant objects."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(side_effect=[tenants, {'tenants': []}])
+
+    results = await Tenants(c8y).get_all()
+
+    assert len(results) == 2
+    assert all(isinstance(r, Tenant) for r in results)
+
+
+async def test_select_params():
+    """Verify that select parameters are forwarded to the HTTP call."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'tenants': [], 'statistics': {'totalPages': 1}})
+
+    api = Tenants(c8y)
+    _ = [r async for r in api.select(parent='P', domain='D', company='C', page_number=1)]
+
+    params = dict(c8y.get.call_args[0][1])
+    assert params['parent'] == 'P'
+    assert params['domain'] == 'D'
+    assert params['company'] == 'C'
+
+
+async def test_select_expression_overrides_filters():
+    """Verify that expression overrides other filters."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'tenants': [], 'statistics': {'totalPages': 1}})
+
+    api = Tenants(c8y)
+    _ = [r async for r in api.select(expression='domain=D', domain='ignored', page_number=1)]
+
+    call_url = c8y.get.call_args[0][0]
+    assert 'domain=D' in call_url
+    assert len(c8y.get.call_args[0]) == 1
+
+
+async def test_get_current(tenants):
+    """Verify that Tenants.get_current returns a Tenant."""
+    tenant_json = tenants['tenants'][0]
+
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value=tenant_json)
+
+    current = await Tenants(c8y).get_current()
+
+    assert isinstance(current, Tenant)
+    assert current.id == tenant_json['id']
+    c8y.get.assert_called_once_with('tenant/currentTenant')

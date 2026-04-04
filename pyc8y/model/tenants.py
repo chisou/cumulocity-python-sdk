@@ -1,0 +1,212 @@
+# Copyright (c) 2026 Christoph Souris
+
+
+from typing import AsyncIterator, Any, Self, Sequence
+
+from pyc8y.model.application import Application
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    CumulocityResource,
+    json_property,
+    datetime_property,
+    map_params,
+)
+from pyc8y.rest import CumulocityRestClient
+from pyc8y.types import TenantsMeta, AsValuesSpec
+
+
+class Tenant(CumulocityObject):
+    """Represents a tenant within the database.
+
+    Instances of this class are returned by functions of the corresponding
+    Tenant API. Use this class to create new or update tenants.
+
+    See also: https://cumulocity.com/api/core/#tag/Tenants
+    """
+    _meta = TenantsMeta
+
+    def __init__(
+            self,
+            c8y: CumulocityRestClient | None = None,
+            *,
+            domain: str | None = None,
+            admin_email: str | None = None,
+            admin_name: str | None = None,
+            admin_pass: str | None = None,
+            company: str | None = None,
+            contact_name: str | None = None,
+            contact_phone: str | None = None,
+    ):
+        super().__init__(c8y)
+        self.domain = domain
+        self.admin_email = admin_email
+        self.admin_name = admin_name
+        self.admin_pass = admin_pass
+        self.company = company
+        self.contact_name = contact_name
+        self.contact_phone = contact_phone
+
+    creation_time = json_property("creationTime", read_only=True)
+    creation_datetime = datetime_property("creationTime")
+    domain = json_property("domain")
+    admin_email = json_property("adminEmail")
+    admin_name = json_property("adminName")
+    admin_pass = json_property("adminPass")
+    company = json_property("company")
+    contact_name = json_property("contactName")
+    contact_phone = json_property("contactPhone")
+    status = json_property("status", read_only=True)
+    parent = json_property("parent", read_only=True)
+
+    @property
+    def applications(self) -> list[Application]:
+        """Return all referenced Application objects as a list."""
+        refs = self._source_json.get("applications", {}).get("references", [])
+        return [Application.from_json(ref["application"], c8y=self.c8y) for ref in refs]
+
+    @property
+    def owned_applications(self) -> list[Application]:
+        """Return all owned Application objects as a list."""
+        from pyc8y.model.application import Application
+        refs = self._source_json.get("ownedApplications", {}).get("references", [])
+        return [Application.from_json(ref["application"], c8y=self.c8y) for ref in refs]
+
+    async def create(self) -> Self:
+        """Create a new representation of this tenant within the database.
+
+        Returns:
+            A fresh Tenant instance representing the created tenant.
+        """
+        return await self._create()
+
+    async def update(self) -> Self:
+        """Write changes to the database.
+
+        Returns:
+            A fresh Tenant instance representing the updated tenant.
+        """
+        return await self._update()
+
+    async def reload(self, inplace: bool | None = False) -> Self:
+        """Reload changes from the database.
+
+        Args:
+            inplace (bool): Whether the current object is updated in place.
+
+        Returns:
+            A fresh Tenant instance representing the updated tenant or
+            updated Self reference if inplace is True.
+        """
+        return await self._reload(inplace=inplace)
+
+
+class Tenants(CumulocityResource[Tenant]):
+    """Provides access to the Tenants API.
+
+    This class can be used for get, search for, create, update and
+    delete tenants within the Cumulocity database.
+
+    See also: https://cumulocity.com/api/core/#tag/Tenants
+    """
+    _meta = TenantsMeta
+    _object_type = Tenant
+
+    async def get_current(self) -> Tenant:
+        """Retrieve the current tenant.
+
+        Returns:
+            Tenant instance
+        """
+        json = await self.c8y.get('tenant/currentTenant')
+        return Tenant.from_json(json, c8y=self.c8y)
+
+    async def get(self, tenant_id: str) -> Tenant:
+        """Read a specific tenant from the database.
+
+        Args:
+            tenant_id (str):  Database ID of the tenant
+
+        Returns:
+            Tenant object
+        """
+        return await self._get(tenant_id)
+
+    def select(
+            self,
+            expression: str | None = None,
+            *,
+            parent: str | None = None,
+            domain: str | None = None,
+            company: str | None = None,
+            limit: int | None = None,
+            page_size: int = 1000,
+            page_number: int | None = None,
+            as_values: AsValuesSpec = None,
+            workers: int | None = None,
+            **kwargs
+    ) -> AsyncIterator[Tenant | Any]:
+        """Query the database for tenants and iterate over the results.
+
+        Args:
+            expression (str):  Arbitrary filter expression; all other filters
+                are ignored if this is provided
+            parent (str):  ID of the parent tenant
+            domain (str):  Tenant domain
+            company (str):  Tenant's assigned company name
+            limit (int):  Limit the number of results
+            page_size (int):  Number of records read per request
+            page_number (int):  Pull a specific page only
+            workers (int):  Number of parallel page-fetch workers
+
+        Returns:
+            AsyncIterator of Tenant instances
+        """
+        params = map_params(
+            parent=parent,
+            domain=domain,
+            company=company,
+            page_size=page_size,
+            **kwargs,
+        ) if not expression else ()
+        return self._iterate(
+            expression=expression,
+            params=params,
+            page_number=page_number,
+            limit=limit,
+            as_values=as_values,
+            workers=workers,
+        )
+
+    async def get_all(
+            self,
+            expression: str | None = None,
+            *,
+            parent: str | None = None,
+            domain: str | None = None,
+            company: str | None = None,
+            limit: int | None = None,
+            page_size: int = 1000,
+            page_number: int | None = None,
+            as_values: AsValuesSpec = None,
+            workers: int | None = None,
+            **kwargs
+    ) -> list[Tenant]:
+        """Query the database for tenants and return the results as list.
+
+        See `select` for a documentation of arguments.
+
+        Returns:
+            List of Tenant instances
+        """
+        return [x async for x in self.select(
+            expression=expression,
+            parent=parent,
+            domain=domain,
+            company=company,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+            **kwargs,
+        )]
