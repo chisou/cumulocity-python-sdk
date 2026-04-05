@@ -1,132 +1,109 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 import pytest
 
-from c8y_api.app import CumulocityApi
-from c8y_api.model.tenant_options import TenantOption
+from pyc8y.client import CumulocityClient
+from pyc8y.model.tenant_option import TenantOption
 
 from util.testing_util import RandomNameGenerator
 
 
-def test_crud(live_c8y: CumulocityApi):
+async def test_crud(live_c8y: CumulocityClient):
     """Verify that create/read/update/delete works for tenant options using
     the object-oriented functions."""
 
     category = RandomNameGenerator.random_name(2)
-
     option = None
     try:
+        # 1) create an option
+        option = await TenantOption(live_c8y, category=category, key='my_key', value='test value').create()
 
-        # 1) creating an option
-        option = TenantOption(category=category, key='my_key', value='test value')
-        option.c8y = live_c8y
-        option = option.create()
-        # check whether option was created and value matches
-        assert live_c8y.tenant_options.get(option.category, option.key).value == 'test value'
-        # check whether mapping works
-        assert live_c8y.tenant_options.get_all_mapped(category=option.category)['my_key'] == 'test value'
+        # 2) verify option values
+        assert option.key == "my_key"
+        assert option.value == "test value"
+
+        # 3) verify reread from database
+        assert (await live_c8y.tenant_options.get(option.category, option.key)).value == 'test value'
+        assert (await live_c8y.tenant_options.get_all(as_map=True))[category]['my_key'] == 'test value'
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
 
         # 2) update the option
         option.value = 'new value'
-        option = option.update()
-        # check whether option was updated in object and database
+        option = await option.update()
         assert option.value == 'new value'
-        assert live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
 
         # 3) delete the option
-        option.delete()
+        await option.delete()
         with pytest.raises(KeyError):
-            live_c8y.tenant_options.get(option.category, option.key)
+            await live_c8y.tenant_options.get(option.category, option.key)
         option = None
-
-    # pylint: disable=broad-except
-    except Exception as e:
-        assert False, "Unexpected exception: " + str(e)
 
     finally:
         if option:
-            option.delete()
+            await option.delete()
 
 
-def test_crud_2(live_c8y: CumulocityApi):
+async def test_crud_2(live_c8y: CumulocityClient):
     """Verify that create/read/update/delete works for tenant options using
     the procedural functions."""
 
     category = RandomNameGenerator.random_name(2)
-
     option = None
     try:
-
-        # 1) creating an option
-        option = TenantOption(category=category, key='my_key', value='test value')
-        live_c8y.tenant_options.create(option)
-        # check whether option was created and value matches
-        assert live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
+        # 1) create an option
+        option = TenantOption(live_c8y, category=category, key='my_key', value='test value')
+        await live_c8y.tenant_options.create(option)
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
 
         # 2) update the option
         option.value = 'new value'
-        live_c8y.tenant_options.update(option)
-        # check whether option was updated in object and database
-        assert live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
+        await live_c8y.tenant_options.update(option)
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
 
         # 3) delete the option
-        live_c8y.tenant_options.delete(option)
+        await live_c8y.tenant_options.delete(option)
         with pytest.raises(KeyError):
-            live_c8y.tenant_options.get(option.category, option.key)
+            await live_c8y.tenant_options.get(option.category, option.key)
         option = None
-
-    # pylint: disable=broad-except
-    except Exception as e:
-        assert False, "Unexpected exception: " + str(e)
 
     finally:
         if option:
-            live_c8y.tenant_options.delete(option)
+            await live_c8y.tenant_options.delete(option)
 
 
-def test_select_by(live_c8y: CumulocityApi):
-    """Verify that selecting tenant options work as expected."""
-    all_options = live_c8y.tenant_options.get_all()
+async def test_get_all(live_c8y: CumulocityClient):
+    """Verify that selecting tenant options works as expected."""
+    all_options = await live_c8y.tenant_options.get_all()
 
     categories = {x.category for x in all_options}
     by_category = {c: [x for x in all_options if x.category == c] for c in categories}
     for category, xs in by_category.items():
-        options = live_c8y.tenant_options.get_all(category=category)
-        options_mapped = live_c8y.tenant_options.get_all_mapped(category=category)
-        assert len(options) == len(by_category[category])
+        options_mapped = await live_c8y.tenant_options.get_values(category)
         assert len(options_mapped) == len(by_category[category])
-        assert {x.key for x in options} == {x.key for x in xs}
-        assert {x for x, _ in options_mapped.items()} == {x.key for x in xs}
+        assert set(options_mapped.keys()) == {x.key for x in xs}
 
 
-def test_set_value_and_update_and_delete_by(live_c8y: CumulocityApi):
-    """Verify that functions set_value, update_by and delete_by work
-    as expected."""
+async def test_set_value_and_update_values_and_delete(live_c8y: CumulocityClient):
+    """Verify that functions set_value, update_values and delete work as expected."""
 
     category = RandomNameGenerator.random_name(2)
     key = 'my_key'
-
     try:
-
-        # 1) creating an option
-        live_c8y.tenant_options.set_value(category=category, key='my_key', value='test value')
+        # 1) create an option
+        await live_c8y.tenant_options.set_value(category=category, key=key, value='test value')
 
         # 2) update the option
-        live_c8y.tenant_options.update_by(category, {key: 'new value'})
-        # check whether option was updated in object and database
-        assert live_c8y.tenant_options.get_value(category, key) == 'new value'
+        await live_c8y.tenant_options.update_values(category, {key: 'new value'})
+        assert await live_c8y.tenant_options.get_value(category, key) == 'new value'
 
         # 3) delete the option
-        live_c8y.tenant_options.delete_by(category, key)
+        await live_c8y.tenant_options.delete(category=category, key=key)
         with pytest.raises(KeyError):
-            live_c8y.tenant_options.get(category, key)
-
-    # pylint: disable=broad-except
-    except Exception as e:
-        assert False, "Unexpected exception: " + str(e)
+            await live_c8y.tenant_options.get(category, key)
 
     finally:
         try:
-            live_c8y.tenant_options.delete_by(category, key)
+            await live_c8y.tenant_options.delete(category=category, key=key)
         except KeyError:
             pass
