@@ -1,8 +1,11 @@
 # Copyright (c) 2025 Cumulocity GmbH
+from contextlib import suppress
 
 import pytest
 
+from pyc8y.auth import BasicAuth
 from pyc8y.client import CumulocityClient
+from pyc8y.model import TenantOptions, TenantOption
 
 
 async def test_select_name(live_c8y: CumulocityClient):
@@ -53,6 +56,48 @@ async def test_get_current(bootstrap_api: CumulocityClient):
     # the format of the username is "bootstrapuser_<appname>"
     bootstrap_app_name = bootstrap_api.username.split('_', 1)[1]
     assert app.name == bootstrap_app_name
+
+
+async def test_tenant_options(live_c8y: CumulocityClient, bootstrap_api: CumulocityClient):
+    """Verify that the current application's tenant options can be read using
+    a subscribed instance."""
+
+    app_category = (await bootstrap_api.applications.get_current()).resolve_tenant_option_category()
+
+    try:
+        # (1) create options as admin user
+        await live_c8y.tenant_options.create(
+            TenantOption(category=app_category, key="admin_key", value="some admin value"),
+            TenantOption(category=app_category, key="admin_secret", value="admins secret value", encrypted=True),
+            # workers=5
+        )
+
+        # (2) create options as service user
+        subscriber = (await bootstrap_api.applications.get_current_subscriptions())[0]
+        client: CumulocityClient = CumulocityClient(
+            base_url=live_c8y.base_url,
+            tenant_id=subscriber.tenant_id,
+            auth=BasicAuth(subscriber.username, subscriber.password),
+        )
+        await client.tenant_options.create(
+            TenantOption(category=app_category, key="app_secret", value="secret app value", encrypted=True),
+            TenantOption(category=app_category, key="app_key", value="some app value"),
+            # workers=5
+        )
+
+        # (3) retrieve all options as bootstrap user
+        all_options1 = await client.applications.get_current_settings()
+        assert set(all_options1.keys()) == {'credentials.app_secret', 'app_key', 'credentials.admin_secret', 'admin_key'}
+
+        # (4) retrieve all options as service user
+        all_options2 = await client.tenant_options.get_values(app_category)
+        assert set(all_options2.keys()) == {'app_secret', 'app_key', 'admin_secret', 'admin_key'}
+
+    finally:
+        # (5) cleanup
+        for key in (await live_c8y.tenant_options.get_values(app_category)).keys():
+            with suppress(KeyError):
+                await live_c8y.tenant_options.delete(category=app_category, key=key)
 
 
 async def test_get_current_settings(bootstrap_api: CumulocityClient):

@@ -131,6 +131,9 @@ class TenantOptions(CumulocityResource[TenantOption]):
     async def get(self, category: str, key: str) -> TenantOption:  # noqa (signature differs)
         """Retrieve a specific option from the database.
 
+        Note: The key must be prefixed with `credentials.` in order to
+        retrieve an encrypted option.
+
         Args:
             category (str):  Option category
             key (str):  Option key (name)
@@ -177,12 +180,6 @@ class TenantOptions(CumulocityResource[TenantOption]):
             as_values=as_values,
             workers=workers,
         )
-
-    async def _select_by_category(self, category: str):
-        """Async generator for options within a specific category."""
-        options_json = await self.c8y.get(f"{self._meta.resource_path}/{category}")
-        for key, value in options_json.items():
-            yield TenantOption.from_json({"category": category, "key": key, "value": value}, c8y=self.c8y)
 
     async def get_all(
             self,
@@ -232,6 +229,9 @@ class TenantOptions(CumulocityResource[TenantOption]):
     async def get_value(self, category: str, key: str) -> str:
         """Retrieve the value of a specific option from the database.
 
+        Note: The key must be prefixed with `credentials.` in order to
+        retrieve an encrypted option.
+
         Args:
             category (str):  Option category
             key (str):  Option key (name)
@@ -245,6 +245,9 @@ class TenantOptions(CumulocityResource[TenantOption]):
     async def get_values(self, category: str) -> dict[str, str]:
         """Retrieve all values for a specific category from the database.
 
+        Note: The keys of encrypted tenant options is automatically stripped
+        from the `credentials.` prefix.
+
         Args:
             category (str):  Option category
 
@@ -256,6 +259,9 @@ class TenantOptions(CumulocityResource[TenantOption]):
     async def update_values(self, category: str, values: dict[str, str]) -> None:
         """Update existing option's values within the database.
 
+        Note: The key must be prefixed with `credentials.` in order to update
+        an encrypted option.
+
         Args:
             category (str):  Option category
             values (dict[str, str]): Option values by key
@@ -265,6 +271,9 @@ class TenantOptions(CumulocityResource[TenantOption]):
     async def set_value(self, category: str, key: str, value: str) -> None:
         """Create an option within the database.
 
+        Note: The key must be prefixed with `credentials.` in order to update
+        an encrypted option.
+
         Args:
             category (str):  Option category
             key (str):  Option key (name)
@@ -272,13 +281,13 @@ class TenantOptions(CumulocityResource[TenantOption]):
         """
         await self.create(TenantOption(category=category, key=key, value=value))
 
-    async def create(self, *options: TenantOption) -> None:
+    async def create(self, *options: TenantOption, workers: int | None = None) -> None:
         """Create options within the database.
 
         Args:
             *options (TenantOption):  Collection of TenantOption instances
         """
-        await self._create(*options)
+        await self._create(*options, workers=workers)
 
     async def update(self, *options: TenantOption) -> None:
         """Update options within the database.

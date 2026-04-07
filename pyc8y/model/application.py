@@ -1,14 +1,17 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-from __future__ import annotations
+# from __future__ import annotations  # need late import for CumulocityClient
 
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, BinaryIO
+from typing import Any, AsyncIterator, BinaryIO, Self
 
 import aiohttp
 
+from pyc8y.auth import BasicAuth
+from pyc8y.base_util import first
+from pyc8y.model.tenant_option import TenantOptions, TenantOption
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, assert_c8y
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.types import ApplicationsMeta, AsValuesSpec, MatcherSpec
 
@@ -114,7 +117,7 @@ class Application(CumulocityObject):
         except (KeyError, TypeError):
             return None
 
-    async def create(self) -> Application:
+    async def create(self) -> Self:
         """Create the Application within the database.
 
         Returns:
@@ -123,7 +126,7 @@ class Application(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Application:
+    async def update(self) -> Self:
         """Update the Application within the database.
 
         Note: This will only send changed fields to increase performance.
@@ -138,7 +141,35 @@ class Application(CumulocityObject):
         """Delete the Application within the database."""
         await self._delete()
 
+    def resolve_tenant_option_category(self) -> str | None:
+        """Resolve the tenant option category.
 
+        The application's tenant option category is defined by the
+        application's _settings category_ (as defined in its manifest), the
+        application's name (as defined in its manifest), or the application's
+        context path. The function chooses the first defined.
+
+        Returns:
+            The application's tenant option category.
+
+        See also https://cumulocity.com/api/core/#operation/postOptionCollectionResource,
+        _Encrypted credentials_
+        """
+        return first(
+            self.get("manifest.settingsCategory"),
+            self.get("manifest.name"),
+            self.get("contextPath"),
+            None,
+        )
+
+
+@dataclass
+class ValueSchema:
+    """Defines a setting's value's schema."""
+    type: str
+
+
+@dataclass
 class ApplicationSetting(object):
     """Represent current application settings within Cumulocity.
 
@@ -148,40 +179,41 @@ class ApplicationSetting(object):
     See also: https://cumulocity.com/api/core/#tag/Current-application
     """
 
-    @dataclass
-    class ValueSchema(object):
-        """Defines a setting's value's schema."""
-        type: str
-
-    def __init__(self, key: str = None, default_value: str = None, value_schema: ValueSchema = None,
-                 editable: bool = None, inherited: bool = None):
-        """Create an ApplicationSetting instance.
-
-        Args:
-            key (str):  The setting's key
-            default_value (str):  The setting's default value
-            value_schema (ValueSchema):  The setting's value schema
-            editable (bool):  Whether the setting can be edited
-            inherited (bool):  Whether the setting is inherited
-        """
-        self.key = key
-        self.default_value = default_value
-        self.value_schema = value_schema
-        self.editable = editable
-        self.inherited = inherited
-
+    key: str
+    default_value: str
+    value_schema: ValueSchema
+    editable: bool
+    inherited: bool
+    #
+    # def __init__(self, key: str = None, default_value: str = None, value_schema: ValueSchema = None,
+    #              editable: bool = None, inherited: bool = None):
+    #     """Create an ApplicationSetting instance.
+    #
+    #     Args:
+    #         key (str):  The setting's key
+    #         default_value (str):  The setting's default value
+    #         value_schema (ValueSchema):  The setting's value schema
+    #         editable (bool):  Whether the setting can be edited
+    #         inherited (bool):  Whether the setting is inherited
+    #     """
+    #     self.key = key
+    #     self.default_value = default_value
+    #     self.value_schema = value_schema
+    #     self.editable = editable
+    #     self.inherited = inherited
+    #
     @classmethod
-    def from_json(cls, json: dict) -> ApplicationSetting:
+    def from_json(cls, json: dict) -> Self:
         """Create an ApplicationSetting instance from Cumulocity JSON format."""
         return ApplicationSetting(
             key=json['key'],
             default_value=json['defaultValue'],
-            value_schema=ApplicationSetting.ValueSchema(type=json['valueSchema']['type']),
+            value_schema=ValueSchema(type=json['valueSchema']['type']),
             editable=bool(json['editable']),
             inherited=bool(json['inheritFromOwner']),
         )
 
-
+@dataclass
 class ApplicationSubscription(object):
     """Represent current application subscriptions within Cumulocity.
 
@@ -190,21 +222,19 @@ class ApplicationSubscription(object):
 
     See also: https://cumulocity.com/api/core/#tag/Current-application
     """
+    # TODO: Check if attribute documentation works as expected
 
-    def __init__(self, tenant_id: str = None, username: str = None, password: str = None):
-        """Create an ApplicationSubscription instance.
+    tenant_id: str
+    """Subscription's tenant ID"""
 
-        Args:
-            tenant_id (str):  Subscription's tenant ID
-            username (str):  Subscription's username for authentication
-            password (str):  Subscription's password for authentication
-        """
-        self.tenant_id = tenant_id
-        self.username = username
-        self.password = password
+    username: str
+    """Subscription's username for authentication"""
+
+    password: str
+    """Subscription's password for authentication"""
 
     @classmethod
-    def from_json(cls, json: dict) -> ApplicationSubscription:
+    def from_json(cls, json: dict) -> Self:
         """Create an ApplicationSubscription instance from Cumulocity JSON format."""
         return ApplicationSubscription(
             tenant_id=json['tenant'],
@@ -248,16 +278,25 @@ class Applications(CumulocityResource[Application]):
             c8y=self.c8y,
         )
 
-    async def get_current_settings(self) -> list[ApplicationSetting]:
-        """Query the database for the current application's settings.
+    async def get_current_settings(self) -> dict[str, str]:
+        """Query the database for the current application's settings,
+        i.e. tenant options.
 
-        Note: Requires bootstrap permissions.
+        The tenant option category is determined by application's
+        _settings category_, _name_ or _context path_.
+
+        Note: Requires bootstrap permissions or service user permissions.
+
+        Caveat: this function does _not_ remove the `credentials.` prefix
+        of encrypted tenant options.
+
 
         Returns:
-            List of ApplicationSetting instances.
+            Dictionary of tenant option values by key.
+
+        See also: TenantOptions.get_values to read tenant options
         """
-        result = await self.c8y.get('application/currentApplication/settings')
-        return [ApplicationSetting.from_json(x) for x in result]
+        return await self.c8y.get('application/currentApplication/settings')
 
     async def get_current_subscriptions(self) -> list[ApplicationSubscription]:
         """Query the database for subscriptions of the current application.
@@ -288,6 +327,7 @@ class Applications(CumulocityResource[Application]):
             page_size: int = 100,
             page_number: int | None = None,
             as_values: AsValuesSpec | None = None,
+            workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Application | Any | tuple[Any]]:
         """Query the database for applications and iterate over the results.
@@ -352,6 +392,7 @@ class Applications(CumulocityResource[Application]):
             include=include,
             exclude=exclude,
             as_values=as_values,
+            workers=workers,
         )
 
     async def get_all(
@@ -372,6 +413,7 @@ class Applications(CumulocityResource[Application]):
             page_size: int = 100,
             page_number: int | None = None,
             as_values: str | tuple | list[str | tuple] = None,
+            workers: int | None = None,
             **kwargs
     ) -> list[Application | Any | tuple[Any]]:
         """Query the database for applications and return the results as list.
@@ -400,6 +442,7 @@ class Applications(CumulocityResource[Application]):
             page_size=page_size,
             page_number=page_number,
             as_values=as_values,
+            workers=workers,
             **kwargs,
         )]
 
