@@ -23,6 +23,19 @@ def flatten(items: Sequence[Any] | Sequence[Sequence[Any]]) -> tuple[Any, ...]:
     return tuple(items)  # always tuple for consistency
 
 
+def first(*values: Any) -> Any | None:
+    """Returns the first defined (not None) value in a sequence of
+    candidates.
+
+    Args:
+        values (*Any): A sequence of (potential) values.
+
+    Returns:
+        The first non-None value or None if all are None.
+    """
+    return next((x for x in values if x is not None), None)
+
+
 def concat(*strings: str | None):
     """Concatenate non-None strings."""
     return ''.join(x for x in strings if x)

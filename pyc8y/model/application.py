@@ -164,56 +164,6 @@ class Application(CumulocityObject):
 
 
 @dataclass
-class ValueSchema:
-    """Defines a setting's value's schema."""
-    type: str
-
-
-@dataclass
-class ApplicationSetting(object):
-    """Represent current application settings within Cumulocity.
-
-    Instances of this class are returned by functions of the `Applications`
-    API.
-
-    See also: https://cumulocity.com/api/core/#tag/Current-application
-    """
-
-    key: str
-    default_value: str
-    value_schema: ValueSchema
-    editable: bool
-    inherited: bool
-    #
-    # def __init__(self, key: str = None, default_value: str = None, value_schema: ValueSchema = None,
-    #              editable: bool = None, inherited: bool = None):
-    #     """Create an ApplicationSetting instance.
-    #
-    #     Args:
-    #         key (str):  The setting's key
-    #         default_value (str):  The setting's default value
-    #         value_schema (ValueSchema):  The setting's value schema
-    #         editable (bool):  Whether the setting can be edited
-    #         inherited (bool):  Whether the setting is inherited
-    #     """
-    #     self.key = key
-    #     self.default_value = default_value
-    #     self.value_schema = value_schema
-    #     self.editable = editable
-    #     self.inherited = inherited
-    #
-    @classmethod
-    def from_json(cls, json: dict) -> Self:
-        """Create an ApplicationSetting instance from Cumulocity JSON format."""
-        return ApplicationSetting(
-            key=json['key'],
-            default_value=json['defaultValue'],
-            value_schema=ValueSchema(type=json['valueSchema']['type']),
-            editable=bool(json['editable']),
-            inherited=bool(json['inheritFromOwner']),
-        )
-
-@dataclass
 class ApplicationSubscription(object):
     """Represent current application subscriptions within Cumulocity.
 
