@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Any
+from typing import AsyncIterator, Any, Self
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -9,7 +9,6 @@ from pyc8y.model.model_base import (
     datetime_property,
     id_property,
     time_property,
-    coerce_timestring,
     map_params,
     assert_c8y,
     assert_id,
@@ -40,7 +39,7 @@ class Event(CumulocityObject):
         super().__init__(c8y, **kwargs)
         self.type = type
         self.source = source
-        self.time = coerce_timestring(time)
+        self.time = time
         self.text = text
 
     type = json_property("type")
@@ -119,6 +118,50 @@ class Event(CumulocityObject):
         assert_c8y(self)
         assert_id(self)
         await self.c8y.delete(self.attachment_path)
+
+    async def create(self) -> Self:
+        """Create this event within the database.
+
+        Returns:
+            A fresh Event instance representing what was created (including the ID).
+        """
+        return await self._create()
+
+    async def update(self) -> Self:
+        """Write changes to this event to the database.
+
+        Returns:
+            A fresh Event instance representing the updated state.
+        """
+        return await self._update()
+
+    async def delete(self, **_) -> None:
+        """Delete this event from the database."""
+        await self._delete()
+
+    async def reload(self, inplace: bool = False) -> Self:
+        """Reload this event's data from the database.
+
+        Args:
+            inplace (bool):  If `True`, this object's data will be reloaded;
+                otherwise a new instance is created from the reloaded data.
+
+        Returns:
+            New instance built from latest data or `self` if inplace is True.
+        """
+        return await self._reload(inplace)
+
+    async def apply_to(self, other_id: str) -> Self:
+        """Apply changes made to this event to another event in the database.
+
+        Args:
+            other_id (str):  Database ID of the event to update.
+
+        Returns:
+            A fresh Event instance representing the updated state.
+        """
+        return await self._apply_to(other_id)
+
 
 
 class Events(CumulocityResource[Event]):
@@ -489,14 +532,24 @@ class Events(CumulocityResource[Event]):
         """
         await self._update(*events, workers=workers)
 
-    async def delete(self, *events: Event, workers: int | None = None) -> None:
+    async def delete(self, *events: Event | str, workers: int | None = None) -> None:
         """Delete event objects from the database.
 
         Args:
-            *events (Event):  Collection of Event instances
+            *events (Event | str):  Collection of Event instances or IDs
             workers (int):  Number of parallel workers
         """
         await self._delete(*events, workers=workers)
+
+    async def apply_to(self, model: dict | Event, *event_ids: str, workers: int | None = None) -> None:
+        """Apply a model event (or dict) to a set of existing events.
+
+        Args:
+            model (dict | Event):  Template event or dict with changes to apply
+            *event_ids (str):  Database IDs of events to update
+            workers (int):  Number of parallel workers
+        """
+        await self._apply_to(model, *event_ids, workers=workers)
 
     async def delete_by(
             self,
