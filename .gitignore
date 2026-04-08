@@ -11,3 +11,4 @@ _version.py
 wordlist.txt
 .ipynb_checkpoints
 .coverage
+/site/

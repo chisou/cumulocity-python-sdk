@@ -460,6 +460,7 @@ class Measurements(CumulocityResource[Measurement]):
             page_size: int = 1000,
             page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
+            workers: int | None = None,
             **kwargs
     ) -> list[Measurement | Any | tuple[Any]]:
         """ Query the database for measurements and return the results
@@ -490,6 +491,7 @@ class Measurements(CumulocityResource[Measurement]):
             page_size=page_size,
             page_number=page_number,
             as_values=as_values,
+            workers=workers,
             **kwargs
         )]
 
@@ -543,7 +545,7 @@ class Measurements(CumulocityResource[Measurement]):
             expression: str = None,
             *,
             type: str = None,
-            source: str | int = None,
+            source: str = None,
             value_fragment_type: str = None,
             value_fragment_series: str = None,
             series: str = None,
@@ -563,7 +565,7 @@ class Measurements(CumulocityResource[Measurement]):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             type (str):  Alarm type
-            source (str|int):  Database ID of a source device
+            source (str):  Database ID of a source device
             value_fragment_type (str):  The series' value fragment name
                 (e.g. c8y_Environment)
             value_fragment_series (str):  The series' name (within the
@@ -628,6 +630,7 @@ class Measurements(CumulocityResource[Measurement]):
             page_size: int | None = 1000,
             page_number: int | None = None,
             as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Measurement | Any | tuple[Any]]:
         """ Query the database for measurements and iterate over the results.
@@ -644,7 +647,7 @@ class Measurements(CumulocityResource[Measurement]):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             type (str):  Alarm type
-            source (str|int):  Database ID of a source device
+            source (str):  Database ID of a source device
             value_fragment_type (str):  The series' value fragment name
                 (e.g. c8y_Environment)
             value_fragment_series (str):  The series' name (within the
@@ -708,6 +711,7 @@ class Measurements(CumulocityResource[Measurement]):
             page_number=page_number,
             limit=limit,
             as_values=as_values,
+            workers=workers,
         )
 
     async def get_series(
@@ -862,7 +866,7 @@ class Measurements(CumulocityResource[Measurement]):
             expression: str | None = None,
             *,
             type: str | None = None,
-            source: str | int | None = None,
+            source: str | None = None,
             value_fragment_type: str | None = None,  # todo: this is not supported at the moment
             value_fragment_series: str | None = None,  # todo: this is not supported at the moment
             series: str | None = None, # todo: this is not supported at the moment
@@ -888,7 +892,7 @@ class Measurements(CumulocityResource[Measurement]):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             type (str):  Alarm type
-            source (str|int):  Database ID of a source device
+            source (str):  Database ID of a source device
             value_fragment_type (str):  The series' value fragment name
                 (e.g. c8y_Environment)
             value_fragment_series (str):  The series' name (within the

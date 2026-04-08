@@ -1,50 +1,54 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
-from unittest.mock import Mock
+import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from c8y_api import CumulocityRestApi
-from c8y_api.model.notification2 import Tokens
-
-from util.testing_util import RandomNameGenerator
-from tests.utils import isolate_last_call_arg
+from pyc8y.model.notification2 import Tokens
 
 
-@pytest.mark.parametrize(
-    'tls, consumer, expected', [
-        (False, False, 'ws://c8y.com/notification2/consumer/?token={}'),
-        (True, False, 'wss://c8y.com/notification2/consumer/?token={}'),
-        (False, True, 'ws://c8y.com/notification2/consumer/?token={}&consumer={}'),
-        (True, True, 'wss://c8y.com/notification2/consumer/?token={}&consumer={}'),
-    ])
+@pytest.mark.parametrize('tls, consumer, expected', [
+    (False, False, 'ws://c8y.com/notification2/consumer/?token={}'),
+    (True,  False, 'wss://c8y.com/notification2/consumer/?token={}'),
+    (False, True,  'ws://c8y.com/notification2/consumer/?token={}&consumer={}'),
+    (True,  True,  'wss://c8y.com/notification2/consumer/?token={}&consumer={}'),
+])
 def test_uri_generator(tls, consumer, expected):
     """Verify that building the websocket URI works as expected."""
-
-    token = RandomNameGenerator.random_name()
-    consumer = RandomNameGenerator.random_name() if consumer else None
+    token = str(uuid.uuid4())
+    consumer_id = str(uuid.uuid4()) if consumer else None
 
     protocol = 'https' if tls else 'http'
-    c8y = CumulocityRestApi(base_url=f'{protocol}://c8y.com', tenant_id='t123', username='un', password='pw')
-    uri = Tokens(c8y).build_websocket_uri(token, consumer if consumer else None)
+    c8y = MagicMock()
+    c8y.base_url = f'{protocol}://c8y.com'
 
-    assert uri == expected.format(token, consumer)
+    uri = Tokens(c8y).build_websocket_uri(token, consumer_id)
+
+    assert uri == expected.format(token, consumer_id)
 
 
-@pytest.mark.parametrize(
-    'subscription, expiry, subscriber, shared, signed, non_persistent', [
-        ('sub', 123, 'id123', None, None, None),
-        ('sub', 0, None, True, False, True),
-        ('sub', 123, 'id123', False, True, False),
-    ])
-def test_generate(subscription, expiry, subscriber, shared, signed, non_persistent):
+@pytest.mark.parametrize('subscription, expiry, subscriber, shared, signed, non_persistent', [
+    ('sub', 123, 'id123', None, None, None),
+    ('sub', 0,   None,    True, False, True),
+    ('sub', 123, 'id123', False, True, False),
+])
+async def test_generate(subscription, expiry, subscriber, shared, signed, non_persistent):
     """Verify that token generation works as expected."""
+    c8y = MagicMock()
+    c8y.base_url = 'https://c8y.com'
+    c8y.post = AsyncMock(return_value={'token': 'TOKEN'})
 
-    c8y = CumulocityRestApi(base_url='https://c8y.com', tenant_id='t123', username='un', password='pw')
-    c8y.post = Mock(return_value={'token': 'TOKEN'})
-    Tokens(c8y).generate(subscription=subscription, expires=expiry, subscriber=subscriber,
-                         shared=shared, signed=signed, non_persistent=non_persistent)
-    td_json = isolate_last_call_arg(c8y.post, 'json', 1)
+    await Tokens(c8y).generate(
+        subscription=subscription,
+        expires=expiry,
+        subscriber=subscriber,
+        shared=shared,
+        signed=signed,
+        non_persistent=non_persistent,
+    )
+
+    td_json = c8y.post.call_args[1]['json']
 
     assert td_json['subscription'] == subscription
     assert td_json['expiresInMinutes'] == expiry

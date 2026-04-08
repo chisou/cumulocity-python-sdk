@@ -1,13 +1,32 @@
 # Changelog
 
+### Features
+
+* Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood.
+
+* Added functions `get_tenant_options` and `get_current_tenant_options` to Applications API.
+
+* Added `send_to` function to Operations API to send an operation to a collection of devices.
+
+* Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, etc.) and bulk operations
+  (`create`, `update`, `apply_to`, `delete`, etc.) to automatically perform the activities unordered and in parallel.
+
 ### Breaking changes
 
 #### Major changes
+
+* The `c8y_api` and `c8y_tk` modules have been merged into a single `pyc8y` module which integrates pure API calls
+  with auxiliary functionality in a single, sound SDK design. The project name was changed to _Cumulocity Python SDK_
+  accordingly. The PyPI entry was changed to `pyc8y`.
 
 * Dot notation to custom attributes and fragments has been removed to reduce complexity and increase transparency.  
   Custom fields and fragments can now be addressed using the index operator `[]` or the `get` function. Both support
   dot/path notation within. The `get` functions allows the definition of a proper default value whereas the `[]` index
   operator will raise a `KeyError` if any part of the specified path is not available.
+
+* Immutable lists. In any object read from Cumulocity lists/arrays are _considered_ immutable. To extend a list it 
+  needs to be overwritten. This is in conformance with Cumulocity's data model in which a attribute cannot be altered
+  but only overwritten with the new value resp. structure.
 
 #### Minor changes
 
@@ -15,6 +34,23 @@
 
 * Cumulocity objects featuring a last updated date: The Python attributes were renamed to 
   `update_time`/`update_datetime` (previously `updated_time`/`updated_datetime`).
+
+* Throughout the SDK additional parameters to the constructors (`__init__`) and query-like functions (`select`,
+  `get_all`, `count`, etc.) now need to be named to enforce a better coding style and forward compatibility.  
+
+* The Identity classes' `create` and `delete` functions now also allow bulk creation/deletion to stay conform to the
+  rest of the model classes. Direct creation and deletion of an individual external ID therefor now requires named
+  parameters.
+
+* Auxiliary enumerations have been moved to be top-level classes and have been renamed accordingly: 
+  - `Operation.Status` to `OperationStatus` 
+  - `BulkOperation.Status` to `BulkStatus`, `BulkOperation.GeneralStatus` to `GeneralBulkStatus` 
+
+* In the tenant options API, functions `TenantOptions.delete_by` and `TenantOptions.update_by` are discontinued. Use
+  functions `delete` and `update_values` instead. The `get_all_mapped` function was optimized and replaced by function
+  `get_values`. 
+
+* In the Binary API, the 
 
 
 ## Version 3.7.2

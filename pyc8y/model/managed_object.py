@@ -1,9 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Any, Self, Coroutine, Mapping
+from typing import Self
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -33,6 +31,7 @@ def references_property(key: str) -> property:
     def getter(self):
         return [ObjectReference(x['managedObject']["id"], x["managedObject"].get("name", None)) for x in self._source_json[key]["references"]]
     return property(getter)
+
 
 @dataclass
 class Availability:
@@ -184,7 +183,7 @@ class ManagedObject(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self, inplace: bool = True) -> ManagedObject:
+    async def update(self, inplace: bool = True) -> Self:
         """ Write changes to the database.
 
         Args:
@@ -199,13 +198,13 @@ class ManagedObject(CumulocityObject):
         """
         return await self._update(inplace)
 
-    async def apply_to(self, other_id: str | int) -> ManagedObject:
+    async def apply_to(self, other_id: str) -> Self:
         """Apply the details of this object to another object in the database.
 
         Note: This will take the full details, not just the updates.
 
         Args:
-            other_id (str|int):  Database ID of the event to update.
+            other_id (str):  Database ID of the event to update.
         Returns:
             A fresh ManagedObject instance representing the updated
             object within the database.
@@ -236,14 +235,14 @@ class ManagedObject(CumulocityObject):
         """
         await self._delete(forceCascade='true')
 
-    async def assign_child_asset(self, child: ManagedObject | str | int):
+    async def assign_child_asset(self, child: Self | str):
         """ Link a child asset to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (ManagedObject|str|int): Child asset or its object ID
+            child (ManagedObject|str): Child asset or its object ID
         """
         await self._assign_child("childAssets", child)
 
@@ -251,14 +250,14 @@ class ManagedObject(CumulocityObject):
     add_child_asset = assign_child_asset
     add_child_asset.__doc__ = assign_child_asset.__doc__
 
-    async def assign_child_device(self, child: ManagedObject | str | int):
+    async def assign_child_device(self, child: Self | str):
         """ Link a child device to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (ManagedObject|str|int): Child device or its object ID
+            child (ManagedObject|str): Child device or its object ID
         """
         await self._assign_child("childDevices", child)
 
@@ -266,14 +265,14 @@ class ManagedObject(CumulocityObject):
     add_child_device = assign_child_device
     add_child_device.__doc__ = assign_child_device.__doc__
 
-    async def assign_child_addition(self, child: ManagedObject | str | int):
+    async def assign_child_addition(self, child: Self | str):
         """ Link a child addition to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (ManagedObject|str|int): Child addition or its object ID
+            child (ManagedObject|str): Child addition or its object ID
         """
         await self._assign_child("childAdditions", child)
 
@@ -281,46 +280,46 @@ class ManagedObject(CumulocityObject):
     add_child_addition = assign_child_addition
     add_child_addition.__doc__ = assign_child_addition.__doc__
 
-    async def unassign_child_asset(self, child: ManagedObject | str | int):
+    async def unassign_child_asset(self, child: Self | str):
         """Remove the link to a child asset.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (ManagedObject|str|int): Child device or its object ID
+            child (ManagedObject|str): Child device or its object ID
         """
         await self._unassign_child("childAssets", child)
 
-    async def unassign_child_device(self, child: Device | str | int):
+    async def unassign_child_device(self, child: Self | str):
         """Remove the link to a child device.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (Device|str|int): Child device or its object ID
+            child (ManagedObject|str): Child device or its object ID
         """
         await self._unassign_child("childDevices", child)
 
-    async def unassign_child_addition(self, child: ManagedObject | str | int):
+    async def unassign_child_addition(self, child: Self | str):
         """Remove the link to a child addition.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (ManagedObject|str|int): Child device or its object ID
+            child (ManagedObject|str): Child device or its object ID
         """
         await self._unassign_child("childAdditions", child)
 
-    async def _assign_child(self, resource, child: ManagedObject | str | int):
+    async def _assign_child(self, resource, child: Self | str):
         assert_c8y(self)
         assert_id(self)
         child_id = child.id if hasattr(child, "id") else child
         await self.c8y.post(f"{self.object_path}/{resource}", json=ObjectReference.to_json(child_id), accept=None)
 
-    async def _unassign_child(self, resource, child: ManagedObject | str | int):
+    async def _unassign_child(self, resource, child: Self | str):
         assert_c8y(self)
         assert_id(self)
         child_id = child.id if hasattr(child, "id") else child
@@ -498,7 +497,7 @@ class DeviceGroup(ManagedObject):
                          name=name, owner=owner, **kwargs)
         self._staged_json["c8Y_IsDeviceGroup"] = {}
 
-    async def create_child(self, name: str, owner: str = None, **kwargs) -> DeviceGroup:
+    async def create_child(self, name: str, owner: str = None, **kwargs) -> Self:
         """ Create and assign a child group.
 
         This change is written to the database immediately.
@@ -518,7 +517,7 @@ class DeviceGroup(ManagedObject):
         await self.assign_child_asset(child.id)
         return child
 
-    async def create(self) -> DeviceGroup:
+    async def create(self) -> Self:
         """ Create a new representation of this object within the database.
 
         This operation will create the group and all added child groups
@@ -533,7 +532,7 @@ class DeviceGroup(ManagedObject):
         """
         return await self._create()
 
-    async def update(self, **_) -> DeviceGroup:
+    async def update(self, **_) -> Self:
         """ Write changed to the database.
 
         Note: Removing child groups is currently not supported.
@@ -543,41 +542,41 @@ class DeviceGroup(ManagedObject):
         """
         return await self._update()
 
-    def delete(self, **_) -> None:
+    async def delete(self, **_) -> None:
         """Delete this device group.
 
         The child groups (if there are any) are left dangling. This is
         equivalent to using the `cascade=false` parameter in the
         Cumulocity REST API.
         """
-        self._delete(cascade='false')
+        await self._delete(cascade='false')
 
-    def delete_tree(self) -> None:
+    async def delete_tree(self) -> None:
         """Delete this device group and its children.
 
         This is equivalent to using the `cascade=true` parameter in the
         Cumulocity REST API.
         """
-        self._delete(cascade='true')
+        await self._delete(cascade='true')
 
-    def assign_child_group(self, child: DeviceGroup | str | int):
+    async def assign_child_group(self, child: Self | str):
         """Link a child group to this device group.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (DeviceGroup|str|int): Child device or its object ID
+            child (DeviceGroup|str): Child device or its object ID
         """
-        self.assign_child_asset(child)
+        await self.assign_child_asset(child)
 
-    def unassign_child_group(self, child: DeviceGroup | str | int):
+    async def unassign_child_group(self, child: Self | str):
         """Remove the link to a child group.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
 
         Args:
-            child (DeviceGroup|str|int): Child device or its object ID
+            child (DeviceGroup|str): Child device or its object ID
         """
-        self.unassign_child_asset(child)
+        await self.unassign_child_asset(child)

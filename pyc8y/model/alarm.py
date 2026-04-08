@@ -155,6 +155,7 @@ class Alarms(CumulocityResource[Alarm]):
             page_size: int = 100,
             page_number: int | None = None,
             as_values: AsValuesSpec | None = None,
+            workers: int | None = None,
            **kwargs
     ) -> AsyncIterator[Alarm | Any | tuple[Any]]:
         """Query the database for alarms and iterate over the results.
@@ -219,10 +220,10 @@ class Alarms(CumulocityResource[Alarm]):
                 parsed in one chunk). This is a performance related setting.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str|tuple|list[str|tuple]):  Don't parse objects, but
+                directly extract the values at certain JSON paths as tuples;
+                If the path is not defined in a result, None is used; Specify
+                a tuple to define a proper default value for each path.
 
         Returns:
             Generator of Alarm objects
@@ -271,6 +272,7 @@ class Alarms(CumulocityResource[Alarm]):
             include=include,
             exclude=exclude,
             as_values=as_values,
+            workers=workers,
         )
 
     async def get_all(
@@ -307,6 +309,7 @@ class Alarms(CumulocityResource[Alarm]):
             page_size: int = 100,
             page_number: int = None,
             as_values: str | tuple | list[str | tuple] = None,
+            workers: int | None = None,
             **kwargs
     ) -> list[Alarm | Any | tuple[Any]]:
         """Query the database for alarms and return the results as list.
@@ -351,6 +354,7 @@ class Alarms(CumulocityResource[Alarm]):
             page_size=page_size,
             page_number=page_number,
             as_values=as_values,
+            workers=workers,
             **kwargs)]
 
     async def delete_by(

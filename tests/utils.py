@@ -70,14 +70,14 @@ def get_ids(objs: List[CumulocityObject]) -> Set[str]:
     return {o.id for o in objs}
 
 
-def isolate_last_call_arg(mock: Mock, *args: str | int, name: str = None, pos: int = None) -> Any:
+def isolate_last_call_arg(mock: Mock, *args: str, name: str = None, pos: int = None) -> Any:
     """Isolate arguments of the last call to a mock.
 
     The argument can be specified by name and by position, in any order or by a named parameter.
 
     Args:
         mock (Mock): the Mock to inspect
-        args (str|int): the argument to isolate (by name, position or both)
+        args (str): the argument to isolate (by name, position or both)
         name (str): Name of the parameter
         pos (int): Position of the parameter
 
@@ -105,14 +105,14 @@ def isolate_last_call_arg(mock: Mock, *args: str | int, name: str = None, pos: i
                    f"Not given explicitly and position ({pos}) out of of bounds.")
 
 
-def isolate_all_call_args(mock: Mock, *args: str | int, name: str, pos: int = None) -> List[Any]:
+def isolate_all_call_args(mock: Mock, *args: str, name: str, pos: int = None) -> List[Any]:
     """Isolate arguments of all calls to a mock.
 
     The argument can be specified by name and by position, in any order or by a named parameter.
 
     Args:
         mock (Mock): the Mock to inspect
-        args (str|int): the argument to isolate (by name, position or both)
+        args (str): the argument to isolate (by name, position or both)
         name (str): Name of the parameter
         pos (int): Position of the parameter
 

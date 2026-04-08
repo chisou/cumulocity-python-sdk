@@ -364,7 +364,7 @@ class CumulocityObject:
             "(",
             ", ".join([
                 f"{n}={getattr(self, n)}"
-                for n in ["id", "type"] if getattr(self, n) is not None
+                for n in ["id", "type"] if hasattr(self, n) and getattr(self, n) is not None
             ]),
             ")"
         ])
@@ -531,7 +531,7 @@ class CumulocityObject:
         return self._build(object_json, c8y=self.c8y)
 
 
-    async def _apply_to(self, other_id: str | int) -> Self:
+    async def _apply_to(self, other_id: str) -> Self:
         """Apply changes made to this object to another object in the database.
 
         Args:
@@ -618,7 +618,12 @@ class CumulocityResource(Generic[CO]):
             c8y=self.c8y,  # inject c8y instance
         )
 
-    async def _get_last(self, expression: str | None, params: dict | None, as_values) -> CO | Any | tuple[Any] | None:
+    async def _get_last(
+            self,
+            expression: str | None,
+            params: dict | Sequence[tuple[str, Any]] | None = None,
+            as_values: AsValuesSpec = None,
+    ) -> CO | Any | tuple[Any] | None:
         if expression:
             result_json = await self.c8y.get(
                 f"{self.resource_path}?{expression}&currentPage=1&pageSize=1",

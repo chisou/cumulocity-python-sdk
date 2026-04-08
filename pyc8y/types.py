@@ -20,14 +20,26 @@ class MimeType(StrEnum):
     APPLICATION = "application/vnd.com.nsn.cumulocity.application+json"
     APPLICATION_COLLECTION = "application/vnd.com.nsn.cumulocity.applicationcollection+json"
     AUDIT_RECORD = "application/vnd.com.nsn.cumulocity.auditrecord+json"
+    AUDIT_RECORD_COLLECTION = "application/vnd.com.nsn.cumulocity.auditrecordcollection+json"
+    BULK_OPERATION = "application/vnd.com.nsn.cumulocity.bulkoperation+json"
+    BULK_OPERATION_COLLECTION = "application/vnd.com.nsn.cumulocity.bulkoperationcollection+json"
     CURRENT_USER = "application/vnd.com.nsn.cumulocity.currentuser+json"
     EVENT = "application/vnd.com.nsn.cumulocity.event+json"
     EVENT_COLLECTION = "application/vnd.com.nsn.cumulocity.eventcollection+json"
+    EXTERNAL_ID = "application/vnd.com.nsn.cumulocity.externalid+json",
     GLOBAL_ROLE = "application/vnd.com.nsn.cumulocity.group+json"
     MANAGED_OBJECT = "application/vnd.com.nsn.cumulocity.managedobject+json"
     MANAGED_OBJECT_COLLECTION = "application/vnd.com.nsn.cumulocity.managedobjectcollection+json"
     MEASUREMENT = "application/vnd.com.nsn.cumulocity.measurement+json"
     MEASUREMENT_COLLECTION = "application/vnd.com.nsn.cumulocity.measurementcollection+json"
+    OPERATION = "application/vnd.com.nsn.cumulocity.operation+json"
+    OPERATION_COLLECTION = "application/vnd.com.nsn.cumulocity.operationcollection+json"
+    SUBSCRIPTION = "application/vnd.com.nsn.cumulocity.subscription+json"
+    SUBSCRIPTION_COLLECTION = "application/vnd.com.nsn.cumulocity.subscriptioncollection+json"
+    TENANT = "application/vnd.com.nsn.cumulocity.tenant+json"
+    TENANT_COLLECTION = "application/vnd.com.nsn.cumulocity.tenantcollection+json"
+    TENANT_OPTION = "application/vnd.com.nsn.cumulocity.option+json"
+    TENANT_OPTION_COLLECTION = "application/vnd.com.nsn.cumulocity.optionCollection+json"
     USER = "application/vnd.com.nsn.cumulocity.user+json"
 
 
@@ -70,9 +82,69 @@ class ApplicationsMeta(ResourceMeta):
     collection_name = "applications"
 
 
+class IdentityMeta(ResourceMeta):
+    object_mime_type = MimeType.EXTERNAL_ID
+    collection_mime_type = MimeType.EXTERNAL_ID
+    resource_path = None  # dynamic
+    collection_name = "externalIds"
+
+    @classmethod
+    def build_object_path(cls, _) -> str:
+        raise RuntimeError("Function not available for Identity API.")
+
+
 class InventoryMeta(ResourceMeta):
     object_mime_type = MimeType.MANAGED_OBJECT
     collection_mime_type = MimeType.MANAGED_OBJECT_COLLECTION
     resource_path = "inventory/managedObjects"
+    collection_name = "managedObjects"
+
+
+class AuditRecordsMeta(ResourceMeta):
+    object_mime_type = MimeType.AUDIT_RECORD
+    collection_mime_type = MimeType.AUDIT_RECORD_COLLECTION
+    resource_path = "audit/auditRecords"
+    collection_name = "auditRecords"
+
+
+class OperationsMeta(ResourceMeta):
+    object_mime_type = MimeType.OPERATION
+    collection_mime_type = MimeType.OPERATION_COLLECTION
+    resource_path = "devicecontrol/operations"
+    collection_name = "operations"
+
+
+class BulkOperationsMeta(ResourceMeta):
+    object_mime_type = MimeType.BULK_OPERATION
+    collection_mime_type = MimeType.BULK_OPERATION_COLLECTION
+    resource_path = "devicecontrol/bulkoperations"
+    collection_name = "bulkOperations"
+
+
+class SubscriptionsMeta(ResourceMeta):
+    object_mime_type = MimeType.SUBSCRIPTION
+    collection_mime_type = MimeType.SUBSCRIPTION_COLLECTION
+    resource_path = "notification2/subscriptions"
+    collection_name = "subscriptions"
+
+
+class TenantOptionsMeta(ResourceMeta):
+    object_mime_type = MimeType.TENANT_OPTION
+    collection_mime_type = MimeType.TENANT_OPTION_COLLECTION
+    resource_path = "tenant/options"
+    collection_name = "options"
+
+
+class TenantsMeta(ResourceMeta):
+    object_mime_type = MimeType.TENANT
+    collection_mime_type = MimeType.TENANT_COLLECTION
+    resource_path = "tenant/tenants"
+    collection_name = "tenants"
+
+
+class BinariesMeta(ResourceMeta):
+    object_mime_type = MimeType.MANAGED_OBJECT
+    collection_mime_type = MimeType.MANAGED_OBJECT_COLLECTION
+    resource_path = "inventory/binaries"
     collection_name = "managedObjects"
 

@@ -1,8 +1,12 @@
 # Copyright (c) 2026 Christoph Souris
 
+import io
+import json
 import logging
 import os
 import sys
+import zipfile
+from tempfile import TemporaryFile, NamedTemporaryFile
 from typing import Any
 
 import pytest
@@ -240,14 +244,17 @@ async def app_factory(logger, live_c8y: CumulocityClient):
             raise ValueError(f"Microservice application named '{name}' seems to be already registered.")
 
         # (2) Create application stub in Cumulocity
-        settings = [{'defaultValue': '', 'key': x} for x in ('keyA', 'keyB')]
+        manifest_json = {
+            'settings': [{'defaultValue': '', 'key': x} for x in ('keyA', 'keyB')],
+            'settingsCategory': f"app-{name}",
+        }
         app = await Application(
             live_c8y,
             name=name,
             key=f'{name}-key',
             type=Application.MICROSERVICE_TYPE,
             availability=Application.PRIVATE_AVAILABILITY,
-            manifest={'settings': settings},
+            context_path=name,
             required_roles=roles,
         ).create()
         created.append(app)
