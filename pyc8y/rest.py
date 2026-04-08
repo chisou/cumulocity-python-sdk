@@ -256,8 +256,8 @@ class CumulocityRestClient(object):
             file: str | os.PathLike | BinaryIO,
             filename: str | None = None,
             form_data: dict[str, str | bytes] | None = None,
-            accept: str | None = "application/json",
-            content_type: str = "application/octet-stream",
+            accept: str | None = None,
+            content_type: str | None = None,
     ) -> dict:
         """Upload a binary file using multipart/form-data.
 
@@ -278,41 +278,47 @@ class CumulocityRestClient(object):
             ValueError:  if the request cannot be processes (5xx) or cannot be processed for other reasons
                 (only 2xx is accepted).
         """
+        accept = accept or "application/json"
+        content_type = content_type or "application/octet-stream"
+        session = await self.session
+
+        async def post(file_obj):
+            form = aiohttp.FormData()
+            form.add_field('file', file_obj, filename=filename, content_type=content_type)
+            if form_data:
+                for key, value in form_data.items():
+                    form.add_field(key, value)
+            # proper multipart content-type is set by aiohttp
+            async with session.request(method="POST", url=resource, data=form, headers={"Accept": accept}) as r:
+                if r.status == 401:
+                    raise UnauthorizedError("POST", resource, message=(await r.json())['message'])
+                if r.status == 403:
+                    raise AccessDeniedError("POST", resource, message=(await r.json())['message'])
+                if r.status == 404:
+                    raise KeyError(f"No such object: {resource}")
+                if 500 <= r.status <= 599:
+                    raise ValueError(f"Invalid POST request. Status: {r.status}, Response:\n {await r.text()}")
+                if r.status not in (200, 201, 202, 204):
+                    raise ValueError(f"Unable to perform POST request. Status: {r.status}, Response:\n {await r.text()}")
+                if r.status in (200, 201) and r.content_length != 0:
+                    return orjson.loads(await r.read())
+                return {}
+
         if isinstance(file, (str, os.PathLike)):
             path = Path(file)
-            file = path.read_bytes()
             filename = filename or path.name
+            with open(path, 'rb') as f:
+                return await post(f)
         else:
             filename = filename or getattr(file, 'name', None)
-        session = await self.session
-        form = aiohttp.FormData()
-        form.add_field('file', file, filename=filename, content_type=content_type)
-        if form_data:
-            for key, value in form_data.items():
-                form.add_field(key, value)
-
-        # proper multipart content-type is set by aiohttp
-        async with session.request(method="POST", url=resource, data=form, headers={"Accept": accept}) as r:
-            if r.status == 401:
-                raise UnauthorizedError("POST", resource, message=(await r.json())['message'])
-            if r.status == 403:
-                raise AccessDeniedError("POST", resource, message=(await r.json())['message'])
-            if r.status == 404:
-                raise KeyError(f"No such object: {resource}")
-            if 500 <= r.status <= 599:
-                raise ValueError(f"Invalid POST request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status not in (200, 201, 202, 204):
-                raise ValueError(f"Unable to perform POST request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status in (200, 201) and r.content_length != 0:
-                return orjson.loads(await r.read())
-            return {}
+            return await post(file)
 
     async def put_file(
             self,
             resource: str,
             file: str | os.PathLike | BinaryIO,
-            accept: str | None = "application/json",
-            content_type: str = "application/octet-stream",
+            accept: str | None = None,
+            content_type: str | None = None,
     ) -> dict:
         """Update a binary file using multipart/form-data.
 
@@ -320,7 +326,7 @@ class CumulocityRestClient(object):
             resource (str): Resource path
             file (str | PathLike | BinaryIO):  File path or file-like object to upload.
             accept (str|None): Custom Accept header to use (default is
-                application/json). Specify '' to send no Accept header.
+                application/json).
             content_type (str): Content type of the file sent
                 (default is application/octet-stream)
 
@@ -332,24 +338,32 @@ class CumulocityRestClient(object):
             ValueError:  if the request cannot be processes (5xx) or cannot be processed for other reasons
                 (only 2xx is accepted).
         """
-        if isinstance(file, (str, os.PathLike)):
-            path = Path(file)
-            file = path.read_bytes()
+        accept = accept or "application/json"
+        content_type = content_type or "application/octet-stream"
         session = await self.session
-        async with session.request(method="PUT", url=resource, data=file, headers={"Accept": accept}) as r:
-            if r.status == 401:
-                raise UnauthorizedError("PUT", resource, message=(await r.json())['message'])
-            if r.status == 403:
-                raise AccessDeniedError("PUT", resource, message=(await r.json())['message'])
-            if r.status == 404:
-                raise KeyError(f"No such object: {resource}")
-            if 500 <= r.status <= 599:
-                raise ValueError(f"Invalid PUT request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status not in (200, 201, 202, 204):
-                raise ValueError(f"Unable to perform PUT request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status in (200, 201) and r.content_length != 0:
-                return orjson.loads(await r.read())
-            return {}
+
+        async def put(file_obj):
+            async with session.request(method="PUT", url=resource, data=file_obj,
+                                       headers={"Accept": accept, "Content-Type": content_type}) as r:
+                if r.status == 401:
+                    raise UnauthorizedError("PUT", resource, message=(await r.json())['message'])
+                if r.status == 403:
+                    raise AccessDeniedError("PUT", resource, message=(await r.json())['message'])
+                if r.status == 404:
+                    raise KeyError(f"No such object: {resource}")
+                if 500 <= r.status <= 599:
+                    raise ValueError(f"Invalid PUT request. Status: {r.status}, Response:\n {await r.text()}")
+                if r.status not in (200, 201, 202, 204):
+                    raise ValueError(f"Unable to perform PUT request. Status: {r.status}, Response:\n {await r.text()}")
+                if r.status in (200, 201) and r.content_length != 0:
+                    return orjson.loads(await r.read())
+                return {}
+
+        if isinstance(file, (str, os.PathLike)):
+            with open(file, 'rb') as f:
+                return await put(f)
+        else:
+            return await put(file)
 
     async def get_file(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> bytes:
         """Download a binary file.
