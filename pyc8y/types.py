@@ -1,10 +1,14 @@
 # Copyright (c) 2026 Christoph Souris
 
+import os
 from abc import ABC
 from enum import StrEnum
-from typing import ClassVar, Sequence, Any
+from typing import BinaryIO, ClassVar, Sequence, Any
 
 AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]]
+
+FileSpec = str | os.PathLike | BinaryIO
+"""File-like object or a file path."""
 
 
 class MimeType(StrEnum):
@@ -97,7 +101,7 @@ class IdentityMeta(ResourceMeta):
 
     @classmethod
     def build_object_path(cls, _) -> str:
-        raise RuntimeError("Function not available for Identity API.")
+        raise NotImplementedError("Function not available for Identity API.")
 
 
 class InventoryMeta(ResourceMeta):

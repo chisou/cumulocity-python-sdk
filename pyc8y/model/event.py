@@ -1,10 +1,21 @@
-from datetime import datetime
-from typing import BinaryIO
+from datetime import datetime, timedelta
+from typing import AsyncIterator, Any
 
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, time_property, \
-    coerce_timestring, CumulocityResource, assert_c8y, assert_id
-from pyc8y.types import EventsMeta
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    CumulocityResource,
+    json_property,
+    datetime_property,
+    id_property,
+    time_property,
+    coerce_timestring,
+    map_params,
+    assert_c8y,
+    assert_id,
+)
+from pyc8y.model.matcher import JsonMatcher
+from pyc8y.types import EventsMeta, AsValuesSpec, FileSpec
 
 
 class Event(CumulocityObject):
@@ -61,13 +72,13 @@ class Event(CumulocityObject):
         Returns:
             True if the event object has an attachment, False otherwise.
         """
-        return "c8y_IsBinary" in self._json
+        return self.has("c8y_IsBinary")
 
-    async def create_attachment(self, file: str | BinaryIO, content_type: str = None) -> dict:
+    async def create_attachment(self, file: FileSpec, content_type: str = None) -> dict:
         """Create the binary attachment.
 
         Args:
-            file (str|BinaryIO): File-like object or a file path
+            file (str | PathLike | BinaryIO): File-like object or a file path
             content_type (str):  Content type of the file sent
                 (default is application/octet-stream)
 
@@ -78,11 +89,11 @@ class Event(CumulocityObject):
         assert_id(self)
         return await self.c8y.post_file(self.attachment_path, file=file, content_type=content_type)
 
-    async def update_attachment(self, file: str | BinaryIO, content_type: str = None) -> dict:
+    async def update_attachment(self, file: FileSpec, content_type: str = None) -> dict:
         """Update the binary attachment.
 
         Args:
-            file (str|BinaryIO): File-like object or a file path
+            file (str | PathLike | BinaryIO): File-like object or a file path
             content_type (str):  Content type of the file sent
                 (default is application/octet-stream)
 
@@ -91,7 +102,17 @@ class Event(CumulocityObject):
         """
         assert_c8y(self)
         assert_id(self)
-        return self.c8y.put_file(self.attachment_path, file=file, content_type=content_type)
+        return await self.c8y.put_file(self.attachment_path, file=file, content_type=content_type)
+
+    async def download_attachment(self) -> bytes:
+        """Read the binary attachment.
+
+        Returns:
+            The event's binary attachment as bytes.
+        """
+        assert_c8y(self)
+        assert_id(self)
+        return await self.c8y.get_file(self.attachment_path)
 
     async def delete_attachment(self) -> None:
         """Remove the binary attachment."""
@@ -101,10 +122,468 @@ class Event(CumulocityObject):
 
 
 class Events(CumulocityResource[Event]):
+    """Provides access to the Events API.
+
+    This class can be used for get, search for, create, update and
+    delete events within the Cumulocity database.
+
+    See also: https://cumulocity.com/api/core/#tag/Events
+    """
     _meta = EventsMeta
     _object_type = Event
 
+    def build_attachment_path(self, event_id: str) -> str:
+        """Build the attachment path of a specific event.
+
+        Args:
+            event_id (str):  Database ID of the event
+
+        Returns:
+            The relative path to the event attachment within Cumulocity.
+        """
+        return f"{self.build_object_path(event_id)}/binaries"
+
+    async def get(self, event_id: str) -> Event:  # noqa (id)
+        """Retrieve a specific event from the database.
+
+        Args:
+            event_id (str):  The database ID of the event
+
+        Returns:
+            An Event instance representing the object in the database.
+        """
+        return await self._get(event_id)
+
+    def select(
+            self,
+            expression: str = None,
+            *,
+            type: str | None = None,   # noqa (type)
+            source: str | None = None,
+            fragment: str | None = None,
+            fragment_type: str | None = None,
+            fragment_value: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: timedelta | None = None,
+            max_age: timedelta | None = None,
+            created_before: str | datetime | None = None,
+            created_after: str | datetime | None = None,
+            created_from: str | datetime | None = None,
+            created_to: str | datetime | None = None,
+            updated_before: str | datetime | None = None,
+            updated_after: str | datetime | None = None,
+            last_updated_from: str | datetime | None = None,
+            last_updated_to: str | datetime | None = None,
+            with_source_assets: bool | None = None,
+            with_source_devices: bool | None = None,
+            reverse: bool = False,
+            revert: bool = False,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            limit: int | None = None,
+            page_size: int = 1000,
+            page_number: int | None = None,
+            as_values: AsValuesSpec | None = None,
+            workers: int | None = None,
+            **kwargs
+    ) -> AsyncIterator[Event | Any | tuple[Any]]:
+        """Query the database for events and iterate over the results.
+
+        This function is implemented in a lazy fashion - results will only be
+        fetched from the database as long there is a consumer for them.
+
+        All parameters are considered to be filters, limiting the result set
+        to objects which meet the filter's specification.  Filters can be
+        combined (within reason).
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            type (str):  Event type
+            source (str):  Database ID of a source device
+            fragment (str):  Name of a present custom/standard fragment
+            fragment_type (str):  Type of a present custom/standard fragment
+            fragment_value (str):  Value of a present custom/standard fragment
+            before (str|datetime):  Datetime object or ISO date/time string. Only
+                events assigned to a time before this date are returned.
+            after (str|datetime):  Datetime object or ISO date/time string. Only
+                events assigned to a time after this date are returned.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
+            min_age (timedelta): Minimum age for selected events.
+            max_age (timedelta): Maximum age for selected events.
+            created_before (str|datetime):  Only events created before this date are returned.
+            created_after (str|datetime):  Only events created after this date are returned.
+            created_from (str|datetime): Same as `created_after`
+            created_to (str|datetime): Same as `created_before`
+            updated_before (str|datetime):  Only events updated before this date are returned.
+            updated_after (str|datetime):  Only events updated after this date are returned.
+            last_updated_from (str|datetime): Same as `updated_after`
+            last_updated_to (str|datetime): Same as `updated_before`
+            with_source_assets (bool): Whether also events for related source
+                assets should be included. Requires `source`.
+            with_source_devices (bool): Whether also events for related source
+                devices should be included. Requires `source`.
+            reverse (bool): Invert the order of results, starting with the
+                most recent one.
+            revert (bool): Same as `reverse`.
+            limit (int): Limit the number of results to this number.
+            include (str|JsonMatcher): Client-side inclusion filter.
+            exclude (str|JsonMatcher): Client-side exclusion filter.
+            page_size (int): Number of events read per request.
+            page_number (int): Pull a specific page only.
+            as_values: Extract values at JSON paths as tuples.
+            workers (int): Number of parallel page-fetch workers.
+
+        Returns:
+            AsyncIterator of Event objects
+        """
+        params = map_params(
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            created_before=created_before,
+            created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            reverse=reverse,
+            revert=revert,
+            page_size=page_size,
+            **kwargs
+        ) if not expression else ()
+        return self._iterate(
+            expression=expression,
+            params=params,
+            page_number=page_number,
+            limit=limit,
+            include=include,
+            exclude=exclude,
+            as_values=as_values,
+            workers=workers,
+        )
+
+    async def get_all(
+            self,
+            expression: str = None,
+            *,
+            type: str | None = None,   # noqa (type)
+            source: str | None = None,
+            fragment: str | None = None,
+            fragment_type: str | None = None,
+            fragment_value: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: timedelta | None = None,
+            max_age: timedelta | None = None,
+            created_before: str | datetime | None = None,
+            created_after: str | datetime | None = None,
+            created_from: str | datetime | None = None,
+            created_to: str | datetime | None = None,
+            updated_before: str | datetime | None = None,
+            updated_after: str | datetime | None = None,
+            last_updated_from: str | datetime | None = None,
+            last_updated_to: str | datetime | None = None,
+            with_source_assets: bool | None = None,
+            with_source_devices: bool | None = None,
+            reverse: bool = False,
+            revert: bool = False,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            limit: int | None = None,
+            page_size: int = 1000,
+            page_number: int | None = None,
+            as_values: AsValuesSpec | None = None,
+            workers: int | None = None,
+            **kwargs
+    ) -> list[Event | Any | tuple[Any]]:
+        """Query the database for events and return the results as list.
+
+        This function is a greedy version of the `select` function. All
+        available results are read immediately and returned as list.
+
+        See `select` for a documentation of arguments.
+
+        Returns:
+            List of Event objects
+        """
+        return [x async for x in self.select(
+            expression=expression,
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            created_before=created_before,
+            created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            reverse=reverse,
+            revert=revert,
+            include=include,
+            exclude=exclude,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+            **kwargs,
+        )]
+
+    async def get_count(
+            self,
+            expression: str = None,
+            *,
+            type: str | None = None,   # noqa (type)
+            source: str | None = None,
+            fragment: str | None = None,
+            fragment_type: str | None = None,
+            fragment_value: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: timedelta | None = None,
+            max_age: timedelta | None = None,
+            created_before: str | datetime | None = None,
+            created_after: str | datetime | None = None,
+            created_from: str | datetime | None = None,
+            created_to: str | datetime | None = None,
+            updated_before: str | datetime | None = None,
+            updated_after: str | datetime | None = None,
+            last_updated_from: str | datetime | None = None,
+            last_updated_to: str | datetime | None = None,
+            **kwargs
+    ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        params = map_params(
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            created_before=created_before,
+            created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
+            **kwargs,
+        ) if not expression else ()
+        return await self._get_count(expression=expression, params=params)
+
+    async def get_last(
+            self,
+            expression: str = None,
+            *,
+            type: str | None = None,   # noqa (type)
+            source: str | None = None,
+            fragment: str | None = None,
+            fragment_type: str | None = None,
+            fragment_value: str | None = None,
+            before: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: timedelta | None = None,
+            with_source_assets: bool | None = None,
+            with_source_devices: bool | None = None,
+            **kwargs
+    ) -> Event | None:
+        """Retrieve the most recent matching event.
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            type (str):  Event type
+            source (str):  Database ID of a source device
+            fragment (str):  Name of a present custom/standard fragment
+            fragment_type (str):  Type of a present custom/standard fragment
+            fragment_value (str):  Value of a present custom/standard fragment
+            before (str|datetime):  Upper time bound
+            date_to (str|datetime): Same as `before`
+            min_age (timedelta): Minimum age for selected events.
+            with_source_assets (bool): Whether to include events for related assets.
+            with_source_devices (bool): Whether to include events for related devices.
+
+        Returns:
+            The most recent Event, or None if no match is found.
+        """
+        # ensure a lower bound so the query returns results ordered newest-first
+        after = None if (before or date_to or min_age) else '1970-01-01'
+        params = map_params(
+            type=type,
+            source=source,
+            fragment=fragment,
+            fragment_type=fragment_type,
+            fragment_value=fragment_value,
+            before=before,
+            after=after,
+            date_to=date_to,
+            min_age=min_age,
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            **kwargs,
+        ) if not expression else ()
+        return await self._get_last(expression=expression, params=params)
 
     async def create(self, *events: Event, workers: int | None = None) -> None:
-        await super()._create(workers=workers, *events)
+        """Create event objects within the database.
 
+        Args:
+            *events (Event):  Collection of Event instances
+            workers (int):  Number of parallel workers
+        """
+        await self._create(*events, workers=workers)
+
+    async def update(self, *events: Event, workers: int | None = None) -> None:
+        """Write changes to the database.
+
+        Args:
+            *events (Event):  Collection of Event instances
+            workers (int):  Number of parallel workers
+        """
+        await self._update(*events, workers=workers)
+
+    async def delete(self, *events: Event, workers: int | None = None) -> None:
+        """Delete event objects from the database.
+
+        Args:
+            *events (Event):  Collection of Event instances
+            workers (int):  Number of parallel workers
+        """
+        await self._delete(*events, workers=workers)
+
+    async def delete_by(
+            self,
+            expression: str = None,
+            *,
+            type: str | None = None,   # noqa (type)
+            source: str | None = None,
+            fragment: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: timedelta | None = None,
+            max_age: timedelta | None = None,
+            **kwargs
+    ) -> None:
+        """Query the database and delete matching events.
+
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            type (str):  Event type
+            source (str):  Database ID of a source device
+            fragment (str):  Name of a present custom/standard fragment
+            before (str|datetime):  Only events before this date are deleted.
+            after (str|datetime):  Only events after this date are deleted.
+            date_from (str|datetime): Same as `after`
+            date_to (str|datetime): Same as `before`
+            min_age (timedelta): Minimum age for selected events.
+            max_age (timedelta): Maximum age for selected events.
+        """
+        params = map_params(
+            type=type,
+            source=source,
+            fragment=fragment,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            **kwargs,
+        ) if not expression else ()
+        await self.c8y.delete(self._meta.resource_path, params=params)
+
+    async def create_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:
+        """Add a binary attachment to an event.
+
+        Args:
+            event_id (str):  The database ID of the event
+            file (str | PathLike | BinaryIO): File-like object or a file path
+            content_type (str):  Content type of the file sent
+
+        Returns:
+            Attachment details as JSON object (dict).
+        """
+        return await self.c8y.post_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
+
+    async def update_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:
+        """Update a binary attachment of an event.
+
+        Args:
+            event_id (str):  The database ID of the event
+            file (str | PathLike | BinaryIO): File-like object or a file path
+            content_type (str):  Content type of the file sent
+
+        Returns:
+            Attachment details as JSON object (dict).
+        """
+        return await self.c8y.put_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
+
+    async def download_attachment(self, event_id: str) -> bytes:
+        """Read a binary attachment of an event.
+
+        Args:
+            event_id (str):  The database ID of the event
+
+        Returns:
+            The event's binary attachment as bytes.
+        """
+        return await self.c8y.get_file(self.build_attachment_path(event_id))
+
+    async def delete_attachment(self, event_id: str) -> None:
+        """Remove a binary attachment from an event.
+
+        Args:
+            event_id (str):  The database ID of the event
+        """
+        await self.c8y.delete(self.build_attachment_path(event_id))

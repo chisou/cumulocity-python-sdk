@@ -1,6 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
-from os import PathLike
-from typing import BinaryIO, AsyncIterator, Any, Self
+from typing import AsyncIterator, Any, Self
 
 import orjson
 
@@ -14,7 +13,7 @@ from pyc8y.model.model_base import (
     assert_c8y,
     assert_id,
 )
-from pyc8y.types import BinariesMeta, AsValuesSpec
+from pyc8y.types import BinariesMeta, AsValuesSpec, FileSpec
 
 
 class Binary(ManagedObject):
@@ -32,7 +31,7 @@ class Binary(ManagedObject):
             name: str | None = None,
             owner: str | None = None,
             content_type: str | None = None,
-            file: str | PathLike | BinaryIO | None = None,
+            file: FileSpec | None = None,
             **kwargs
     ):
         filename = None
@@ -119,7 +118,7 @@ class Binaries(CumulocityResource[Binary]):
         """
         return await self.c8y.get_file(self.build_object_path(id))
 
-    async def upload(self, file: str | PathLike | BinaryIO, name: str, type: str) -> Binary:  # noqa (type)
+    async def upload(self, file: FileSpec, name: str, type: str) -> Binary:  # noqa (type)
         """Upload a file.
 
         Args:
@@ -168,7 +167,7 @@ class Binaries(CumulocityResource[Binary]):
             n += 1
         return n
 
-    async def update(self, id: str, file: str | PathLike | BinaryIO, type: str | None = None) -> None:  # noqa (type,id)
+    async def update(self, id: str, file: FileSpec, type: str | None = None) -> None:  # noqa (type,id)
         """Update a binary attachment.
 
         Args:

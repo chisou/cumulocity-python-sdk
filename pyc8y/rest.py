@@ -6,7 +6,7 @@ import ssl
 from collections import Counter
 from enum import StrEnum
 from pathlib import Path
-from typing import Self, Sequence, Any
+from typing import BinaryIO, Self, Sequence, Any
 
 import aiohttp
 import certifi
@@ -253,7 +253,7 @@ class CumulocityRestClient(object):
     async def post_file(
             self,
             resource: str,
-            file: bytes | str | os.PathLike,
+            file: str | os.PathLike | BinaryIO,
             filename: str | None = None,
             form_data: dict[str, str | bytes] | None = None,
             accept: str | None = "application/json",
@@ -263,7 +263,7 @@ class CumulocityRestClient(object):
 
         Args:
             resource (str):  The resource path.
-            file (bytes | str | PathLike):  The file content as bytes or a path to a file on disk.
+            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
             filename (str):  The filename for the upload part. Derived from the path if not specified.
             form_data (dict):  Additional file metadata as JSON (nested dict) stored within Cumulocity.
             accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
@@ -282,6 +282,8 @@ class CumulocityRestClient(object):
             path = Path(file)
             file = path.read_bytes()
             filename = filename or path.name
+        else:
+            filename = filename or getattr(file, 'name', None)
         session = await self.session
         form = aiohttp.FormData()
         form.add_field('file', file, filename=filename, content_type=content_type)
@@ -308,7 +310,7 @@ class CumulocityRestClient(object):
     async def put_file(
             self,
             resource: str,
-            file: bytes | str | os.PathLike,
+            file: str | os.PathLike | BinaryIO,
             accept: str | None = "application/json",
             content_type: str = "application/octet-stream",
     ) -> dict:
@@ -316,7 +318,7 @@ class CumulocityRestClient(object):
 
         Args:
             resource (str): Resource path
-            file (str|BinaryIO):  File-like object or a file path
+            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
             accept (str|None): Custom Accept header to use (default is
                 application/json). Specify '' to send no Accept header.
             content_type (str): Content type of the file sent

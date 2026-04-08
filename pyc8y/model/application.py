@@ -3,7 +3,7 @@
 # from __future__ import annotations  # need late import for CumulocityClient
 
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, BinaryIO, Self
+from typing import Any, AsyncIterator, Self
 
 import aiohttp
 
@@ -13,7 +13,7 @@ from pyc8y.model.tenant_option import TenantOptions, TenantOption
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, assert_c8y
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationsMeta, AsValuesSpec
+from pyc8y.types import ApplicationsMeta, AsValuesSpec, FileSpec
 
 
 class Application(CumulocityObject):
@@ -414,12 +414,12 @@ class Applications(CumulocityResource[Application]):
         """
         await self._delete(*applications, workers=workers)
 
-    async def upload_attachment(self, application_id: str, file: str | BinaryIO) -> None:
+    async def upload_attachment(self, application_id: str, file: FileSpec) -> None:
         """Upload application binary for a registered application.
 
         Args:
             application_id (str):  The Cumulocity object ID of the application
-            file (str|BinaryIO):  File path or file-like object to upload.
+            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
 
         See also: https://cumulocity.com/api/#tag/Application-binaries
         """
