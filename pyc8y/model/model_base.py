@@ -37,7 +37,8 @@ except ImportError:
             from pyc8y.model.matcher import JsonPathMatcher as DefaultMatcher
         except ImportError:
             DefaultMatcher = None
-from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec, MatcherSpec, ParamsSpec
+from pyc8y.model.matcher import JsonMatcher
+from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec
 
 CO = TypeVar("CO", bound="CumulocityObject")
 
@@ -622,7 +623,7 @@ class CumulocityResource(Generic[CO]):
             self,
             expression: str | None,
             params: dict | Sequence[tuple[str, Any]] | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
     ) -> CO | Any | tuple[Any] | None:
         if expression:
             result_json = await self.c8y.get(
@@ -650,12 +651,12 @@ class CumulocityResource(Generic[CO]):
             self,
             *,
             expression: str | None = None,
-            params: ParamsSpec = None,
+            params: Sequence[tuple[str, str]] | None = None,
             page_number: int | None = None,
             limit: int | None = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
-            as_values: AsValuesSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[CO | Any | tuple[CO]]:
         # if no specific page is defined we just start at 1

@@ -141,7 +141,7 @@ class Tenants(CumulocityResource[Tenant]):
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Tenant | Any]:
@@ -187,7 +187,7 @@ class Tenants(CumulocityResource[Tenant]):
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[Tenant]:

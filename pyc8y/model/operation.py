@@ -19,7 +19,7 @@ from pyc8y.model.model_base import (
     ensure_ids,
     assert_c8y,
 )
-from pyc8y.types import OperationsMeta, BulkOperationsMeta, AsValuesSpec, MatcherSpec
+from pyc8y.types import OperationsMeta, BulkOperationsMeta, AsValuesSpec
 
 
 class OperationStatus(StrEnum):
@@ -135,12 +135,12 @@ class Operations(CumulocityResource[Operation]):
             min_age: str | timedelta | None = None,
             max_age: str | timedelta | None = None,
             reverse: bool = False,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Operation | Any | tuple[Any]]:
@@ -218,12 +218,12 @@ class Operations(CumulocityResource[Operation]):
             min_age: str | timedelta | None = None,
             max_age: str | timedelta | None = None,
             reverse: bool = False,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[Operation | Any | tuple[Any]]:
@@ -270,7 +270,7 @@ class Operations(CumulocityResource[Operation]):
             date_to: str | datetime | None = None,
             before: str | datetime | None = None,
             min_age: str | timedelta | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             **kwargs
     ) -> Operation | None:
         """Query the database and return the last matching operation.
@@ -489,8 +489,8 @@ class BulkOperations(CumulocityResource[BulkOperation]):
     def select(
             self,
             *,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
@@ -523,8 +523,8 @@ class BulkOperations(CumulocityResource[BulkOperation]):
     async def get_all(
             self,
             *,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,

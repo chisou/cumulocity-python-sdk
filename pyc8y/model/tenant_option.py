@@ -150,7 +150,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[TenantOption | Any | tuple[Any]]:
         """Query the database for tenant options and iterate over the results.
@@ -188,7 +188,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
             page_size: int = 1000,
             page_number: int | None = None,
             as_map: bool = False,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
     ) -> list[TenantOption] | dict[str, str] | dict[str, dict[str, str]]:
         """Query the database for tenant options and return the results as list.

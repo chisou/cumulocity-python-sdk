@@ -16,7 +16,7 @@ from pyc8y.model.model_base import (
     time_property,
     map_params,
 )
-from pyc8y.types import AuditRecordsMeta, AsValuesSpec, MatcherSpec
+from pyc8y.types import AuditRecordsMeta, AsValuesSpec
 
 
 @dataclasses.dataclass
@@ -190,12 +190,12 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             min_age: str | timedelta | None = None,
             max_age: str | timedelta | None = None,
             reverse: bool = False,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[AuditRecord | Any | tuple[Any]]:
@@ -270,12 +270,12 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             min_age: str | timedelta | None = None,
             max_age: str | timedelta | None = None,
             reverse: bool = False,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[AuditRecord | Any | tuple[Any]]:

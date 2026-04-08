@@ -13,7 +13,7 @@ from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
 from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, assert_c8y, \
     assert_id, \
     tag_property, CumulocityResource, map_params, CO
-from pyc8y.types import MimeType, InventoryMeta
+from pyc8y.types import MimeType, InventoryMeta, AsValuesSpec
 
 
 @dataclass
@@ -643,7 +643,7 @@ class Inventory(CumulocityResource[MO]):
             with_groups: bool = None,
             with_parents: bool = None,
             with_latest_values: bool = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            as_values: AsValuesSpec | None = None,
             **kwargs) -> MO | Any | tuple[Any]:
         """ Query the database for a specific managed object.
 
@@ -744,11 +744,11 @@ class Inventory(CumulocityResource[MO]):
             with_parents: bool = None,
             with_latest_values: bool = None,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[MO | Any | tuple[Any]]:
@@ -813,11 +813,11 @@ class Inventory(CumulocityResource[MO]):
             with_parents: bool = None,
             with_latest_values: bool = None,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
@@ -952,9 +952,9 @@ class Inventory(CumulocityResource[MO]):
             text: str = None,
             limit: int = None,
             page_number: int = None,
-            include: JsonMatcher = None,
-            exclude: JsonMatcher = None,
-            as_values = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
@@ -1180,11 +1180,11 @@ class DeviceGroupInventory(Inventory):
             with_parents: bool = None,
             with_latest_values: bool = None,
             limit: int = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             page_size: int = 100,
             page_number: int = None,
-            as_values: str | tuple | list[str | tuple] = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[DeviceGroup | Any | tuple[Any]]:

@@ -13,7 +13,7 @@ from pyc8y.model.tenant_option import TenantOptions, TenantOption
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, assert_c8y
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationsMeta, AsValuesSpec, MatcherSpec
+from pyc8y.types import ApplicationsMeta, AsValuesSpec
 
 
 class Application(CumulocityObject):
@@ -271,8 +271,8 @@ class Applications(CumulocityResource[Application]):
             subscriber: str | None = None,
             provided_for: str | None = None,
             has_versions: bool | None = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 100,
             page_number: int | None = None,
@@ -357,8 +357,8 @@ class Applications(CumulocityResource[Application]):
             subscriber: str | None = None,
             provided_for: str | None = None,
             has_versions: bool | None = None,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 100,
             page_number: int | None = None,

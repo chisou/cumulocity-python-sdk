@@ -14,7 +14,7 @@ from pyc8y.model.model_base import (
     assert_c8y,
     assert_id,
 )
-from pyc8y.types import BinariesMeta, AsValuesSpec, MatcherSpec
+from pyc8y.types import BinariesMeta, AsValuesSpec
 
 
 class Binary(ManagedObject):
@@ -190,12 +190,12 @@ class Binaries(CumulocityResource[Binary]):
             child_device: str | None = None,
             child_asset: str | None = None,
             child_addition: str | None = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Binary | Any | tuple[Any]]:
@@ -248,12 +248,12 @@ class Binaries(CumulocityResource[Binary]):
             child_device: str | None = None,
             child_asset: str | None = None,
             child_addition: str | None = None,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 1000,
             page_number: int | None = None,
-            as_values: AsValuesSpec = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[Binary | Any | tuple[Any]]:

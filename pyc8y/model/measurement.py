@@ -16,7 +16,7 @@ from pyc8y.model.model_base import (
     map_params,
 )
 from pyc8y.model.model_util import to_datetime
-from pyc8y.types import MeasurementsMeta
+from pyc8y.types import MeasurementsMeta, AsValuesSpec
 
 
 class Units(StrEnum):
@@ -459,7 +459,7 @@ class Measurements(CumulocityResource[Measurement]):
             limit: int = None,
             page_size: int = 1000,
             page_number: int = None,
-            as_values: str | tuple | list[str | tuple] = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> list[Measurement | Any | tuple[Any]]:
@@ -552,7 +552,7 @@ class Measurements(CumulocityResource[Measurement]):
             date_to: str | datetime = None,
             before: str | datetime = None,
             min_age: timedelta = None,
-            as_values: str | tuple | list[str | tuple] = None,
+            as_values: AsValuesSpec | None = None,
             **kwargs
     ) -> Measurement | None:
         """ Query the database and return the last matching measurement.
@@ -629,7 +629,7 @@ class Measurements(CumulocityResource[Measurement]):
             limit: int | None = None,
             page_size: int | None = 1000,
             page_number: int | None = None,
-            as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] = None,
+            as_values: AsValuesSpec | None = None,
             workers: int | None = None,
             **kwargs
     ) -> AsyncIterator[Measurement | Any | tuple[Any]]:

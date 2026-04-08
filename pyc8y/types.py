@@ -1,18 +1,11 @@
 # Copyright (c) 2026 Christoph Souris
 
 from abc import ABC
-from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import ClassVar, Sequence, Any
 
-from c8y_api.model import JsonMatcher
+AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]]
 
-IdSpec = str | None
-ParamsSpec = Sequence[tuple[str, str]] | None
-AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None
-MatcherSpec = str | JsonMatcher | None
-DatetimeSpec = str | datetime | None
-TimedeltaSpec = str | timedelta | None
 
 class MimeType(StrEnum):
     ALARM = "application/vnd.com.nsn.cumulocity.alarm+json"
@@ -54,20 +47,6 @@ class ResourceMeta(ABC):
         return f"{cls.resource_path}/{object_id}"
 
 
-class MeasurementsMeta(ResourceMeta):
-    object_mime_type = MimeType.MEASUREMENT
-    collection_mime_type = MimeType.MEASUREMENT_COLLECTION
-    resource_path = "measurement/measurements"
-    collection_name = "measurements"
-
-
-class EventsMeta(ResourceMeta):
-    object_mime_type = MimeType.EVENT
-    collection_mime_type = MimeType.EVENT_COLLECTION
-    resource_path = "event/events"
-    collection_name = "events"
-
-
 class AlarmMeta(ResourceMeta):
     object_mime_type = MimeType.ALARM
     collection_mime_type = MimeType.ALARM_COLLECTION
@@ -80,6 +59,34 @@ class ApplicationsMeta(ResourceMeta):
     collection_mime_type = MimeType.APPLICATION_COLLECTION
     resource_path = "application/applications"
     collection_name = "applications"
+
+
+class AuditRecordsMeta(ResourceMeta):
+    object_mime_type = MimeType.AUDIT_RECORD
+    collection_mime_type = MimeType.AUDIT_RECORD_COLLECTION
+    resource_path = "audit/auditRecords"
+    collection_name = "auditRecords"
+
+
+class BinariesMeta(ResourceMeta):
+    object_mime_type = MimeType.MANAGED_OBJECT
+    collection_mime_type = MimeType.MANAGED_OBJECT_COLLECTION
+    resource_path = "inventory/binaries"
+    collection_name = "managedObjects"
+
+
+class BulkOperationsMeta(ResourceMeta):
+    object_mime_type = MimeType.BULK_OPERATION
+    collection_mime_type = MimeType.BULK_OPERATION_COLLECTION
+    resource_path = "devicecontrol/bulkoperations"
+    collection_name = "bulkOperations"
+
+
+class EventsMeta(ResourceMeta):
+    object_mime_type = MimeType.EVENT
+    collection_mime_type = MimeType.EVENT_COLLECTION
+    resource_path = "event/events"
+    collection_name = "events"
 
 
 class IdentityMeta(ResourceMeta):
@@ -100,11 +107,11 @@ class InventoryMeta(ResourceMeta):
     collection_name = "managedObjects"
 
 
-class AuditRecordsMeta(ResourceMeta):
-    object_mime_type = MimeType.AUDIT_RECORD
-    collection_mime_type = MimeType.AUDIT_RECORD_COLLECTION
-    resource_path = "audit/auditRecords"
-    collection_name = "auditRecords"
+class MeasurementsMeta(ResourceMeta):
+    object_mime_type = MimeType.MEASUREMENT
+    collection_mime_type = MimeType.MEASUREMENT_COLLECTION
+    resource_path = "measurement/measurements"
+    collection_name = "measurements"
 
 
 class OperationsMeta(ResourceMeta):
@@ -112,13 +119,6 @@ class OperationsMeta(ResourceMeta):
     collection_mime_type = MimeType.OPERATION_COLLECTION
     resource_path = "devicecontrol/operations"
     collection_name = "operations"
-
-
-class BulkOperationsMeta(ResourceMeta):
-    object_mime_type = MimeType.BULK_OPERATION
-    collection_mime_type = MimeType.BULK_OPERATION_COLLECTION
-    resource_path = "devicecontrol/bulkoperations"
-    collection_name = "bulkOperations"
 
 
 class SubscriptionsMeta(ResourceMeta):
@@ -140,11 +140,4 @@ class TenantsMeta(ResourceMeta):
     collection_mime_type = MimeType.TENANT_COLLECTION
     resource_path = "tenant/tenants"
     collection_name = "tenants"
-
-
-class BinariesMeta(ResourceMeta):
-    object_mime_type = MimeType.MANAGED_OBJECT
-    collection_mime_type = MimeType.MANAGED_OBJECT_COLLECTION
-    resource_path = "inventory/binaries"
-    collection_name = "managedObjects"
 

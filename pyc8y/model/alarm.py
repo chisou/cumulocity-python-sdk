@@ -6,7 +6,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, CumulocityResource, \
     assert_c8y, map_params, time_property
-from pyc8y.types import AlarmMeta, AsValuesSpec, MatcherSpec
+from pyc8y.types import AlarmMeta, AsValuesSpec
 
 
 class Severity(StrEnum):
@@ -149,8 +149,8 @@ class Alarms(CumulocityResource[Alarm]):
             with_source_additions: bool | None = None,
             reverse: bool = False,
             revert: bool = False,
-            include: MatcherSpec = None,
-            exclude: MatcherSpec = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int | None = None,
             page_size: int = 100,
             page_number: int | None = None,
@@ -303,8 +303,8 @@ class Alarms(CumulocityResource[Alarm]):
             max_age: str | timedelta = None,
             reverse: bool = False,
             revert: bool = False,
-            include: str | JsonMatcher = None,
-            exclude: str | JsonMatcher = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
             limit: int = None,
             page_size: int = 100,
             page_number: int = None,
