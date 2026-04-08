@@ -402,7 +402,7 @@ class CumulocityObject:
         return True
 
     def has(self, path):
-        assert path in self
+        return path in self
 
     def __getitem__(self, path) -> Any:
         return get_by_path(self._json, path, fail=True)
