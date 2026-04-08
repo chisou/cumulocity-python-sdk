@@ -1,9 +1,11 @@
 # Copyright (c) 2026 Christoph Souris
 
 import logging
+import os
 import ssl
 from collections import Counter
 from enum import StrEnum
+from pathlib import Path
 from typing import Self, Sequence, Any
 
 import aiohttp
@@ -247,6 +249,133 @@ class CumulocityRestClient(object):
 
     async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str, str]] | None = None, accept: str | None = "application/json", content_type: str | None = None) -> dict:
         return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
+
+    async def post_file(
+            self,
+            resource: str,
+            file: bytes | str | os.PathLike,
+            filename: str | None = None,
+            form_data: dict[str, str | bytes] | None = None,
+            accept: str | None = "application/json",
+            content_type: str = "application/octet-stream",
+    ) -> dict:
+        """Upload a binary file using multipart/form-data.
+
+        Args:
+            resource (str):  The resource path.
+            file (bytes | str | PathLike):  The file content as bytes or a path to a file on disk.
+            filename (str):  The filename for the upload part. Derived from the path if not specified.
+            form_data (dict):  Additional file metadata as JSON (nested dict) stored within Cumulocity.
+            accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
+            content_type (str):  The MIME type of the file; `application/octet-stream` is assumed/automatically
+                inserted if omitted.
+
+        Returns:
+            The JSON response (nested dict), {} if no response body is returned.
+
+        Raises:
+            KeyError:  if the resources is not found (404)
+            ValueError:  if the request cannot be processes (5xx) or cannot be processed for other reasons
+                (only 2xx is accepted).
+        """
+        if isinstance(file, (str, os.PathLike)):
+            path = Path(file)
+            file = path.read_bytes()
+            filename = filename or path.name
+        session = await self.session
+        form = aiohttp.FormData()
+        form.add_field('file', file, filename=filename, content_type=content_type)
+        if form_data:
+            for key, value in form_data.items():
+                form.add_field(key, value)
+
+        # proper multipart content-type is set by aiohttp
+        async with session.request(method="POST", url=resource, data=form, headers={"Accept": accept}) as r:
+            if r.status == 401:
+                raise UnauthorizedError("POST", resource, message=(await r.json())['message'])
+            if r.status == 403:
+                raise AccessDeniedError("POST", resource, message=(await r.json())['message'])
+            if r.status == 404:
+                raise KeyError(f"No such object: {resource}")
+            if 500 <= r.status <= 599:
+                raise ValueError(f"Invalid POST request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status not in (200, 201, 202, 204):
+                raise ValueError(f"Unable to perform POST request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status in (200, 201) and r.content_length != 0:
+                return orjson.loads(await r.read())
+            return {}
+
+    async def put_file(
+            self,
+            resource: str,
+            file: bytes | str | os.PathLike,
+            accept: str | None = "application/json",
+            content_type: str = "application/octet-stream",
+    ) -> dict:
+        """Update a binary file using multipart/form-data.
+
+        Args:
+            resource (str): Resource path
+            file (str|BinaryIO):  File-like object or a file path
+            accept (str|None): Custom Accept header to use (default is
+                application/json). Specify '' to send no Accept header.
+            content_type (str): Content type of the file sent
+                (default is application/octet-stream)
+
+        Returns:
+            The JSON response (nested dict), {} if no response body is returned.
+
+        Raises:
+            KeyError:  if the resources is not found (404)
+            ValueError:  if the request cannot be processes (5xx) or cannot be processed for other reasons
+                (only 2xx is accepted).
+        """
+        if isinstance(file, (str, os.PathLike)):
+            path = Path(file)
+            file = path.read_bytes()
+        session = await self.session
+        async with session.request(method="PUT", url=resource, data=file, headers={"Accept": accept}) as r:
+            if r.status == 401:
+                raise UnauthorizedError("PUT", resource, message=(await r.json())['message'])
+            if r.status == 403:
+                raise AccessDeniedError("PUT", resource, message=(await r.json())['message'])
+            if r.status == 404:
+                raise KeyError(f"No such object: {resource}")
+            if 500 <= r.status <= 599:
+                raise ValueError(f"Invalid PUT request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status not in (200, 201, 202, 204):
+                raise ValueError(f"Unable to perform PUT request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status in (200, 201) and r.content_length != 0:
+                return orjson.loads(await r.read())
+            return {}
+
+    async def get_file(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> bytes:
+        """Download a binary file.
+
+        Args:
+            resource (str):  The resource path.
+            params (dict|Sequence[tuple]): Additional request parameters
+
+        Returns:
+            The file content as bytes.
+
+        Raises:
+            KeyError:  if the resource is not found (404)
+            ValueError:  if the request cannot be processed (5xx or unexpected status)
+        """
+        session = await self.session
+        async with session.get(url=resource, params=params) as r:
+            if r.status == 401:
+                raise UnauthorizedError("GET", resource, message=(await r.json())['message'])
+            if r.status == 403:
+                raise AccessDeniedError("GET", resource, message=(await r.json())['message'])
+            if r.status == 404:
+                raise KeyError(f"No such object: {resource}")
+            if 500 <= r.status <= 599:
+                raise ValueError(f"Invalid GET request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status != 200:
+                raise ValueError(f"Unable to perform GET request. Status: {r.status}, Response:\n {await r.text()}")
+            return await r.read()
 
     async def delete(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> dict:
         return await self.request("DELETE", resource, params)
