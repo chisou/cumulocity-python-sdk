@@ -3,7 +3,6 @@
 import random
 from datetime import datetime, timedelta, timezone
 
-from dateutil import tz
 import logging
 import time
 from typing import List
@@ -15,7 +14,7 @@ from pyc8y.client import CumulocityClient
 from pyc8y.model import Device, Measurement, Series, Value, Kelvin, Count
 from pyc8y.model.measurement import AggregationType
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 def get_ids(ms: List[Measurement]) -> List[str]:
@@ -31,7 +30,7 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
     created_devices = []
 
     async def factory_fun(n: int, device=None, type=None, series=None) -> List[Measurement]:
-        type = type or RandomNameGenerator.random_name(2)
+        type = type or create_random_name()
         series = series or type
 
         # 1) create device
@@ -44,7 +43,7 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
         ms = []
         now = time.time()
         for i in range(0, n):
-            measurement_time = datetime.fromtimestamp(now - i*60, tz.tzutc())
+            measurement_time = datetime.fromtimestamp(now - i*60, timezone.utc)
             m = Measurement(c8y=live_c8y, type=type, source=device.id, time=measurement_time)
             # m[series] = {series: Value(random.randint(1000, 9999), '#')}
             m[series] = {'series': Value(random.randint(1000, 9999), '#')}
@@ -67,7 +66,7 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     """Verify that selection works as expected."""
     # pylint: disable=too-many-statements)
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
     other_name = f'other_{name}'
 
     # create a couple of measurements (at a new device)

@@ -9,13 +9,13 @@ import pytest
 from c8y_api import CumulocityApi
 from c8y_api.model import GlobalRole, User
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
-    rolename = RandomNameGenerator.random_name()
+    rolename = create_random_name()
 
     role = GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description')
 
@@ -49,7 +49,7 @@ def test_select(live_c8y: CumulocityApi, safe_create):
     all_roles = live_c8y.global_roles.get_all()
 
     # (2) create a user and assign roles
-    username = RandomNameGenerator.random_name(2)
+    username = create_random_name()
     email = f'{username}@c8y.com'
     user = safe_create(User(live_c8y, username=username, email=email, enabled=True))
     selected_roles = random.sample(all_roles, k=5)
@@ -77,7 +77,7 @@ def test_select(live_c8y: CumulocityApi, safe_create):
 def test_updating_users(live_c8y: CumulocityApi, safe_create):
     """Verify that users can be added/removed to/from a global role."""
 
-    rolename = RandomNameGenerator.random_name()
+    rolename = create_random_name()
     role: GlobalRole = safe_create(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
 
     # -> initially the current user should not have this global role
@@ -100,7 +100,7 @@ def test_updating_users(live_c8y: CumulocityApi, safe_create):
 def test_updating_permissions(live_c8y: CumulocityApi, module_factory):
     """Verify that permissions can be added/removed to/from a global role."""
 
-    rolename = RandomNameGenerator.random_name()
+    rolename = create_random_name()
     role: GlobalRole = module_factory(GlobalRole(c8y=live_c8y, name=rolename, description=f'{rolename} description'))
 
     # -> initially there should be no permissions

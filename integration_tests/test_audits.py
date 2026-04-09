@@ -6,13 +6,13 @@ from pyc8y.client import CumulocityClient
 from pyc8y.model.audit import AuditRecord, Severity
 from pyc8y.model.managed_object import Device
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic creation and lookup of Audit Records works as expected."""
 
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
 
     # (1) create audit record
     before = datetime.now(timezone.utc)

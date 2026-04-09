@@ -13,14 +13,14 @@ from pyc8y.model.matcher import jsonpath
 from pyc8y.model.measurement import Measurement, Value
 from pyc8y.model.model_base import ensure_ids
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 @pytest.fixture(name="mutable_object", scope="module")
 async def fix_mutable_object(module_factory, request) -> ManagedObject:
     """Provide a single managed object ready to be changed during a test."""
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
     mo = ManagedObject(name=name, type=name, **{name: {'key': 'value'}})
     return await module_factory(mo)
 
@@ -46,7 +46,7 @@ async def fix_similar_objects(module_factory) -> List[ManagedObject]:
     else identical).  These are not to be changed."""
 
     n = 5
-    basename = RandomNameGenerator.random_name(2)
+    basename = create_random_name()
     typename = basename
 
     objects = await asyncio.gather(*[
@@ -134,7 +134,7 @@ async def test_filtering(live_c8y: CumulocityClient, safe_create):
 
 async def test_get_single_by_query(live_c8y: CumulocityClient, module_factory):
     """Verify that the get_by function works as expected."""
-    basename = RandomNameGenerator.random_name(2)
+    basename = create_random_name()
     typename = basename
 
     # create a couple of objects with two types
@@ -186,7 +186,7 @@ async def test_reload(live_c8y):
     the _reload function. The correct instrumentation of this abstract function
     by other inventory objects is verified through a unit test.
     """
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
     obj0 = await ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create()
 
     # add a fragment
@@ -214,7 +214,7 @@ async def fix_asset_hierarchy_root_id(module_factory):
 
     It is automatically cleaned up after testing.
     """
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
     obj, addition, asset, device = await asyncio.gather(
         module_factory(ManagedObject(name=f'Root-{name}', type=f'Root-{name}')),
         module_factory(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}')),
@@ -317,7 +317,7 @@ async def test_deletion(live_c8y: CumulocityClient, safe_create):
     Deleting the root object will not delete the children unless the 'cascade' option is used
     (using the delete_tree function).
     """
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
     obj = await safe_create(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
     addition = await safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
     asset = await safe_create(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
@@ -370,7 +370,7 @@ async def test_device_deletion(live_c8y: CumulocityClient, safe_create):
     Deleting the root device will not delete the children unless the 'cascade' option is used
     (using the delete_tree function).
     """
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
     async with asyncio.TaskGroup() as tg:
         t_obj = tg.create_task(safe_create(Device(name=f'Root-{name}', type=f'Root-{name}')))
         t_addition = tg.create_task(safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}')))

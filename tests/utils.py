@@ -8,11 +8,8 @@ from typing import List, Set, Any
 from unittest.mock import Mock
 
 import jwt
-import pytest
 
 from c8y_api.model._base import CumulocityObject
-
-from util.testing_util import RandomNameGenerator
 
 
 def assert_in_any(string, strings):
@@ -140,12 +137,6 @@ def isolate_all_call_args(mock: Mock, *args: str, name: str, pos: int = None) ->
     if not result:
         raise KeyError(f"Argument not found in any of the calls: '{name}', pos: {pos}.")
     return result
-
-
-@pytest.fixture(scope='function')
-def random_name() -> str:
-    """Provide a random name."""
-    return RandomNameGenerator.random_name()
 
 
 def b64encode(auth_string: str) -> str:

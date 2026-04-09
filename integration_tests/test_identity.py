@@ -4,15 +4,16 @@ import pytest
 
 from pyc8y.client import CumulocityClient
 from pyc8y.model.identity import ExternalId
-from util.testing_util import RandomNameGenerator
+
+from util.testing_util import create_random_name
 
 
 async def test_CRUD(live_c8y: CumulocityClient, session_device):
     """Verify that basic creation/removal and lookup of ID works as expected."""
 
-    id_ref1 = RandomNameGenerator.random_name(3, '-') + '-12345'
-    id_ref2 = RandomNameGenerator.random_name(3, '-') + '-12345'
-    id_ref3 = RandomNameGenerator.random_name(3, '-') + '-12345'
+    id_ref1 = create_random_name() + '-12345'
+    id_ref2 = create_random_name() + '-12345'
+    id_ref3 = create_random_name() + '-12345'
     id_type = 'external_id_type'
 
     external_id1 = await (ExternalId(

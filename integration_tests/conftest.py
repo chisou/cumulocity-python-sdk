@@ -1,12 +1,8 @@
 # Copyright (c) 2026 Christoph Souris
 
-import io
-import json
 import logging
 import os
 import sys
-import zipfile
-from tempfile import TemporaryFile, NamedTemporaryFile
 from typing import Any
 
 import pytest
@@ -16,17 +12,16 @@ from pytest_asyncio import is_async_test
 from pyc8y.app import c8y_keys, SimpleCumulocityApp
 from pyc8y.auth import BasicAuth
 from pyc8y.client import CumulocityClient
-from pyc8y.model import Device, ManagedObject
+from pyc8y.model import Device
 from pyc8y.model.application import Application
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 # Configure logging
 logging.getLogger('urllib3').setLevel(logging.DEBUG)
 logging.getLogger('websockets').setLevel(logging.DEBUG)
-logging.getLogger('c8y_tk').setLevel(logging.DEBUG)
-logging.getLogger('c8y_api').setLevel(logging.DEBUG)
+logging.getLogger('pyc8y').setLevel(logging.DEBUG)
 
 
 def pytest_collection_modifyitems(items):
@@ -36,14 +31,9 @@ def pytest_collection_modifyitems(items):
         async_test.add_marker(session_scope_marker, append=False)
 
 
-@pytest.fixture(scope='function')
-def random_name():
-    """Conveniently provide a random name."""
-    return RandomNameGenerator().random_name()
 
-
-@pytest.fixture(scope='session')
-def logger():
+@pytest.fixture(scope='session', name="logger")
+def fix_logger():
     """Provide a logger for testing."""
     handler = logging.StreamHandler(sys.__stderr__)
     logger = logging.getLogger('pyc8y.test')
@@ -55,8 +45,8 @@ def logger():
     return logger
 
 
-@pytest.fixture(scope='session')
-def safe_executor(logger):
+@pytest.fixture(scope='session', name="safe_executor")
+def fix_safe_executor(logger):
     """A safe function execution wrapper.
 
     This provides a `execute(fun)` function which catches/logs all
@@ -97,8 +87,8 @@ def safe_executor(logger):
 #             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 
-@pytest.fixture(scope='session')
-def test_environment(logger):
+@pytest.fixture(scope='session', name="test_environment")
+def fix_test_environment(logger):
     """Prepare the environment, i.e. read a .env file if found."""
 
     # check if there is a .env file
@@ -115,8 +105,8 @@ def test_environment(logger):
     logger.info(f"Found the following keys: {', '.join(defined_keys)}.")
 
 
-@pytest.fixture(scope='session')
-async def live_c8y(request, test_environment):
+@pytest.fixture(scope='session', name="live_c8y")
+async def fix_live_c8y(request, test_environment):
     """Provide a live CumulocityApi instance as defined by the environment."""
     if 'C8Y_BASEURL' not in os.environ:
         raise RuntimeError("Missing Cumulocity environment variables (C8Y_*). Cannot create CumulocityApi instance. "
@@ -127,8 +117,8 @@ async def live_c8y(request, test_environment):
     await c8y.close()
 
 
-@pytest.fixture(scope='function')
-async def safe_create(logger, live_c8y, request):
+@pytest.fixture(scope='function', name="safe_create")
+async def fix_safe_create(logger, live_c8y, request):
     """Wrap a created Cumulocity object so that it will automatically be deleted
     after a test regardless of an exception or failure.
 
@@ -156,8 +146,8 @@ async def safe_create(logger, live_c8y, request):
             logger.error(f"Caught exception ignored due to safe call: {e} (node: {node})")
 
 
-@pytest.fixture(scope="module")
-async def module_factory(logger, live_c8y: CumulocityClient, request):
+@pytest.fixture(scope="module", name="module_factory")
+async def fix_module_factory(logger, live_c8y: CumulocityClient, request):
     """Provides a generic object factory function which ensures that created
     objects are removed after the module testing.
 
@@ -184,8 +174,8 @@ async def module_factory(logger, live_c8y: CumulocityClient, request):
             logger.warning(f"{obj.__class__.__name__} object #{obj.id} (module {node}) could not be removed (not found).")
 
 
-@pytest.fixture(scope="module")
-async def session_factory(logger, live_c8y: CumulocityClient, request):
+@pytest.fixture(scope="module", name="session_factory")
+async def fix_session_factory(logger, live_c8y: CumulocityClient, request):
     """Provides a generic object factory function which ensures that created
     objects are removed after the module testing.
 
@@ -216,8 +206,8 @@ async def session_factory(logger, live_c8y: CumulocityClient, request):
 
 
 
-@pytest.fixture(scope='session')
-async def app_factory(logger, live_c8y: CumulocityClient):
+@pytest.fixture(scope='session', name="app_factory")
+async def fix_app_factory(logger, live_c8y: CumulocityClient):
     """Provide an application (microservice) factory which creates a
     microservice application within Cumulocity, registers itself as
     subscribed tenant and returns the application's bootstrap client.
@@ -291,19 +281,19 @@ async def app_factory(logger, live_c8y: CumulocityClient):
             logger.warning(f"Application #{a.id} could not be removed (not found).")
 
 
-@pytest.fixture(scope='function')
-def sample_object(logger, live_c8y, random_name, auto_delete):
-    """Provide a sample object which is automatically removed after test."""
-    obj = ManagedObject(live_c8y, name=random_name, type=random_name).create()
-    auto_delete(obj)
-    return obj
-
-
-@pytest.fixture(scope='session')
-async def session_device(logger: logging.Logger, live_c8y: CumulocityClient):
+# @pytest.fixture(scope='function')
+# def sample_object(logger, live_c8y, random_name, auto_delete):
+#     """Provide a sample object which is automatically removed after test."""
+#     obj = ManagedObject(live_c8y, name=random_name, type=random_name).create()
+#     auto_delete(obj)
+#     return obj
+#
+#
+@pytest.fixture(scope='session', name="session_device")
+async def fix_session_device(logger: logging.Logger, live_c8y: CumulocityClient):
     """Provide an sample device, just for testing purposes."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     device = await Device(live_c8y, type=typename, name=typename, com_cumulocity_model_Agent={}).create()
     logger.info(f"Created test device #{device.id}, name={device.name}")
 

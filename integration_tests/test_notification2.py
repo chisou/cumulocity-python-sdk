@@ -17,7 +17,9 @@ from c8y_api.model import Device, ManagedObject, Subscription, Measurement, Valu
 from c8y_tk.notification2 import AsyncListener, Listener, AsyncQueueListener, QueueListener
 from tests.utils import assert_in_any, assert_no_failures
 
-from util.testing_util import RandomNameGenerator
+import coolname
+
+from util.testing_util import create_random_name
 
 # @pytest.fixture(autouse=True)
 # def no_stray_threads():
@@ -54,7 +56,7 @@ def fix_sample_subscription(sample_object):
 
 def test_subscription_deletion(live_c8y, safe_create):
     """Verify that a subscription is removed with the corresponding managed object."""
-    mo_name = RandomNameGenerator.random_name(3)
+    mo_name = create_random_name()
     mo = safe_create(ManagedObject(name=f'{mo_name}1', type=f'test_{mo_name}'))
 
     Subscription(live_c8y, name=f'{mo_name.replace("_", "")}Subscription',
@@ -72,7 +74,7 @@ def fix_object_tree_builder(live_c8y: CumulocityApi, safe_create):
 
     @pytest.mark.usefixtures('safe_create')
     def build():
-        mo_name = RandomNameGenerator.random_name(3)
+        mo_name = coolname.generate_slug(3)
         type_name = f'test_{mo_name}'
         mo = safe_create(ManagedObject(live_c8y, name=mo_name, type=type_name))
         child_asset = safe_create(ManagedObject(live_c8y, name=f'{mo_name}_child_asset', type=type_name))
@@ -348,7 +350,7 @@ async def test_asyncio_object_update_and_deletion(logger, live_c8y: CumulocityAp
     Finally, the deletion of the object should also be received.
     """
 
-    mo_name = RandomNameGenerator.random_name(3)
+    mo_name = create_random_name()
     mo = safe_create(ManagedObject(live_c8y, name=f'{mo_name}1', type=f'test_{mo_name}'))
     sub = Subscription(live_c8y, name=f'{mo.name.replace("_", "")}Subscription',
                        context=Subscription.Context.MANAGED_OBJECT,

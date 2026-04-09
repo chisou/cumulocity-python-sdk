@@ -7,13 +7,13 @@ import pytest
 from c8y_api import CumulocityApi
 from c8y_api.model import DeviceGroup
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 def test_CRUD(live_c8y: CumulocityApi, safe_executor):
     """Verify that object-oriented create, update, and delete works as expected."""
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
 
     root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
     child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
@@ -76,7 +76,7 @@ def test_CRUD(live_c8y: CumulocityApi, safe_executor):
 def test_CRUD2(live_c8y, safe_executor):
     """Verify that create, update, and delete via the API works as expected."""
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
 
     root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
     child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
@@ -118,7 +118,7 @@ def test_CRUD2(live_c8y, safe_executor):
 def test_select(live_c8y: CumulocityApi, safe_executor):
     """Verify that selecting with different filters works as expected."""
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
 
     root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
     child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
@@ -171,7 +171,7 @@ def test_trees(live_c8y: CumulocityApi, safe_executor):
     """Verify that creation and deletion of device group trees works as
     expected."""
 
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
     root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}').create()
     child1 = root.create_child(name=f'Child1-{name}')
     child2 = root.create_child(name=f'Child2-{name}')
@@ -200,7 +200,7 @@ def test_trees(live_c8y: CumulocityApi, safe_executor):
 @pytest.mark.skip  # cascade=false doesn't work
 def test_non_cascade_delete(live_c8y: CumulocityApi, safe_executor):
     """Verify that non-cascading delete works as expected."""
-    name = RandomNameGenerator.random_name(2)
+    name = create_random_name()
     root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}').create()
     child1 = root.create_child(name=f'Child1-{name}')
     child2 = root.create_child(name=f'Child2-{name}')

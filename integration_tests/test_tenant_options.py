@@ -5,14 +5,14 @@ import pytest
 from pyc8y.client import CumulocityClient
 from pyc8y.model.tenant_option import TenantOption
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 async def test_crud(live_c8y: CumulocityClient):
     """Verify that create/read/update/delete works for tenant options using
     the object-oriented functions."""
 
-    category = RandomNameGenerator.random_name(2)
+    category = create_random_name()
     option = None
     try:
         # 1) create an option
@@ -48,7 +48,7 @@ async def test_crud_2(live_c8y: CumulocityClient):
     """Verify that create/read/update/delete works for tenant options using
     the procedural functions."""
 
-    category = RandomNameGenerator.random_name(2)
+    category = create_random_name()
     option = None
     try:
         # 1) create an option
@@ -87,7 +87,7 @@ async def test_get_all(live_c8y: CumulocityClient):
 async def test_set_value_and_update_values_and_delete(live_c8y: CumulocityClient):
     """Verify that functions set_value, update_values and delete work as expected."""
 
-    category = RandomNameGenerator.random_name(2)
+    category = create_random_name()
     key = 'my_key'
     try:
         # 1) create an option

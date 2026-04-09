@@ -14,7 +14,7 @@ from c8y_api import CumulocityApi
 from c8y_api.model import User
 from c8y_api.model.matcher import jmespath
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 def generate_password():
@@ -26,7 +26,7 @@ def generate_password():
 def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
-    username = RandomNameGenerator.random_name()
+    username = create_random_name()
     email = f'{username}@cumulocity.gmbh'
 
     user = User(c8y=live_c8y,
@@ -56,10 +56,10 @@ def test_CRUD(live_c8y: CumulocityApi):  # noqa (case)
 
 def test_select_by_name(live_c8y: CumulocityApi, safe_create):
     """Verify that user selection by name works as expected."""
-    prefix = RandomNameGenerator.random_name(1)
+    prefix = create_random_name()
     users = []
-    for _ in range(0, 5):
-        username = f'{prefix}-{RandomNameGenerator.random_name(1)}'
+    for i in range(0, 5):
+        username = f'{prefix}-{i}'
         email = f'{username}@c8y.com'
 
         user = safe_create(User(live_c8y, username=username, email=email, enabled=True))
@@ -156,7 +156,7 @@ def user_factory(live_c8y: CumulocityApi):
     created_users = []
 
     def factory_fun(with_password=False) -> Union[User, Tuple[User, str]]:
-        username = RandomNameGenerator.random_name(2)
+        username = create_random_name(2)
         email = f'{username}@cumulocity.gmbh'
         password = generate_password()
         print(f"User: {email}, Password: {password}")

@@ -6,7 +6,7 @@ from c8y_api import CumulocityApi
 from c8y_api.model import User, InventoryRole, Permission, ReadPermission, WritePermission, AnyPermission
 from c8y_api.model.matcher import jmespath
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 def test_CRUD(live_c8y):
@@ -15,7 +15,7 @@ def test_CRUD(live_c8y):
     permissions = [ReadPermission(scope=Permission.Scope.ANY),
                    WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom'),
                    AnyPermission(scope=Permission.Scope.ALARM, type='*')]
-    role = InventoryRole(name=RandomNameGenerator.random_name(2), description='SomeDescription',
+    role = InventoryRole(name=create_random_name(), description='SomeDescription',
                          permissions=permissions)
 
     # 1) create role
@@ -49,7 +49,7 @@ def test_CRUD2(live_c8y):
     permissions = [ReadPermission(scope=Permission.Scope.ANY),
                    WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom'),
                    AnyPermission(scope=Permission.Scope.ALARM, type='*')]
-    role = InventoryRole(name=RandomNameGenerator.random_name(2), description='SomeDescription',
+    role = InventoryRole(name=create_random_name(), description='SomeDescription',
                          permissions=permissions)
 
     # 1) create role
@@ -90,9 +90,9 @@ def test_select_inventory_roles(live_c8y: CumulocityApi):
 
 def test_assignments(live_c8y, session_device, module_factory):
     """Verify that inventory roles can be assigned, retrieved and unassigned."""
-    email = 'user_' + RandomNameGenerator.random_name(2) + '@test.com'
-    role1_name = 'role_' + RandomNameGenerator.random_name(2)
-    role2_name = 'role_' + RandomNameGenerator.random_name(2)
+    email = 'user_' + create_random_name() + '@test.com'
+    role1_name = 'role_' + create_random_name()
+    role2_name = 'role_' + create_random_name()
 
     # create a user
     user = User(username=email, email=email)

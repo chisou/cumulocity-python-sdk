@@ -5,11 +5,16 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 
+from pyc8y.base_util import flatten
 from pyc8y.client import CumulocityClient
 from pyc8y.model.binary import Binary
 from pyc8y.model.matcher import field
 
-from util.testing_util import RandomNameGenerator
+import coolname
+
+
+def create_random_text() -> str:
+    return " ".join([x for y in [coolname.generate(3) for _ in range(30)] for x in y])
 
 
 @pytest.fixture(scope='session')
@@ -19,7 +24,7 @@ def file_factory(logger):
     created_files = []
 
     def create_file() -> (str, str):
-        data = RandomNameGenerator.random_name(99, ' ')
+        data = create_random_text()
         file = NamedTemporaryFile(delete=False)
         file.write(bytes(data, 'utf-8'))
         file.close()

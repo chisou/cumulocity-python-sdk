@@ -6,13 +6,13 @@ from pyc8y.client import CumulocityClient
 from pyc8y.model.managed_object import Device
 from pyc8y.model.operation import Operation, OperationStatus
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic creation, lookup and update of Operations works as expected."""
 
-    name = RandomNameGenerator.random_name()
+    name = create_random_name()
 
     # (1) create operation
     operation = await Operation(

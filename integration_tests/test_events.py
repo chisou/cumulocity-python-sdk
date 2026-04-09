@@ -17,13 +17,13 @@ from pyc8y.model import Device
 from pyc8y.model.event import Event
 from pyc8y.model.model_util import now_datetime
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 @pytest.fixture(scope='module')
 async def sample_events(live_c8y: CumulocityClient, session_device: Device, module_factory) -> list[Event]:
     """Provide a set of sample Event instances."""
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     now = now_datetime()
 
     return [
@@ -38,7 +38,7 @@ async def sample_events(live_c8y: CumulocityClient, session_device: Device, modu
 async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     event = Event(live_c8y, type=typename, text=f'{typename} text', time='now', source=session_device.id)
 
     created_event = await event.create()
@@ -73,7 +73,7 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
 async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality via the API works."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     event1 = Event(live_c8y, time="now", type=typename, text=f'{typename} text', source=session_device.id)
     event2 = Event(live_c8y, time="now", type=typename, text=f'{typename} text', source=session_device.id)
 
@@ -170,8 +170,8 @@ async def test_CRUD_attachments(live_c8y: CumulocityClient, session_device: Devi
     logging.basicConfig(level=logging.INFO)
 
     event = sample_events[0]
-    random_text_1 = bytes(RandomNameGenerator.random_name(num=50, sep=','), 'utf-8')
-    random_text_2 = bytes(RandomNameGenerator.random_name(num=50, sep=','), 'utf-8')
+    random_text_1 = create_random_name().encode('utf-8')
+    random_text_2 = create_random_name().encode('utf-8')
 
     # add a binary attachment via filename
     with tempfile.NamedTemporaryFile(delete=False) as file:
@@ -206,8 +206,8 @@ async def test_CRUD_attachments_2(live_c8y: CumulocityClient, session_device: De
     event attachment via the API works as expected."""
 
     event = sample_events[0]
-    random_text_1 = bytes(RandomNameGenerator.random_name(num=50, sep=','), 'utf-8')
-    random_text_2 = bytes(RandomNameGenerator.random_name(num=50, sep=','), 'utf-8')
+    random_text_1 = create_random_name().encode('utf-8')
+    random_text_2 = create_random_name().encode('utf-8')
 
     # add a binary attachment via filename
     with tempfile.NamedTemporaryFile(delete=False) as file:

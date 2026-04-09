@@ -7,7 +7,7 @@ import pytest
 
 from c8y_api.model._parser import SimpleObjectParser
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 @pytest.fixture(scope='function')
@@ -18,9 +18,9 @@ def simple_object_and_mapping():
         """Encapsulating test data."""
         def __init__(self):
             self.int_field = random.randint(1, 100)
-            self.string_field = RandomNameGenerator.random_name()
+            self.string_field = create_random_name()
             self.boolean_field = False
-            self.additional = RandomNameGenerator.random_name()
+            self.additional = create_random_name()
 
     mapping = {
         'string_field': 'db_string',
@@ -41,7 +41,7 @@ def test_from_json_simple(simple_object_and_mapping):
     source_json = {
         'to_be_ignored_field': 123,
         'db_int': random.randint(100, 200),
-        'db_string': RandomNameGenerator.random_name(),
+        'db_string': create_random_name(),
         'db_boolean': True,
         'db_special': "Special chars: ,._#'`\"?$%7{",
         'to_be_ignored_fragment': {'level': 2}}

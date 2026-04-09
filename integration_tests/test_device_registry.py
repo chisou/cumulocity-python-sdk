@@ -11,7 +11,8 @@ import pytest
 
 from c8y_api import CumulocityApi, CumulocityDeviceRegistry
 from c8y_api.model import Device
-from util.testing_util import RandomNameGenerator
+
+from util.testing_util import create_random_name
 
 
 @pytest.fixture(scope='session')
@@ -35,7 +36,7 @@ def device_registry(test_environment, logger) -> CumulocityDeviceRegistry:
 def sample_device(live_c8y: CumulocityApi, device_registry: CumulocityDeviceRegistry, logger) -> Device:
     """Provide a sample device, created via the device registry process."""
 
-    device_id = RandomNameGenerator.random_name(3)
+    device_id = create_random_name()
 
     # 1) create a device connection request
     live_c8y.device_inventory.request(device_id)

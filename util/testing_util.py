@@ -7,6 +7,7 @@ import os
 import random
 import re
 
+import coolname
 import dotenv
 from requests import request
 
@@ -43,28 +44,6 @@ def read_webcontent(source_url, target_path):
                            f'HTTP {response.status_code} {response.text}')
 
 
-class RandomNameGenerator:
-    """Provides randomly generated names using a public service."""
-
-    wordlist_path = 'wordlist.txt'
-    wordlist_url = 'https://raw.githubusercontent.com/mike-hearn/useapassphrase/master/js/wordlist.js'
-    if not os.path.exists(wordlist_path):
-        read_webcontent(wordlist_url, wordlist_path)
-    with open(wordlist_path, 'rt', encoding='utf-8') as file:
-        file.readline()  # skip first line
-        lines = file.readlines()
-    words = [re.sub('[^\\w]', '', line) for line in lines]
-
-    @classmethod
-    def random_name(cls, num: int = 3, sep: str = '_') -> str:
-        """Generate a readable random name from joined random words.
-
-        Args:
-            num (int):  number of random words to concatenate
-            sep (str):  concatenation separator
-
-        Returns:
-            The generated name
-        """
-        words = [random.choice(cls.words) for _ in range(0, num)]
-        return sep.join(words)
+def create_random_name(n: int = 3) -> str:
+    """Generate a random name."""
+    return coolname.generate_slug(n)

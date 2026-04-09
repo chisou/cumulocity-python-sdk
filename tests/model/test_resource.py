@@ -8,7 +8,7 @@ import pytest
 
 from pyc8y.model.model_base import CumulocityResource, map_params
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 @pytest.mark.parametrize("kwargs, expected", [
@@ -27,7 +27,7 @@ def test_build_base_query():
     # pylint: disable=protected-access
 
     # supported query parameters
-    base = RandomNameGenerator.random_name(1)
+    base = create_random_name(2)
     kwargs = {
         # some of the below are mapped from python naming
         'type': base + '_type',
