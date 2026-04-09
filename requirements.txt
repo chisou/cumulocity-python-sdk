@@ -20,7 +20,6 @@ pandas
 PyOTP
 hatchling
 hatch-vcs
-importlib_metadata; python_version < '3.8'
 tenacity
 certifi
 urllib3
@@ -28,3 +27,6 @@ python-dict-display-filter
 jsonpath-ng
 jmespath
 deepdiff
+coolname
+werkzeug
+starlette
