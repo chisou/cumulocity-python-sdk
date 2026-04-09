@@ -11,13 +11,13 @@ from pyc8y.client import CumulocityClient
 from pyc8y.model.alarm import Alarm, Severity, Status
 from pyc8y.model.managed_object import Device
 
-from util.testing_util import RandomNameGenerator
+from util.testing_util import create_random_name
 
 
 async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality works."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     alarm = Alarm(c8y=live_c8y, type=typename, text=f'{typename} text', source=session_device.id,
                   time='now', severity=Severity.MAJOR)
 
@@ -56,14 +56,14 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
 
     # 4) assert deletion
     with pytest.raises(KeyError) as e:
-        live_c8y.alarms.get(created_alarm.id)
+        await live_c8y.alarms.get(created_alarm.id)
     assert created_alarm.id in str(e)
 
 
 async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
     """Verify that basic CRUD functionality via the API works."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     time = '1970-01-01T11:22:33Z'
     alarm1 = Alarm(c8y=live_c8y, type=typename + '_1', text=f'{typename} text', source=session_device.id,
                    time=time, severity=Severity.MINOR)
@@ -130,7 +130,7 @@ async def sample_alarms(session_device, module_factory) -> List[Alarm]:
     """Provide a set of sample Alarm instances that will automatically
     be removed after this test module."""
 
-    typename = RandomNameGenerator.random_name()
+    typename = create_random_name()
     return [
         await module_factory(
             Alarm(type=f'{typename}_{i}', text=f'{typename} text', source=session_device.id,
@@ -144,7 +144,7 @@ async def test_apply_by(live_c8y: CumulocityClient, session_device: Device):
     """Verify that the apply_by function works."""
 
     num_alarms = 5
-    name = RandomNameGenerator.random_name(1)
+    name = create_random_name()
     alarms = [await Alarm(live_c8y, type=f'{name}_{i}', text=f'{name} text', source=session_device.id,
                     time='2021-06-22T11:33:55Z', severity=Severity.CRITICAL).create()
               for i in range(1, num_alarms+1)]
