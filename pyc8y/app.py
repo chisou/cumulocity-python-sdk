@@ -93,13 +93,16 @@ class _CumulocityAppBase(ABC):
         header_auth = next((v for k, v in headers.items() if k.upper() == "AUTHORIZATION"), None)
         cookie_auth = next((v for k, v in cookies.items() if k.upper() == "AUTHORIZATION"), None)
 
+        if cookie_auth:
+            cookie_auth = f"Bearer {cookie_auth}"  # cookie auth is just a JWT
+
         if header_auth and cookie_auth and header_auth != cookie_auth:
             log.warning("Conflicting Authorization values in headers "
-                        f"({header_auth}) and cookies ({cookie_auth}). Using header.")
-        if header_auth:
-            return header_auth
+                        f"({header_auth}) and cookies ({cookie_auth}). Using cookie.")
         if cookie_auth:
             return cookie_auth
+        if header_auth:
+            return header_auth
 
         keys = ", ".join(dict.fromkeys([*headers.keys(), *cookies.keys()])) or "None"
         raise KeyError(f"Unable to resolve Authorization information. Found keys: {keys}.")
@@ -190,9 +193,6 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
         same Base URL, Tenant ID and Application Key as the main instance."""
         return CumulocityClient(base_url=self.base_url, tenant_id=self.tenant_id, auth=auth,
                                 application_key=self.application_key, processing_mode=self.processing_mode)
-
-    def __aenter__(self) -> Self:
-        return self
 
 
 class MultiTenantCumulocityApp(_CumulocityAppBase):
@@ -468,10 +468,8 @@ class CumulocityApp(CumulocityClient):
         os.environ['C8Y_TOKEN'] = token
         super().__init__(base_url=base_url, tenant_id=tenant_id, auth=BearerAuth(token))
 
-    def __aenter__(self) -> Self:
-        super().__aenter__()
-        return self
+    async def __aenter__(self) -> Self:
+        return await super().__aenter__()
 
-    def __aexit__(self, exc_type, exc_value, traceback):
-        super().__aexit__(exc_type, exc_value, traceback)
-        return True
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await super().__aexit__(exc_type, exc_value, traceback)

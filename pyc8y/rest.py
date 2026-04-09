@@ -12,8 +12,7 @@ import aiohttp
 import certifi
 import orjson
 
-from pyc8y.auth import Auth
-
+from pyc8y.auth import Auth, BasicAuth, BearerAuth
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +142,7 @@ class CumulocityRestClient(object):
             username: str,
             password: str,
             tfa_token: str = None,
-    ) -> (str, str):
+    ) -> tuple[Auth, str | None]:
         """Authenticate a user using OAI Secure login method.
 
         Args:
@@ -154,24 +153,71 @@ class CumulocityRestClient(object):
             tfa_token (str):  Currently valid two-factor authorization token
 
         Returns:
-            A string tuple of JWT auth token and corresponding XRSF token.
+            A ready to use Auth instance and optionally an XSRF token.
         """
-        url = f'{base_url.rstrip("/")}/tenant/oauth?tenant_id={tenant_id}'
-        form_data = {'grant_type': 'PASSWORD', 'username': username, 'password': password, 'tfa_token': tfa_token}
+
+        def build_url(resource):
+            return f"{base_url.rstrip('/')}/{resource.lstrip('/')}"
+
         async with aiohttp.ClientSession() as session:
-            async with session.post(url=url, data=form_data, timeout=60.0) as response:
-                response_json = orjson.loads(await response.text() or "") or {}
-                if response.status == 401:
-                    response_json = orjson.loads(await response.text()) or {}
-                    message = response_json.get("message", None)
-                    # 1st request might fail due to missing TFA code
-                    if any(x in message for x in ['TOTP', 'TFA']):
-                        raise MissingTfaError(HttpMethod.POST, str(response.url), message)
-                    raise UnauthorizedError(HttpMethod.POST, str(response.url), message)
-                if response.status != 200:
-                    message = response_json.get("message", "Invalid request!")
-                    raise HttpError(HttpMethod.POST, str(response.url), response.status, message)
-                return response.cookies['authorization'], response.cookies['XSRF-TOKEN']
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+            # read login options
+            login_options = []
+            async with session.get(build_url("tenant/loginOptions"), ssl=ssl_context) as response:
+                if response.status == 200:
+                    login_options = [x["type"] for x in (await response.json())["loginOptions"]]
+                else:
+                    login_options = ["BASIC", "OAUTH2_INTERNAL"]
+                    logger.error(f"Unable to determine login options. Using default.")
+            logger.info(f"Available login options: {', '.join(login_options)}")
+
+            # try OAuth internal (with/without 2nd factor)
+            if "OAUTH2_INTERNAL" in login_options:
+                if not username or not password:
+                    logger.info("OAuth Internal authentication needs username/password. Skipping.")
+                else:
+                    logger.info(f"Attempting login using OAUTH2_INTERNAL ...")
+                    # include 2nd factor token if available
+                    form_data = {'grant_type': 'PASSWORD', 'username': username, 'password': password}
+                    if tfa_token:
+                        form_data['tfa_token'] = tfa_token
+                    async with session.post(build_url(f"tenant/oauth?tenant_id={tenant_id}"), data=form_data, ssl=ssl_context) as response:
+                        if response.status == 200:
+                            logger.info("Login successful.")
+                            auth_cookie = response.cookies['authorization']
+                            xsrf_cookie = response.cookies.get('XSRF-TOKEN')
+                            return BearerAuth(token=auth_cookie.value), xsrf_cookie.value if xsrf_cookie else None
+                        # login failed, checking known reasons
+                        response_json = orjson.loads(await response.text() or "") or {}
+                        if response.status == 401:
+                            message = response_json.get("message", None)
+                            # 1st request might fail due to missing TFA code
+                            if message and any(x in message for x in ['TOTP', 'TFA']):
+                                raise MissingTfaError(HttpMethod.POST, str(response.url), message)
+                            raise UnauthorizedError(HttpMethod.POST, str(response.url), message)
+                        # this should never happen
+                        message = response_json.get("message", "Invalid request!")
+                        raise HttpError(HttpMethod.POST, str(response.url), response.status, message)
+
+            # try basic authentication
+            if "BASIC" in login_options:
+                if not username or not password:
+                    logger.info("Basic authentication needs username/password. Skipping.")
+                else:
+                    logger.info(f"Attempting login using Basic Authentication ...")
+                    auth = BasicAuth(username, password)
+                    async with session.get(build_url("tenant/currentTenant"), headers={"Authorization": auth.build_auth_header()}, ssl=ssl_context) as response:
+                        if response.status == 200:
+                            return auth, None
+                        response_json = orjson.loads(await response.text() or "") or {}
+                        if response.status == 401:
+                            raise UnauthorizedError(HttpMethod.GET, str(response.url), response_json.get("message"))
+                        # this should never happen
+                        message = response_json.get("message", "Invalid request!")
+                        raise HttpError(HttpMethod.GET, str(response.url), response.status, message)
+
+            raise ValueError(f"Unable to authenticate with Cumulocity. Unsupported login options: {' ,'.join(login_options)}.")
 
     async def request(
             self,
@@ -179,7 +225,7 @@ class CumulocityRestClient(object):
             resource: str,
             params: tuple[str, Any] | dict | None = None,
             json: dict | None = None,
-            accept: str | None = "application/json",
+            accept: str | None = None,
             content_type: str | None = None,
     ) -> dict:
         """Perform an HTTP request.
@@ -203,6 +249,7 @@ class CumulocityRestClient(object):
         """
         if json is not None:
             content_type = content_type or "application/json"
+        accept = accept or "application/json"
         session = await self.session
         additional_headers = {}
         if accept is not None:
