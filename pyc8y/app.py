@@ -48,7 +48,6 @@ def get_client(
         tenant_id (str):  Tenant ID; reads C8Y_TENANT if omitted.
         username (str):  Username; reads C8Y_USER if omitted.
         password (str):  Password; reads C8Y_PASSWORD if omitted.
-        processing_mode (str):  Connection processing mode.
 
     ¹ See also the go-c8y-cli (https://goc8ycli.netlify.app/docs/concepts/sessions/#continuous-integration-usage-environment-variables)
     and Cumulocity microservice bootstrap (https://cumulocity.com/docs/microservice-sdk/general-aspects/#microservice-bootstrap)
@@ -372,46 +371,46 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         self._subscribed_auths = TTLCache(maxsize=cache_size, ttl=cache_ttl)
         self._tenant_instances = TTLCache(maxsize=cache_size, ttl=cache_ttl)
 
-    def _get_tenant_auth(self, tenant_id: str) -> Auth:
+    async def _get_tenant_auth(self, tenant_id: str) -> Auth:
         """Cached access to auth information of subscribed tenants."""
         try:
             return self._subscribed_auths[tenant_id]
         except KeyError:
-            self._subscribed_auths = self._read_subscription_auths(self.bootstrap_instance)
+            self._subscribed_auths = await self._read_subscription_auths(self.bootstrap_instance)
             return self._subscribed_auths[tenant_id]
 
     @classmethod
-    def _read_subscriptions(cls, bootstrap_instance: CumulocityClient) -> list[dict]:
+    async def _read_subscriptions(cls, bootstrap_instance: CumulocityClient) -> list[dict]:
         """Read subscribed tenants details.
 
         Returns:
             A list of tenant details dicts.
         """
-        subscriptions = bootstrap_instance.get('/application/currentApplication/subscriptions')
+        subscriptions = await bootstrap_instance.get('/application/currentApplication/subscriptions')
         return subscriptions['users']
 
     @classmethod
-    def _read_subscription_auths(cls, bootstrap_instance: CumulocityClient):
+    async def _read_subscription_auths(cls, bootstrap_instance: CumulocityClient) -> dict[str, Auth]:
         """Read subscribed tenant's auth information.
 
         Returns:
             A dict of tenant auth information by ID
         """
         cache = {}
-        for subscription in cls._read_subscriptions(bootstrap_instance):
+        for subscription in await cls._read_subscriptions(bootstrap_instance):
             tenant = subscription['tenant']
             username = subscription['name']
             password = subscription['password']
             cache[tenant] = BasicAuth(f'{tenant}/{username}', password)
         return cache
 
-    def get_subscribers(self) -> list[str]:
+    async def get_subscribers(self) -> list[str]:
         """Query the subscribed tenants.
 
         Returns:
             A list of tenant ID.
         """
-        return [x['tenant'] for x in self._read_subscriptions(self.bootstrap_instance)]
+        return [x['tenant'] for x in await self._read_subscriptions(self.bootstrap_instance)]
 
     @classmethod
     def _create_bootstrap_instance(cls, application_key: str = None, processing_mode: str = None) -> CumulocityClient:
@@ -423,26 +422,25 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         return CumulocityClient(
             base_url=base_url,
             tenant_id=tenant_id,
-            auth = BasicAuth(username, password),
+            auth=BasicAuth(username, password),
             application_key=application_key,
             processing_mode=processing_mode,
         )
 
-    def _create_tenant_instance(self, tenant_id: str) -> CumulocityClient:
+    async def _create_tenant_instance(self, tenant_id: str) -> CumulocityClient:
         """Build a tenant instance."""
-        auth = self._get_tenant_auth(tenant_id)
+        auth = await self._get_tenant_auth(tenant_id)
         return CumulocityClient(self.bootstrap_instance.base_url, tenant_id, auth=auth,
                                 application_key=self.application_key, processing_mode=self.processing_mode)
 
     def _build_user_instance(self, auth) -> CumulocityClient:
-        """Build a CumulocityApi instance for a specific user, using the
-        same Base URL, Tenant ID and Application Key as the main instance."""
+        """Build a CumulocityApi instance for a specific user."""
         tenant_id = auth.get_tenant_id()
         return CumulocityClient(base_url=self.bootstrap_instance.base_url, tenant_id=tenant_id, auth=auth,
                                 application_key=self.application_key, processing_mode=self.processing_mode)
 
-    def get_tenant_instance(self, tenant_id: str = None,
-                            headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityClient:
+    async def get_tenant_instance(self, tenant_id: str = None,
+                                  headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityClient:
         """Provide access to a tenant-specific instance in a multi-tenant
         application setup.
 
@@ -457,11 +455,9 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         Returns:
             A CumulocityApi instance authorized for a tenant user
         """
-        # (1) if the tenant ID is specified we just
         if tenant_id:
-            return self._get_tenant_instance(tenant_id)
+            return await self._get_tenant_instance(tenant_id)
 
-        # (2) otherwise, look for the Authorization header
         if not (headers or cookies):
             raise RuntimeError("At least one of 'tenant_id', 'headers' or cookies must be specified.")
 
@@ -470,19 +466,19 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             raise ValueError("Missing authentication information. Unable to resolve tenant ID.")
 
         tenant_id = parse_auth(auth_header).get_tenant_id()
-        return self._get_tenant_instance(tenant_id)
+        return await self._get_tenant_instance(tenant_id)
 
-    def _get_tenant_instance(self, tenant_id: str) -> CumulocityClient:
-        """Cached access to already build tenant instances."""
+    async def _get_tenant_instance(self, tenant_id: str) -> CumulocityClient:
+        """Cached access to already built tenant instances."""
         try:
             return self._tenant_instances[tenant_id]
         except KeyError:
-            instance = self._create_tenant_instance(tenant_id)
+            instance = await self._create_tenant_instance(tenant_id)
             self._tenant_instances[tenant_id] = instance
             return instance
 
-    def __enter__(self) -> Self:
+    async def __aenter__(self) -> Self:
         return self
 
-    def __exit__(self, __exc_type, __exc_value, __traceback):
+    async def __aexit__(self, *args):
         pass
