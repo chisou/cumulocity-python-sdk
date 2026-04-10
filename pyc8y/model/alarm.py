@@ -4,24 +4,34 @@ from typing import AsyncGenerator, TypedDict, Unpack, Any, AsyncIterator, Sequen
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, json_property, datetime_property, id_property, CumulocityResource, \
-    assert_c8y, map_params, time_property
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    json_property,
+    datetime_property,
+    id_property,
+    CumulocityResource,
+    assert_c8y,
+    map_params,
+    time_property,
+)
 from pyc8y.types import AlarmMeta, AsValuesSpec
 
 
 class Severity(StrEnum):
     """Alarm severity levels."""
-    MAJOR = 'MAJOR'
-    CRITICAL = 'CRITICAL'
-    MINOR = 'MINOR'
-    WARNING = 'WARNING'
+
+    MAJOR = "MAJOR"
+    CRITICAL = "CRITICAL"
+    MINOR = "MINOR"
+    WARNING = "WARNING"
 
 
 class Status(StrEnum):
     """Alarm statuses."""
-    ACTIVE = 'ACTIVE'
-    ACKNOWLEDGED = 'ACKNOWLEDGED'
-    CLEARED = 'CLEARED'
+
+    ACTIVE = "ACTIVE"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    CLEARED = "CLEARED"
 
 
 class Alarm(CumulocityObject):
@@ -32,19 +42,20 @@ class Alarm(CumulocityObject):
 
     See also: https://cumulocity.com/api/#tag/Events
     """
+
     _meta = AlarmMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            time: str | datetime | None = None,
-            source: str | None = None,
-            text: str | None = None,
-            status: Status | str | None = None,
-            severity: Severity | str | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        time: str | datetime | None = None,
+        source: str | None = None,
+        text: str | None = None,
+        status: Status | str | None = None,
+        severity: Severity | str | None = None,
+        **kwargs,
     ):
         super().__init__(c8y, **kwargs)
         self.type = type
@@ -103,7 +114,6 @@ class Alarm(CumulocityObject):
         await self._apply_to(other_id)
 
 
-
 class Alarms(CumulocityResource[Alarm]):
     _meta = AlarmMeta
     _object_type = Alarm
@@ -120,43 +130,43 @@ class Alarms(CumulocityResource[Alarm]):
         return await self._get(id)
 
     def select(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            status: str | None = None,
-            resolved: str | None = None,
-            severity: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            created_before: str | datetime | None = None,
-            created_after: str | datetime | None = None,
-            created_from: str | datetime | None = None,
-            created_to: str | datetime | None = None,
-            updated_before: str | datetime | None = None,
-            updated_after: str | datetime | None = None,
-            last_updated_from: str | datetime | None = None,
-            last_updated_to: str | datetime | None = None,
-            with_source_children: bool | None = None,
-            with_source_assets: bool | None = None,
-            with_source_devices: bool | None = None,
-            with_source_additions: bool | None = None,
-            reverse: bool = False,
-            revert: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 100,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-           **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        status: str | None = None,
+        resolved: str | None = None,
+        severity: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        with_source_children: bool | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        with_source_additions: bool | None = None,
+        reverse: bool = False,
+        revert: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 100,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Alarm | Any | tuple[Any]]:
         """Query the database for alarms and iterate over the results.
 
@@ -231,39 +241,43 @@ class Alarms(CumulocityResource[Alarm]):
         See also:
             https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
-        params = map_params(
-            type=type,
-            source=source,
-            status=status,
-            resolved=resolved,
-            severity=severity,
-            fragment=fragment,
-            fragment_type=fragment,
-            # time
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            # modifiers
-            with_source_children=with_source_children,
-            with_source_devices=with_source_devices,
-            with_source_assets=with_source_assets,
-            with_source_additions=with_source_additions,
-            reverse=reverse,
-            revert=revert,
-            page_size=page_size,
-            **kwargs
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                status=status,
+                resolved=resolved,
+                severity=severity,
+                fragment=fragment,
+                fragment_type=fragment,
+                # time
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                # modifiers
+                with_source_children=with_source_children,
+                with_source_devices=with_source_devices,
+                with_source_assets=with_source_assets,
+                with_source_additions=with_source_additions,
+                reverse=reverse,
+                revert=revert,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -276,41 +290,41 @@ class Alarms(CumulocityResource[Alarm]):
         )
 
     async def get_all(
-            self,
-            expression: str = None,
-            *,
-            type: str = None,
-            source: str = None,
-            status: str = None,
-            resolved: str = None,
-            severity: str = None,
-            fragment: str = None,
-            with_source_assets: bool = None,
-            with_source_devices: bool = None,
-            before: str | datetime = None,
-            after: str | datetime = None,
-            date_from: str | datetime = None,
-            date_to: str | datetime = None,
-            created_before: str | datetime = None,
-            created_after: str | datetime = None,
-            created_from: str | datetime = None,
-            created_to: str | datetime = None,
-            updated_before: str | datetime = None,
-            updated_after: str | datetime = None,
-            last_updated_from: str | datetime = None,
-            last_updated_to: str | datetime = None,
-            min_age: str | timedelta = None,
-            max_age: str | timedelta = None,
-            reverse: bool = False,
-            revert: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int = None,
-            page_size: int = 100,
-            page_number: int = None,
-            as_values: str | tuple | list[str | tuple] = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str = None,
+        source: str = None,
+        status: str = None,
+        resolved: str = None,
+        severity: str = None,
+        fragment: str = None,
+        with_source_assets: bool = None,
+        with_source_devices: bool = None,
+        before: str | datetime = None,
+        after: str | datetime = None,
+        date_from: str | datetime = None,
+        date_to: str | datetime = None,
+        created_before: str | datetime = None,
+        created_after: str | datetime = None,
+        created_from: str | datetime = None,
+        created_to: str | datetime = None,
+        updated_before: str | datetime = None,
+        updated_after: str | datetime = None,
+        last_updated_from: str | datetime = None,
+        last_updated_to: str | datetime = None,
+        min_age: str | timedelta = None,
+        max_age: str | timedelta = None,
+        reverse: bool = False,
+        revert: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int = None,
+        page_size: int = 100,
+        page_number: int = None,
+        as_values: str | tuple | list[str | tuple] = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Alarm | Any | tuple[Any]]:
         """Query the database for alarms and return the results as list.
 
@@ -322,70 +336,75 @@ class Alarms(CumulocityResource[Alarm]):
         Returns:
             List of Alarm objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            type=type,
-            source=source,
-            fragment=fragment,
-            status=status,
-            severity=severity,
-            resolved=resolved,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            revert=revert,
-            with_source_devices=with_source_devices,
-            with_source_assets=with_source_assets,
-            limit=limit,
-            include=include,
-            exclude=exclude,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs)]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                type=type,
+                source=source,
+                fragment=fragment,
+                status=status,
+                severity=severity,
+                resolved=resolved,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                revert=revert,
+                with_source_devices=with_source_devices,
+                with_source_assets=with_source_assets,
+                limit=limit,
+                include=include,
+                exclude=exclude,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def delete_by(
-            self,
-            expression: str = None,
-            *,
-            type: str = None,
-            source: str = None,
-            fragment: str = None,
-            status: str = None,
-            severity: str = None,
-            resolved: str = None,
-            before: str | datetime = None,
-            after: str | datetime = None,
-            date_from: str | datetime = None,
-            date_to: str | datetime = None,
-            min_age: timedelta = None,
-            max_age: timedelta = None,
-            created_before: str | datetime = None,
-            created_after: str | datetime = None,
-            created_from: str | datetime = None,
-            created_to: str | datetime = None,
-            updated_before: str | datetime = None,
-            updated_after: str | datetime = None,
-            last_updated_from: str | datetime = None,
-            last_updated_to: str | datetime = None,
-            with_source_children: bool = None,
-            with_source_assets: bool = None,
-            with_source_devices: bool = None,
-            with_source_additions: bool = None,
-            **kwargs):
+        self,
+        expression: str = None,
+        *,
+        type: str = None,
+        source: str = None,
+        fragment: str = None,
+        status: str = None,
+        severity: str = None,
+        resolved: str = None,
+        before: str | datetime = None,
+        after: str | datetime = None,
+        date_from: str | datetime = None,
+        date_to: str | datetime = None,
+        min_age: timedelta = None,
+        max_age: timedelta = None,
+        created_before: str | datetime = None,
+        created_after: str | datetime = None,
+        created_from: str | datetime = None,
+        created_to: str | datetime = None,
+        updated_before: str | datetime = None,
+        updated_after: str | datetime = None,
+        last_updated_from: str | datetime = None,
+        last_updated_to: str | datetime = None,
+        with_source_children: bool = None,
+        with_source_assets: bool = None,
+        with_source_devices: bool = None,
+        with_source_additions: bool = None,
+        **kwargs,
+    ):
         """Query the database and delete matching alarms.
 
         All parameters are considered to be filters, limiting the result set
@@ -431,59 +450,64 @@ class Alarms(CumulocityResource[Alarm]):
             with_source_additions (bool): Whether also alarms for related source
                 additions should be included. Requires `source`
         """
-        params = map_params(
-            type=type,
-            source=source,
-            status=status,
-            resolved=resolved,
-            severity=severity,
-            fragment=fragment,
-            fragment_type=fragment,
-            # time
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            # modifiers
-            with_source_children=with_source_children,
-            with_source_devices=with_source_devices,
-            with_source_assets=with_source_assets,
-            with_source_additions=with_source_additions,
-            **kwargs
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                status=status,
+                resolved=resolved,
+                severity=severity,
+                fragment=fragment,
+                fragment_type=fragment,
+                # time
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                # modifiers
+                with_source_children=with_source_children,
+                with_source_devices=with_source_devices,
+                with_source_assets=with_source_assets,
+                with_source_additions=with_source_additions,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         await self.c8y.delete(self._meta.resource_path, params=params)
 
     async def count(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            status: str | None = None,
-            resolved: str | None = None,
-            severity: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            with_source_children: bool = None,
-            with_source_assets: bool = None,
-            with_source_devices: bool = None,
-            with_source_additions: bool = None,
-            **kwargs) -> int:
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        status: str | None = None,
+        resolved: str | None = None,
+        severity: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        with_source_children: bool = None,
+        with_source_assets: bool = None,
+        with_source_devices: bool = None,
+        with_source_additions: bool = None,
+        **kwargs,
+    ) -> int:
         """Count the number of certain alarms.
 
         Args:
@@ -539,7 +563,7 @@ class Alarms(CumulocityResource[Alarm]):
             with_source_devices=with_source_devices,
             with_source_assets=with_source_assets,
             with_source_additions=with_source_additions,
-            **kwargs
+            **kwargs,
         )
         return await self.c8y.get(f"{self._meta.resource_path}/count", params=params, accept="text/plain")
 
@@ -573,31 +597,32 @@ class Alarms(CumulocityResource[Alarm]):
         await self._apply_to(alarm, *alarm_ids, workers=workers)
 
     async def apply_by(
-            self,
-            alarm: Alarm | dict,
-            expression: str = None,
-            *,
-            type: str = None,
-            source: str = None,
-            fragment: str = None,
-            status: str = None,
-            severity: str = None,
-            resolved: str = None,
-            date_from: str | datetime = None,
-            date_to: str | datetime = None,
-            before: str | datetime = None,
-            after: str | datetime = None,
-            created_before: str | datetime = None,
-            created_after: str | datetime = None,
-            created_from: str | datetime = None,
-            created_to: str | datetime = None,
-            min_age: timedelta = None,
-            max_age: timedelta = None,
-            with_source_children: bool | None = None,
-            with_source_assets: bool | None = None,
-            with_source_devices: bool | None = None,
-            with_source_additions: bool | None = None,
-            **kwargs):
+        self,
+        alarm: Alarm | dict,
+        expression: str = None,
+        *,
+        type: str = None,
+        source: str = None,
+        fragment: str = None,
+        status: str = None,
+        severity: str = None,
+        resolved: str = None,
+        date_from: str | datetime = None,
+        date_to: str | datetime = None,
+        before: str | datetime = None,
+        after: str | datetime = None,
+        created_before: str | datetime = None,
+        created_after: str | datetime = None,
+        created_from: str | datetime = None,
+        created_to: str | datetime = None,
+        min_age: timedelta = None,
+        max_age: timedelta = None,
+        with_source_children: bool | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        with_source_additions: bool | None = None,
+        **kwargs,
+    ):
         """Apply changes made to a single instance to other objects in the database.
 
         Args:
@@ -636,35 +661,41 @@ class Alarms(CumulocityResource[Alarm]):
 
         See also: https://cumulocity.com/api/#operation/putAlarmCollectionResource
         """
-        params = map_params(
-            type=type,
-            source=source,
-            status=status,
-            resolved=resolved,
-            severity=severity,
-            fragment=fragment,
-            fragment_type=fragment,
-            # time
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            # modifiers
-            with_source_children=with_source_children,
-            with_source_devices=with_source_devices,
-            with_source_assets=with_source_assets,
-            with_source_additions=with_source_additions,
-            **kwargs
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                status=status,
+                resolved=resolved,
+                severity=severity,
+                fragment=fragment,
+                fragment_type=fragment,
+                # time
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                # modifiers
+                with_source_children=with_source_children,
+                with_source_devices=with_source_devices,
+                with_source_assets=with_source_assets,
+                with_source_additions=with_source_additions,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         alarm_json = alarm if isinstance(alarm, dict) else alarm.to_json(only_updated=True)
         await self.c8y.put(
-            self._meta.resource_path, params=params,
-            json=alarm_json, content_type=self._meta.collection_mime_type,
-            accept=None
+            self._meta.resource_path,
+            params=params,
+            json=alarm_json,
+            content_type=self._meta.collection_mime_type,
+            accept=None,
         )

@@ -24,35 +24,38 @@ class Subscription(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Subscriptions
     """
+
     _meta = SubscriptionsMeta
 
     class Context:
         """Notification context types."""
-        MANAGED_OBJECT = 'mo'
-        TENANT = 'tenant'
+
+        MANAGED_OBJECT = "mo"
+        TENANT = "tenant"
 
     class ApiFilter:
         """Notification API filter types."""
-        ANY = '*'
-        ALARMS = 'alarms'
-        ALARMS_WITH_CHILDREN = 'alarmsWithChildren'
-        EVENTS = 'events'
-        EVENTS_WITH_CHILDREN = 'eventsWithChildren'
-        MANAGED_OBJECTS = 'managedobjects'
-        MEASUREMENTS = 'measurements'
-        OPERATIONS = 'operations'
+
+        ANY = "*"
+        ALARMS = "alarms"
+        ALARMS_WITH_CHILDREN = "alarmsWithChildren"
+        EVENTS = "events"
+        EVENTS_WITH_CHILDREN = "eventsWithChildren"
+        MANAGED_OBJECTS = "managedobjects"
+        MEASUREMENTS = "measurements"
+        OPERATIONS = "operations"
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            name: str | None = None,
-            context: str | None = None,
-            source_id: str | None = None,
-            api_filter: list[str] | None = None,
-            type_filter: str | None = None,
-            fragments: list[str] | None = None,
-            non_persistent: bool | None = None,
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        name: str | None = None,
+        context: str | None = None,
+        source_id: str | None = None,
+        api_filter: list[str] | None = None,
+        type_filter: str | None = None,
+        fragments: list[str] | None = None,
+        non_persistent: bool | None = None,
     ):
         super().__init__(c8y)
         self.name = name
@@ -127,6 +130,7 @@ class Subscriptions(CumulocityResource[Subscription]):
     See also: https://cumulocity.com/api/core/#tag/Subscriptions
               https://cumulocity.com/guides/reference/notifications/
     """
+
     _meta = SubscriptionsMeta
     _object_type = Subscription
 
@@ -142,43 +146,47 @@ class Subscriptions(CumulocityResource[Subscription]):
         return await self._get(subscription_id)
 
     async def get_count(
-            self,
-            expression: str | None = None,
-            *,
-            context: str | None = None,
-            source: str | None = None,
-            subscription: str | None = None,
-            type_filter: str | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        context: str | None = None,
+        source: str | None = None,
+        subscription: str | None = None,
+        type_filter: str | None = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
         Returns:
             Number of potential results
         """
-        params = map_params(
-            page_size=1,
-            context=context,
-            source=source,
-            subscription=subscription,
-            typeFilter=type_filter,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                page_size=1,
+                context=context,
+                source=source,
+                subscription=subscription,
+                typeFilter=type_filter,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return await self._get_count(expression=expression, params=params)
 
     def select(
-            self,
-            expression: str | None = None,
-            *,
-            context: str | None = None,
-            source: str | None = None,
-            subscription: str | None = None,
-            type_filter: str | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        context: str | None = None,
+        source: str | None = None,
+        subscription: str | None = None,
+        type_filter: str | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Subscription | Any]:
         """Query the database for subscriptions and iterate over the results.
 
@@ -197,14 +205,18 @@ class Subscriptions(CumulocityResource[Subscription]):
         Returns:
             AsyncIterator of Subscription instances
         """
-        params = map_params(
-            context=context,
-            source=source,
-            subscription=subscription,
-            typeFilter=type_filter,
-            page_size=page_size,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                context=context,
+                source=source,
+                subscription=subscription,
+                typeFilter=type_filter,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -214,18 +226,18 @@ class Subscriptions(CumulocityResource[Subscription]):
         )
 
     async def get_all(
-            self,
-            expression: str | None = None,
-            *,
-            context: str | None = None,
-            source: str | None = None,
-            subscription: str | None = None,
-            type_filter: str | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        context: str | None = None,
+        source: str | None = None,
+        subscription: str | None = None,
+        type_filter: str | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Subscription]:
         """Query the database for subscriptions and return the results as list.
 
@@ -234,18 +246,21 @@ class Subscriptions(CumulocityResource[Subscription]):
         Returns:
             List of Subscription instances
         """
-        return [x async for x in self.select(
-            expression=expression,
-            context=context,
-            source=source,
-            subscription=subscription,
-            type_filter=type_filter,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                context=context,
+                source=source,
+                subscription=subscription,
+                type_filter=type_filter,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def create(self, *subscriptions: Subscription) -> None:
         """Create subscriptions within the database.
@@ -273,21 +288,21 @@ class Tokens:
               https://cumulocity.com/guides/reference/notifications/
     """
 
-    _subscriber_uuid = uuid.uuid5(uuid.NAMESPACE_URL, 'https://github.com/Cumulocity-IoT/cumulocity-python-api')
-    _default_subscriber = 'c8yapi' + str(_subscriber_uuid).replace('-', '')
+    _subscriber_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "https://github.com/Cumulocity-IoT/cumulocity-python-api")
+    _default_subscriber = "c8yapi" + str(_subscriber_uuid).replace("-", "")
 
     def __init__(self, c8y: CumulocityRestClient):
         self.c8y = c8y
         self.host = urllib.parse.urlparse(c8y.base_url).netloc
 
     async def generate(
-            self,
-            subscription: str,
-            expires: int = 1440,
-            subscriber: str | None = None,
-            signed: bool | None = None,
-            shared: bool | None = None,
-            non_persistent: bool | None = None,
+        self,
+        subscription: str,
+        expires: int = 1440,
+        subscriber: str | None = None,
+        signed: bool | None = None,
+        shared: bool | None = None,
+        non_persistent: bool | None = None,
     ) -> str:
         """Generate a new access token.
 
@@ -303,8 +318,8 @@ class Tokens:
             JWT access token as string
         """
         td_json = self._build_token_definition(subscription, expires, subscriber, signed, shared, non_persistent)
-        token_json = await self.c8y.post('notification2/token', json=td_json)
-        return token_json['token']
+        token_json = await self.c8y.post("notification2/token", json=td_json)
+        return token_json["token"]
 
     async def unsubscribe(self, token: str) -> None:
         """Invalidate a token and unsubscribe a subscriber.
@@ -312,8 +327,8 @@ class Tokens:
         Args:
             token (str):  Subscribed token
         """
-        result_json = await self.c8y.post(f'notification2/unsubscribe?token={token}', json={})
-        if result_json.get('result') != 'DONE':
+        result_json = await self.c8y.post(f"notification2/unsubscribe?token={token}", json={})
+        if result_json.get("result") != "DONE":
             raise RuntimeError(f"Unexpected response: {js.dumps(result_json)}")
 
     def build_websocket_uri(self, token: str, consumer: str | None = None) -> str:
@@ -326,28 +341,28 @@ class Tokens:
         Returns:
             A websocket (ws(s)://) URL to access the subscriber channel
         """
-        protocol = 'wss' if self.c8y.base_url.startswith('https') else 'ws'
-        consumer_param = f'&consumer={consumer}' if consumer else ''
-        return f'{protocol}://{self.host}/notification2/consumer/?token={token}{consumer_param}'
+        protocol = "wss" if self.c8y.base_url.startswith("https") else "ws"
+        consumer_param = f"&consumer={consumer}" if consumer else ""
+        return f"{protocol}://{self.host}/notification2/consumer/?token={token}{consumer_param}"
 
     def _build_token_definition(
-            self,
-            subscription: str,
-            expires: int,
-            subscriber: str | None = None,
-            signed: bool | None = None,
-            shared: bool | None = None,
-            non_persistent: bool | None = None,
+        self,
+        subscription: str,
+        expires: int,
+        subscriber: str | None = None,
+        signed: bool | None = None,
+        shared: bool | None = None,
+        non_persistent: bool | None = None,
     ) -> dict:
         body = {
-            'subscriber': subscriber or self._default_subscriber,
-            'subscription': subscription,
-            'expiresInMinutes': expires,
+            "subscriber": subscriber or self._default_subscriber,
+            "subscription": subscription,
+            "expiresInMinutes": expires,
         }
         if signed is not None:
-            body['signed'] = signed
+            body["signed"] = signed
         if shared is not None:
-            body['shared'] = shared
+            body["shared"] = shared
         if non_persistent is not None:
-            body['nonPersistent'] = non_persistent
+            body["nonPersistent"] = non_persistent
         return body

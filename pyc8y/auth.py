@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import time
 from typing import Self, Protocol
 
+
 class JWT:
     """Simple JWT toolkit.
 
@@ -13,33 +14,33 @@ class JWT:
     """
 
     def __init__(self, token: str | bytes):
-        self.token = token if isinstance(token, bytes) else token.encode('utf-8')
+        self.token = token if isinstance(token, bytes) else token.encode("utf-8")
         self._body: dict | None = None
 
     @property
     def payload(self):
         """Return the JWT payload as JSON document."""
         if not self._body:
-            jwt_parts = self.token.split(b'.')
+            jwt_parts = self.token.split(b".")
             if len(jwt_parts) != 3:
                 raise ValueError("Unexpected token format (Invalid number of parts, not an JWT?).")
             # The JWT body might not be padded, hence we add padding
             # characters which are ignored if they are not necessary.
             # See: https://gist.github.com/perrygeo/ee7c65bb1541ff6ac770,
             # https://stackoverflow.com/questions/2941995
-            body = jwt_parts[1] + b'=='
+            body = jwt_parts[1] + b"=="
             self._body = json.loads(base64.b64decode(body))
         return self._body
 
     @property
     def username(self):
         """Read the username from the token payload."""
-        return self.get_claim('sub')
+        return self.get_claim("sub")
 
     @property
     def tenant_id(self):
         """Read the tenant ID from the token payload."""
-        return self.get_claim('ten')
+        return self.get_claim("ten")
 
     def get_claim(self, claim: str):
         """Read a claim from the token payload."""
@@ -51,7 +52,7 @@ class JWT:
         Returns:
             The number of seconds the token remains valid.
         """
-        return self.payload['exp'] - time.time()
+        return self.payload["exp"] - time.time()
 
     def is_valid(self, min_seconds: int = None):
         """Check whether the token is valid.
@@ -61,7 +62,7 @@ class JWT:
         """
         if not min_seconds:
             min_seconds = 0
-        return time.time() + min_seconds > int(self.payload['exp'])
+        return time.time() + min_seconds > int(self.payload["exp"])
 
 
 class Auth(Protocol):
@@ -76,13 +77,14 @@ class Auth(Protocol):
         ...
 
     def build_auth_header(self) -> str:
-        """Build an HTTP auth header."""   # TODO: check if this documentation is visible in docs and code hints
+        """Build an HTTP auth header."""  # TODO: check if this documentation is visible in docs and code hints
         ...
 
 
 @dataclass(frozen=True, slots=True)
 class BasicAuth(Auth):
     """Basic auth provider."""
+
     username: str
     password: str
 
@@ -109,6 +111,7 @@ class BasicAuth(Auth):
 @dataclass(frozen=True, slots=True)
 class BearerAuth(Auth):
     """Bearer auth provider."""
+
     token: str
 
     @classmethod

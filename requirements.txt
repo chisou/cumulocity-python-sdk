@@ -1,13 +1,9 @@
 # Note: these are the development requirements for use with pip
-# the libraries dependencies are defined in pyproject.toml
-python-dateutil
+# the libraries dependencies are defined in pyprojjupyterect.toml
 PyYAML
-requests
-Deprecated
 pytest
 pytest-asyncio
 pytest-cov
-responses
 python-dotenv
 invoke
 pylint
@@ -15,7 +11,6 @@ PyJWT
 cachetools
 inputimeout
 Flask
-websockets
 pandas
 PyOTP
 hatchling
@@ -30,3 +25,4 @@ deepdiff
 coolname
 werkzeug
 starlette
+jupyter

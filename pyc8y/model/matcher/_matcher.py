@@ -17,7 +17,7 @@ class JsonMatcher(ABC):
 
     def __init__(self, expression: str, warn_on_error: bool = False):
         self.expression = expression
-        self.log = logging.getLogger('c8y_api.model.matcher')
+        self.log = logging.getLogger("c8y_api.model.matcher")
         self.warn_on_error = warn_on_error
 
     def __repr__(self):
@@ -42,7 +42,7 @@ class JsonMatcher(ABC):
         try:
             return self.matches(json)
         except Exception as error:
-            self.log.warning(f"Matching \"{self.expression}\" failed with error: {error}")
+            self.log.warning(f'Matching "{self.expression}" failed with error: {error}')
             return False
 
 
@@ -50,7 +50,7 @@ class AllMatcher(JsonMatcher):
     """Higher level matcher matching if all the enclosed matchers match."""
 
     def __init__(self, *matchers: JsonMatcher):
-        super().__init__(' AND '.join(str(m) for m in matchers))
+        super().__init__(" AND ".join(str(m) for m in matchers))
         self.matchers = matchers
 
     def matches(self, json: dict) -> bool:
@@ -66,7 +66,7 @@ class AnyMatcher(JsonMatcher):
     """Higher level matcher matching if any of the enclosed matcher matches."""
 
     def __init__(self, *matchers: JsonMatcher):
-        super().__init__(' OR '.join(str(m) for m in matchers))
+        super().__init__(" OR ".join(str(m) for m in matchers))
         self.matchers = matchers
 
     def matches(self, json: dict) -> bool:
@@ -82,7 +82,7 @@ class NotMatcher(JsonMatcher):
     """Higher level matcher matching if the enclosed matcher doesn't match."""
 
     def __init__(self, matcher: JsonMatcher):
-        super().__init__(f'NOT {matcher}')
+        super().__init__(f"NOT {matcher}")
         self.matcher = matcher
 
     def matches(self, json: dict) -> bool:
@@ -114,18 +114,19 @@ class FieldMatcher(JsonMatcher):
 
     class Mode:
         """The mode of matching."""
-        LIKE = 'LIKE'
-        REGEX = 'REGEX'
 
-    def __init__(self, name: str, expression: str, mode: str = 'LIKE'):
+        LIKE = "LIKE"
+        REGEX = "REGEX"
+
+    def __init__(self, name: str, expression: str, mode: str = "LIKE"):
         super().__init__(expression)
         self.field_name = name
         self.mode = mode
 
     def matches(self, json: dict) -> bool:
         return self.field_name in json and (
-                (self.mode == 'REGEX' and matches(self.expression, json[self.field_name])) or
-                like(self.expression, json[self.field_name])
+            (self.mode == "REGEX" and matches(self.expression, json[self.field_name]))
+            or like(self.expression, json[self.field_name])
         )
 
 
@@ -137,8 +138,8 @@ def field(name: str, value: str, mode: str = FieldMatcher.Mode.LIKE) -> FieldMat
 class DescriptionMatcher(FieldMatcher):
     """Matcher matching the top-level `description` field of a document."""
 
-    def __init__(self, expression: str, mode: str = 'LIKE'):
-        super().__init__('description', expression, mode)
+    def __init__(self, expression: str, mode: str = "LIKE"):
+        super().__init__("description", expression, mode)
 
 
 def description(name: str, mode: str = FieldMatcher.Mode.LIKE) -> DescriptionMatcher:
@@ -149,8 +150,8 @@ def description(name: str, mode: str = FieldMatcher.Mode.LIKE) -> DescriptionMat
 class TextMatcher(FieldMatcher):
     """Matcher matching the top-level `text` field of a document."""
 
-    def __init__(self, expression: str, mode: str = 'LIKE'):
-        super().__init__('text', expression, mode)
+    def __init__(self, expression: str, mode: str = "LIKE"):
+        super().__init__("text", expression, mode)
 
 
 def text(name: str, mode: str = FieldMatcher.Mode.LIKE) -> TextMatcher:
@@ -161,11 +162,11 @@ def text(name: str, mode: str = FieldMatcher.Mode.LIKE) -> TextMatcher:
 class CommandMatcher(FieldMatcher):
     """Matcher matching the `text` field c8y_Command fragment."""
 
-    def __init__(self, command_text: str, mode: str ='LIKE'):
-        super().__init__('text', expression=command_text, mode=mode)
+    def __init__(self, command_text: str, mode: str = "LIKE"):
+        super().__init__("text", expression=command_text, mode=mode)
 
     def matches(self, json: dict) -> bool:
-        return 'c8y_Command' in json and super().matches(json['c8y_Command'])
+        return "c8y_Command" in json and super().matches(json["c8y_Command"])
 
 
 def command(name: str, mode: str = FieldMatcher.Mode.LIKE) -> CommandMatcher:

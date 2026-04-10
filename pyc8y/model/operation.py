@@ -24,10 +24,11 @@ from pyc8y.types import OperationsMeta, BulkOperationsMeta, AsValuesSpec
 
 class OperationStatus(StrEnum):
     """Operation statuses."""
-    PENDING = 'PENDING'
-    EXECUTING = 'EXECUTING'
-    SUCCESSFUL = 'SUCCESSFUL'
-    FAILED = 'FAILED'
+
+    PENDING = "PENDING"
+    EXECUTING = "EXECUTING"
+    SUCCESSFUL = "SUCCESSFUL"
+    FAILED = "FAILED"
 
 
 class Operation(CumulocityObject):
@@ -38,16 +39,17 @@ class Operation(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Operations
     """
+
     _meta = OperationsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            device_id: str | None = None,
-            description: str | None = None,
-            status: str | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        device_id: str | None = None,
+        description: str | None = None,
+        status: str | None = None,
+        **kwargs,
     ):
         super().__init__(c8y, **kwargs)
         self.device_id = device_id
@@ -89,11 +91,7 @@ class Operation(CumulocityObject):
         await run_batched(
             ensure_ids(flatten(devices)),
             workers,
-            lambda x: self.c8y.post(
-                self._meta.resource_path,
-                operation_json | {"deviceId": x},
-                accept=None
-            ),
+            lambda x: self.c8y.post(self._meta.resource_path, operation_json | {"deviceId": x}, accept=None),
         )
 
 
@@ -105,6 +103,7 @@ class Operations(CumulocityResource[Operation]):
 
     See also: https://cumulocity.com/api/core/#tag/Operations
     """
+
     _meta = OperationsMeta
     _object_type = Operation
 
@@ -120,29 +119,29 @@ class Operations(CumulocityResource[Operation]):
         return await self._get(str(operation_id))
 
     def select(
-            self,
-            expression: str | None = None,
-            *,
-            agent_id: str | None = None,
-            device_id: str | None = None,
-            status: str | None = None,
-            bulk_id: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        agent_id: str | None = None,
+        device_id: str | None = None,
+        status: str | None = None,
+        bulk_id: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Operation | Any | tuple[Any]]:
         """Query the database for operations and iterate over the results.
 
@@ -175,22 +174,26 @@ class Operations(CumulocityResource[Operation]):
         Returns:
             AsyncIterator of Operation objects
         """
-        params = map_params(
-            fragment=fragment,
-            bulk_id=bulk_id,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            page_size=page_size,
-            agentId=agent_id,
-            deviceId=device_id,
-            status=status,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                fragment=fragment,
+                bulk_id=bulk_id,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                page_size=page_size,
+                agentId=agent_id,
+                deviceId=device_id,
+                status=status,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -203,29 +206,29 @@ class Operations(CumulocityResource[Operation]):
         )
 
     async def get_all(
-            self,
-            expression: str | None = None,
-            *,
-            agent_id: str | None = None,
-            device_id: str | None = None,
-            status: str | None = None,
-            bulk_id: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        agent_id: str | None = None,
+        device_id: str | None = None,
+        status: str | None = None,
+        bulk_id: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Operation | Any | tuple[Any]]:
         """Query the database for operations and return the results as list.
 
@@ -234,44 +237,47 @@ class Operations(CumulocityResource[Operation]):
         Returns:
             List of matching Operation objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            agent_id=agent_id,
-            device_id=device_id,
-            status=status,
-            bulk_id=bulk_id,
-            fragment=fragment,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                agent_id=agent_id,
+                device_id=device_id,
+                status=status,
+                bulk_id=bulk_id,
+                fragment=fragment,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def get_last(
-            self,
-            expression: str | None = None,
-            *,
-            agent_id: str | None = None,
-            device_id: str | None = None,
-            status: str | None = None,
-            bulk_id: str | None = None,
-            fragment: str | None = None,
-            date_to: str | datetime | None = None,
-            before: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            as_values: AsValuesSpec | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        agent_id: str | None = None,
+        device_id: str | None = None,
+        status: str | None = None,
+        bulk_id: str | None = None,
+        fragment: str | None = None,
+        date_to: str | datetime | None = None,
+        before: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        as_values: AsValuesSpec | None = None,
+        **kwargs,
     ) -> Operation | None:
         """Query the database and return the last matching operation.
 
@@ -280,76 +286,84 @@ class Operations(CumulocityResource[Operation]):
         """
         after = None
         if not before and not min_age:
-            after = '1970-01-01'
-        params = map_params(
-            fragment=fragment,
-            bulk_id=bulk_id,
-            after=after,
-            before=before,
-            date_to=date_to,
-            min_age=min_age,
-            reverse=True,
-            page_size=1,
-            agentId=agent_id,
-            deviceId=device_id,
-            status=status,
-            **kwargs,
-        ) if not expression else ()
+            after = "1970-01-01"
+        params = (
+            map_params(
+                fragment=fragment,
+                bulk_id=bulk_id,
+                after=after,
+                before=before,
+                date_to=date_to,
+                min_age=min_age,
+                reverse=True,
+                page_size=1,
+                agentId=agent_id,
+                deviceId=device_id,
+                status=status,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return await self._get_last(expression=expression, params=params, as_values=as_values)
 
     async def get_count(
-            self,
-            expression: str | None = None,
-            *,
-            agent_id: str | None = None,
-            device_id: str | None = None,
-            status: str | None = None,
-            bulk_id: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        agent_id: str | None = None,
+        device_id: str | None = None,
+        status: str | None = None,
+        bulk_id: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
         Returns:
             Number of potential results
         """
-        params = map_params(
-            fragment=fragment,
-            bulk_id=bulk_id,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            page_size=1,
-            agentId=agent_id,
-            deviceId=device_id,
-            status=status,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                fragment=fragment,
+                bulk_id=bulk_id,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                page_size=1,
+                agentId=agent_id,
+                deviceId=device_id,
+                status=status,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return await self._get_count(expression=expression, params=params)
 
     async def delete_by(
-            self,
-            expression: str | None = None,
-            *,
-            agent_id: str | None = None,
-            device_id: str | None = None,
-            status: str | None = None,
-            bulk_id: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        agent_id: str | None = None,
+        device_id: str | None = None,
+        status: str | None = None,
+        bulk_id: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        **kwargs,
     ) -> None:
         """Query the database and delete matching operations.
 
@@ -386,22 +400,24 @@ class Operations(CumulocityResource[Operation]):
 
 class BulkStatus(StrEnum):
     """Bulk Operation statuses."""
-    ACTIVE = 'ACTIVE'
-    IN_PROGRESS = 'IN_PROGRESS'
-    COMPLETED = 'COMPLETED'
-    DELETED = 'DELETED'
+
+    ACTIVE = "ACTIVE"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    DELETED = "DELETED"
 
 
 class GeneralBulkStatus(StrEnum):
     """Bulk Operation general statuses."""
-    SCHEDULED = 'PENDING'
-    EXECUTING = 'EXECUTING'
-    EXECUTING_WITH_ERRORS = 'EXECUTING_WITH_ERRORS'
-    SUCCESSFUL = 'SUCCESSFUL'
-    FAILED = 'FAILED'
-    CANCELED = 'CANCELED'
-    COMPLETED_SUCCESSFULLY = 'COMPLETED SUCCESSFULLY'
-    COMPLETED_WITH_FAILURES = 'COMPLETED WITH FAILURES'
+
+    SCHEDULED = "PENDING"
+    EXECUTING = "EXECUTING"
+    EXECUTING_WITH_ERRORS = "EXECUTING_WITH_ERRORS"
+    SUCCESSFUL = "SUCCESSFUL"
+    FAILED = "FAILED"
+    CANCELED = "CANCELED"
+    COMPLETED_SUCCESSFULLY = "COMPLETED SUCCESSFULLY"
+    COMPLETED_WITH_FAILURES = "COMPLETED WITH FAILURES"
 
 
 class BulkOperation(CumulocityObject):
@@ -413,18 +429,19 @@ class BulkOperation(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Bulk-operations
     """
+
     _meta = BulkOperationsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            group_id: str | None = None,
-            failed_parent_id: str | None = None,
-            start_time: str | datetime | None = None,
-            creation_ramp: float | None = None,
-            operation_prototype: dict | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        group_id: str | None = None,
+        failed_parent_id: str | None = None,
+        start_time: str | datetime | None = None,
+        creation_ramp: float | None = None,
+        operation_prototype: dict | None = None,
+        **kwargs,
     ):
         super().__init__(c8y, **kwargs)
         self.group_id = group_id
@@ -432,7 +449,7 @@ class BulkOperation(CumulocityObject):
         self.start_time = start_time
         self.creation_ramp = creation_ramp
         if operation_prototype is not None:
-            self._staged_json['operationPrototype'] = operation_prototype
+            self._staged_json["operationPrototype"] = operation_prototype
 
     group_id = json_property("groupId")
     failed_parent_id = json_property("failedParentId")
@@ -472,6 +489,7 @@ class BulkOperations(CumulocityResource[BulkOperation]):
 
     See also: https://cumulocity.com/api/core/#tag/Bulk-operations
     """
+
     _meta = BulkOperationsMeta
     _object_type = BulkOperation
 
@@ -487,15 +505,15 @@ class BulkOperations(CumulocityResource[BulkOperation]):
         return await self._get(operation_id)
 
     def select(
-            self,
-            *,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        *,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[BulkOperation | Any | tuple[Any]]:
         """Query the database for bulk operations and iterate over the results.
 
@@ -521,15 +539,15 @@ class BulkOperations(CumulocityResource[BulkOperation]):
         )
 
     async def get_all(
-            self,
-            *,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        *,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[BulkOperation | Any | tuple[Any]]:
         """Query the database for bulk operations and return the results as list.
 
@@ -538,15 +556,18 @@ class BulkOperations(CumulocityResource[BulkOperation]):
         Returns:
             List of BulkOperation objects
         """
-        return [x async for x in self.select(
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def get_count(self, **kwargs) -> int:
         """Calculate the number of potential results of a database query.

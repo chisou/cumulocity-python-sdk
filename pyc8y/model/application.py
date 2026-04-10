@@ -24,35 +24,36 @@ class Application(CumulocityObject):
 
     See also: https://cumulocity.com/api/#tag/Application-API
     """
+
     _meta = ApplicationsMeta
 
     EXTERNAL_TYPE = "EXTERNAL"
     HOSTED_TYPE = "HOSTED"
     MICROSERVICE_TYPE = "MICROSERVICE"
 
-    PRIVATE_AVAILABILITY = 'PRIVATE'
-    MARKET_AVAILABILITY = 'MARKET'
+    PRIVATE_AVAILABILITY = "PRIVATE"
+    MARKET_AVAILABILITY = "MARKET"
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            name: str | None = None,
-            key: str | None = None,
-            type: str | None = None,   # noqa (type)
-            availability: str | None = None,
-            context_path: str | None = None,
-            manifest: dict | None = None,
-            roles: list[str] | None = None,
-            required_roles: list[str] | None = None,
-            breadcrumbs: bool | None = None,
-            content_security_policy: str | None = None,
-            dynamic_options_url: str | None = None,
-            global_title: str | None = None,
-            legacy: bool | None = None,
-            right_drawer: bool | None = None,
-            upgrade: bool | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        name: str | None = None,
+        key: str | None = None,
+        type: str | None = None,  # noqa (type)
+        availability: str | None = None,
+        context_path: str | None = None,
+        manifest: dict | None = None,
+        roles: list[str] | None = None,
+        required_roles: list[str] | None = None,
+        breadcrumbs: bool | None = None,
+        content_security_policy: str | None = None,
+        dynamic_options_url: str | None = None,
+        global_title: str | None = None,
+        legacy: bool | None = None,
+        right_drawer: bool | None = None,
+        upgrade: bool | None = None,
+        **kwargs,
     ):
         """Create a new Application object.
 
@@ -113,7 +114,7 @@ class Application(CumulocityObject):
     def owner(self) -> str | None:
         """Tenant ID of the application owner (read-only)."""
         try:
-            return self._json['owner']['tenant']['id']
+            return self._json["owner"]["tenant"]["id"]
         except (KeyError, TypeError):
             return None
 
@@ -172,6 +173,7 @@ class ApplicationSubscription(object):
 
     See also: https://cumulocity.com/api/core/#tag/Current-application
     """
+
     # TODO: Check if attribute documentation works as expected
 
     tenant_id: str
@@ -187,9 +189,9 @@ class ApplicationSubscription(object):
     def from_json(cls, json: dict) -> Self:
         """Create an ApplicationSubscription instance from Cumulocity JSON format."""
         return ApplicationSubscription(
-            tenant_id=json['tenant'],
-            username=json['name'],
-            password=json['password'],
+            tenant_id=json["tenant"],
+            username=json["name"],
+            password=json["password"],
         )
 
 
@@ -201,6 +203,7 @@ class Applications(CumulocityResource[Application]):
 
     See also: https://cumulocity.com/api/#tag/Application-API
     """
+
     _meta = ApplicationsMeta
     _object_type = Application
 
@@ -224,7 +227,7 @@ class Applications(CumulocityResource[Application]):
             An Application instance.
         """
         return Application.from_json(
-            await self.c8y.get('application/currentApplication'),
+            await self.c8y.get("application/currentApplication"),
             c8y=self.c8y,
         )
 
@@ -246,7 +249,7 @@ class Applications(CumulocityResource[Application]):
 
         See also: TenantOptions.get_values to read tenant options
         """
-        return await self.c8y.get('application/currentApplication/settings')
+        return await self.c8y.get("application/currentApplication/settings")
 
     async def get_current_subscriptions(self) -> list[ApplicationSubscription]:
         """Query the database for subscriptions of the current application.
@@ -256,29 +259,29 @@ class Applications(CumulocityResource[Application]):
         Returns:
             List of ApplicationSubscription instances.
         """
-        result = await self.c8y.get('application/currentApplication/subscriptions')
-        return [ApplicationSubscription.from_json(x) for x in result['users']]
+        result = await self.c8y.get("application/currentApplication/subscriptions")
+        return [ApplicationSubscription.from_json(x) for x in result["users"]]
 
     def select(
-            self,
-            expression: str = None,
-            *,
-            name: str | None = None,
-            type: str | None = None,   # noqa (type)
-            owner: str | None = None,
-            user: str | None = None,
-            tenant: str | None = None,
-            subscriber: str | None = None,
-            provided_for: str | None = None,
-            has_versions: bool | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 100,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        name: str | None = None,
+        type: str | None = None,  # noqa (type)
+        owner: str | None = None,
+        user: str | None = None,
+        tenant: str | None = None,
+        subscriber: str | None = None,
+        provided_for: str | None = None,
+        has_versions: bool | None = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 100,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Application | Any | tuple[Any]]:
         """Query the database for applications and iterate over the results.
 
@@ -322,18 +325,22 @@ class Applications(CumulocityResource[Application]):
         Returns:
             AsyncIterator of Application objects
         """
-        params = map_params(
-            name=name,
-            type=type,
-            owner=owner,
-            user=user,
-            tenant=tenant,
-            subscriber=subscriber,
-            provided_for=provided_for,
-            has_versions=has_versions,
-            page_size=page_size,
-            **kwargs
-        ) if not expression else ()
+        params = (
+            map_params(
+                name=name,
+                type=type,
+                owner=owner,
+                user=user,
+                tenant=tenant,
+                subscriber=subscriber,
+                provided_for=provided_for,
+                has_versions=has_versions,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -346,25 +353,25 @@ class Applications(CumulocityResource[Application]):
         )
 
     async def get_all(
-            self,
-            expression: str = None,
-            *,
-            name: str | None = None,
-            type: str | None = None,   # noqa (type)
-            owner: str | None = None,
-            user: str | None = None,
-            tenant: str | None = None,
-            subscriber: str | None = None,
-            provided_for: str | None = None,
-            has_versions: bool | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 100,
-            page_number: int | None = None,
-            as_values: str | tuple | list[str | tuple] = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        name: str | None = None,
+        type: str | None = None,  # noqa (type)
+        owner: str | None = None,
+        user: str | None = None,
+        tenant: str | None = None,
+        subscriber: str | None = None,
+        provided_for: str | None = None,
+        has_versions: bool | None = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 100,
+        page_number: int | None = None,
+        as_values: str | tuple | list[str | tuple] = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Application | Any | tuple[Any]]:
         """Query the database for applications and return the results as list.
 
@@ -376,25 +383,28 @@ class Applications(CumulocityResource[Application]):
         Returns:
             List of Application objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            name=name,
-            type=type,
-            owner=owner,
-            user=user,
-            tenant=tenant,
-            subscriber=subscriber,
-            provided_for=provided_for,
-            has_versions=has_versions,
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                name=name,
+                type=type,
+                owner=owner,
+                user=user,
+                tenant=tenant,
+                subscriber=subscriber,
+                provided_for=provided_for,
+                has_versions=has_versions,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def create(self, *applications: Application, workers: int | None = None) -> None:
         """Create application objects within the database.
@@ -425,21 +435,21 @@ class Applications(CumulocityResource[Application]):
         """
         import os
 
-        path = self.build_object_path(application_id) + '/binaries'
+        path = self.build_object_path(application_id) + "/binaries"
 
         if isinstance(file, str):
             filename = os.path.basename(file)
-            with open(file, 'rb') as f:
+            with open(file, "rb") as f:
                 form = aiohttp.FormData()
-                form.add_field('file', f, filename=filename, content_type='application/octet-stream')
+                form.add_field("file", f, filename=filename, content_type="application/octet-stream")
                 session = await self.c8y.session
                 async with session.post(path, data=form) as r:
                     if r.status not in (200, 201):
                         raise ValueError(f"Failed to upload attachment. Status: {r.status}, Response: {await r.text()}")
         else:
-            filename = getattr(file, 'name', 'binary')
+            filename = getattr(file, "name", "binary")
             form = aiohttp.FormData()
-            form.add_field('file', file, filename=os.path.basename(filename), content_type='application/octet-stream')
+            form.add_field("file", file, filename=os.path.basename(filename), content_type="application/octet-stream")
             session = await self.c8y.session
             async with session.post(path, data=form) as r:
                 if r.status not in (200, 201):

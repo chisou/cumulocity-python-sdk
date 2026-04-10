@@ -22,14 +22,9 @@ classifiers = [
 ]
 dependencies = [
     "aiohttp",
-    "asyncio",
     "cachetools",
     "certifi",
-    "inputimeout",
     "orjson",
-    "PyJWT",
-    "requests",
-    "websockets"
 ]
 
 [project.optional-dependencies]
@@ -44,6 +39,9 @@ Homepage = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
 Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
 Issues = "https://github.com/Cumulocity-IoT/cumulocity-python-api/issues"
 Documentation = "https://cumulocity-python-api.readthedocs.io/en/latest/"
+
+[tool.black]
+line-length = 120
 
 [tool.hatch.build.targets.wheel]
 only-include = ["pyc8y"]

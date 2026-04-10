@@ -26,6 +26,7 @@ from pyc8y.model.model_util import (
     to_timestring,
     now_timestring,
 )
+
 # trying to import various matchers that need external libraries
 try:
     from pyc8y.model.matcher import PydfMatcher as DefaultMatcher
@@ -57,6 +58,7 @@ def assert_id(obj):
 
 def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
     """Ensure a proper datetime object."""
+
     def param_name():
         return f" ({name})" if name else ""
 
@@ -69,7 +71,7 @@ def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime 
     try:
         value = to_datetime(value)
         if value.tzinfo is None:
-            value = value.replace(tzinfo = timezone.utc)
+            value = value.replace(tzinfo=timezone.utc)
         return value
     except ValueError:
         raise ValueError(f"Unable to convert to datetime{param_name()}.")
@@ -117,6 +119,7 @@ def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedel
 def coerce_timestring(value: str | datetime | None, name: str = None) -> str | None:
     """Ensure that a given timestring reflects a proper, timezone aware date/time.
     A static string 'now' will be converted to the current datetime in UTC."""
+
     def param_name():
         return f" ({name})" if name else ""
 
@@ -131,7 +134,7 @@ def coerce_timestring(value: str | datetime | None, name: str = None) -> str | N
     try:
         value = to_datetime(value)
         if value.tzinfo is None:
-            value = value.replace(tzinfo = timezone.utc)
+            value = value.replace(tzinfo=timezone.utc)
         return to_timestring(value)
     except ValueError as e:
         raise ValueError(f"Invalid datetime{param_name()} ({e}).")
@@ -157,71 +160,80 @@ def expand_dotted(kwargs):
 def json_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]
+
     def setter(self, value):
         if value is not None:
             self._staged_json[key] = value
+
     return property(getter) if read_only else property(getter, setter)
 
 
 def id_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]["id"]
+
     def setter(self, value):  # todo: not sure we ever need a setter for ID
         if value is not None:
             self._staged_json[key] = {"id": value}
+
     return property(getter) if read_only else property(getter, setter)
 
 
 def tag_property(key: str, read_only=False) -> property:
     def getter(self):
         return key in self._json
+
     def setter(self, value):
         self._staged_json[key] = {}
+
     return property(getter) if read_only else property(getter, setter)
 
 
 def time_property(key: str, read_only=False) -> property:
     def getter(self):
         return self._json[key]
+
     def setter(self, value):
         if value is not None:
             self._staged_json[key] = coerce_timestring(value, key)
+
     return property(getter) if read_only else property(getter, setter)
 
 
 def datetime_property(key: str) -> property:
     def getter(self):
         return to_datetime(self._json[key])
+
     return property(getter)
 
 
 def map_params(
-        *,
-        name=None,
-        fragment=None,
-        bulk_id=None,
-        series=None,
-        aggregation_function=None,
-        before=None,
-        after=None,
-        date_from=None,
-        date_to=None,
-        created_before=None,
-        created_after=None,
-        created_from=None,
-        created_to=None,
-        updated_before=None,
-        updated_after=None,
-        last_updated_from=None,
-        last_updated_to=None,
-        min_age=None,
-        max_age=None,
-        source=None,
-        with_source_assets=None,
-        with_source_devices=None,
-        reverse=None,
-        **kwargs
-    ) -> Sequence[tuple[str, str]]:
+    *,
+    name=None,
+    fragment=None,
+    bulk_id=None,
+    series=None,
+    aggregation_function=None,
+    before=None,
+    after=None,
+    date_from=None,
+    date_to=None,
+    created_before=None,
+    created_after=None,
+    created_from=None,
+    created_to=None,
+    updated_before=None,
+    updated_after=None,
+    last_updated_from=None,
+    last_updated_to=None,
+    min_age=None,
+    max_age=None,
+    source=None,
+    with_source_assets=None,
+    with_source_devices=None,
+    reverse=None,
+    **kwargs,
+) -> Sequence[tuple[str, str]]:
     def multi(*xs):
         return sum(bool(x) for x in xs) > 1
 
@@ -250,35 +262,40 @@ def map_params(
     date_to = coerce_timestring(date_to, "date_to") or coerce_timestring(before, "before")
     created_from = coerce_timestring(created_from, "created_from") or coerce_timestring(created_after, "created_after")
     created_to = coerce_timestring(created_to, "created_to") or coerce_timestring(created_before, "created_before")
-    updated_from = coerce_timestring(last_updated_from, "last_updated_from") or coerce_timestring(updated_after, "updated_after")
-    updated_to = coerce_timestring(last_updated_to, "last-updated_to") or coerce_timestring(updated_before, "updated_before")
+    updated_from = coerce_timestring(last_updated_from, "last_updated_from") or coerce_timestring(
+        updated_after, "updated_after"
+    )
+    updated_to = coerce_timestring(last_updated_to, "last-updated_to") or coerce_timestring(
+        updated_before, "updated_before"
+    )
 
     if (not source) and any([with_source_devices, with_source_assets]):
         raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
 
     series = series if is_sequence(series) else (series,) if series else ()
-    aggregation_function = aggregation_function if is_sequence(aggregation_function) else (aggregation_function,) if aggregation_function else ()
+    aggregation_function = (
+        aggregation_function
+        if is_sequence(aggregation_function)
+        else (aggregation_function,) if aggregation_function else ()
+    )
     params = (
         ("name", name),  # TODO, check if OData encoding works as expected
         ("fragmentType", fragment),
         ("source", source),
         ("bulkOperationId", bulk_id),
-        ('dateFrom', date_from),
-        ('dateTo', date_to),
-        ('createdFrom', created_from),
-        ('createdTo', created_to),
-        ('lastUpdatedFrom', updated_from),
-        ('lastUpdatedTo', updated_to),
+        ("dateFrom", date_from),
+        ("dateTo", date_to),
+        ("createdFrom", created_from),
+        ("createdTo", created_to),
+        ("lastUpdatedFrom", updated_from),
+        ("lastUpdatedTo", updated_to),
         ("revert", encode(reverse)),
         *(("series", s) for s in series),
         *(("aggregationFunction", f) for f in aggregation_function),
-        *((k, encode(v)) for k, v in kwargs.items())
+        *((k, encode(v)) for k, v in kwargs.items()),
     )
-    return [
-        (to_pascal_case(k), str(v))
-        for k, v in params
-        if v is not None
-    ]
+    return [(to_pascal_case(k), str(v)) for k, v in params if v is not None]
+
 
 def encode(value: Any | None) -> Sequence | str | None:
     if value is None:
@@ -300,12 +317,12 @@ class AttrDict:
         - breaks identity checks `obj.a is obj.a` (because AttrDict is instantiated on each access.
         - doesn't have any "internal attribute" check, so technically `obj._d = something` would destroy the instance
     """
+
     __slots__ = ("_d", "_cb")
 
     def __init__(self, d: Mapping, cb: Callable | None):
         object.__setattr__(self, "_d", d)
         object.__setattr__(self, "_cb", cb)
-
 
     def __getattr__(self, key):
         try:
@@ -315,7 +332,7 @@ class AttrDict:
 
     def __getitem__(self, key):
         if key in self._d:
-            value =self._d[key]
+            value = self._d[key]
         else:
             pascal_key = to_pascal_case(key)
             if pascal_key in self._d:
@@ -335,6 +352,7 @@ class AttrDict:
 
 class CumulocityObject:
     """Base class for all Cumulocity database objects."""
+
     _meta: ResourceMeta
 
     def __init__(self, c8y: CumulocityRestClient | None = None, **kwargs):
@@ -360,15 +378,20 @@ class CumulocityObject:
         return self._meta.build_object_path(self.id)
 
     def __repr__(self) -> str:
-        return ''.join([   # -> ClassName(id=123, type=abc)
-            type(self).__name__,
-            "(",
-            ", ".join([
-                f"{n}={getattr(self, n)}"
-                for n in ["id", "type"] if hasattr(self, n) and getattr(self, n) is not None
-            ]),
-            ")"
-        ])
+        return "".join(
+            [  # -> ClassName(id=123, type=abc)
+                type(self).__name__,
+                "(",
+                ", ".join(
+                    [
+                        f"{n}={getattr(self, n)}"
+                        for n in ["id", "type"]
+                        if hasattr(self, n) and getattr(self, n) is not None
+                    ]
+                ),
+                ")",
+            ]
+        )
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -390,7 +413,7 @@ class CumulocityObject:
 
     def __contains__(self, path) -> bool:
         current = self._json
-        for key in path.split('.'):
+        for key in path.split("."):
             if not isinstance(current, Mapping):
                 return False
             if key in current:
@@ -444,7 +467,7 @@ class CumulocityObject:
 
     def _set(self, path: str, value: Any, fail: bool):
         # TODO: print the "current" path in error messages for easier debugging
-        keys = path.split('.')
+        keys = path.split(".")
 
         if len(keys) == 1:  # no path to drill down to -> direct assignment
             self._staged_json[path] = value
@@ -521,16 +544,15 @@ class CumulocityObject:
         assert_c8y(self)
         assert_id(self)
         object_json = await self.c8y.put(
-                self.object_path,
-                json=self.to_json(True),
-                accept=self._meta.object_mime_type,
-                content_type=self._meta.object_mime_type,
+            self.object_path,
+            json=self.to_json(True),
+            accept=self._meta.object_mime_type,
+            content_type=self._meta.object_mime_type,
         )
         if inplace:
             self._source_json = object_json
             return self
         return self._build(object_json, c8y=self.c8y)
-
 
     async def _apply_to(self, other_id: str) -> Self:
         """Apply changes made to this object to another object in the database.
@@ -548,9 +570,9 @@ class CumulocityObject:
                 self._meta.build_object_path(other_id),
                 json=self.to_json(only_updated=True),
                 accept=self._meta.object_mime_type,
-                content_type=self._meta.object_mime_type
+                content_type=self._meta.object_mime_type,
             ),
-            c8y=self.c8y
+            c8y=self.c8y,
         )
 
     async def _delete(self, **params):
@@ -562,14 +584,13 @@ class CumulocityObject:
         assert_c8y(self)
         assert_id(self)
         object_json = await self.c8y.get(
-                self.object_path,
-                accept=self._meta.object_mime_type,
+            self.object_path,
+            accept=self._meta.object_mime_type,
         )
         if inplace:
             self._source_json = object_json
             return self
         return self._build(object_json, c8y=self.c8y)
-
 
     async def delete(self, **_) -> None:  # allow override with parameters
         """Delete the object within the database."""
@@ -578,6 +599,7 @@ class CumulocityObject:
 
 class CumulocityResource(Generic[CO]):
     """Abstract base class for all Cumulocity API resources."""
+
     _meta = InventoryMeta
     _object_type: type[CO]
 
@@ -620,15 +642,14 @@ class CumulocityResource(Generic[CO]):
         )
 
     async def _get_last(
-            self,
-            expression: str | None,
-            params: dict | Sequence[tuple[str, Any]] | None = None,
-            as_values: AsValuesSpec | None = None,
+        self,
+        expression: str | None,
+        params: dict | Sequence[tuple[str, Any]] | None = None,
+        as_values: AsValuesSpec | None = None,
     ) -> CO | Any | tuple[Any] | None:
         if expression:
             result_json = await self.c8y.get(
-                f"{self.resource_path}?{expression}&currentPage=1&pageSize=1",
-                accept=self._meta.object_mime_type
+                f"{self.resource_path}?{expression}&currentPage=1&pageSize=1", accept=self._meta.object_mime_type
             )
         else:
             result_json = await self.c8y.get(self.resource_path, params, accept=self._meta.collection_mime_type)
@@ -644,20 +665,22 @@ class CumulocityResource(Generic[CO]):
             result_json = await self.c8y.get(f"{self.resource_path}?{expression}&pageSize=1&withTotalPages=true")
         else:
             # params are not merged, but we can be sure that page size etc. are not part of params
-            result_json = await self.c8y.get(self.resource_path, (*params, ("pageSize", "1"), ("withTotalPages", "true")))
+            result_json = await self.c8y.get(
+                self.resource_path, (*params, ("pageSize", "1"), ("withTotalPages", "true"))
+            )
         return result_json["statistics"]["totalPages"]
 
     async def _iterate(
-            self,
-            *,
-            expression: str | None = None,
-            params: Sequence[tuple[str, str]] | None = None,
-            page_number: int | None = None,
-            limit: int | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
+        self,
+        *,
+        expression: str | None = None,
+        params: Sequence[tuple[str, str]] | None = None,
+        page_number: int | None = None,
+        limit: int | None = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
     ) -> AsyncIterator[CO | Any | tuple[CO]]:
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
@@ -696,9 +719,9 @@ class CumulocityResource(Generic[CO]):
                     break
                 if include or exclude:
                     obj_jsons = [
-                        x for x in obj_jsons
-                        if (not include or include.safe_matches(x))
-                           and (not exclude or not exclude.safe_matches(x))
+                        x
+                        for x in obj_jsons
+                        if (not include or include.safe_matches(x)) and (not exclude or not exclude.safe_matches(x))
                     ]
                 for json in obj_jsons:
                     if limit and num_results >= limit:
@@ -712,9 +735,7 @@ class CumulocityResource(Generic[CO]):
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            flatten(objects),
-            workers,
-            lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+            flatten(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
         )
 
     async def _create_bulk(self, *objects: CO) -> None:
@@ -726,7 +747,7 @@ class CumulocityResource(Generic[CO]):
         await run_batched(
             flatten(objects),
             workers,
-            lambda x: self.c8y.put(self.build_object_path(x.id), json=x.to_json(only_updated=True), accept=None)
+            lambda x: self.c8y.put(self.build_object_path(x.id), json=x.to_json(only_updated=True), accept=None),
         )
 
     async def _apply_to(self, model: dict | CO, *objects: str | CO, workers: int | None = None) -> None:
@@ -734,7 +755,9 @@ class CumulocityResource(Generic[CO]):
         await run_batched(
             ensure_ids(flatten(objects)),
             workers,
-            lambda x: self.c8y.put(self.build_object_path(x), model_json, content_type=self._meta.object_mime_type, accept=None)
+            lambda x: self.c8y.put(
+                self.build_object_path(x), model_json, content_type=self._meta.object_mime_type, accept=None
+            ),
         )
 
     # this one should be ok for all implementations, hence we define it here

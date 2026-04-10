@@ -1,4 +1,3 @@
-
 from pyc8y.model.alarm import Alarm, Alarms
 from pyc8y.model.application import Application, ApplicationSubscription, Applications
 from pyc8y.model.audit import Change, AuditRecord, AuditRecords
@@ -41,4 +40,3 @@ from pyc8y.model.notification2 import Subscription, Subscriptions, Tokens
 from pyc8y.model.operation import Operation, Operations, BulkOperation, BulkOperations
 from pyc8y.model.tenant_option import TenantOption, TenantOptions
 from pyc8y.model.tenants import Tenant, Tenants
-

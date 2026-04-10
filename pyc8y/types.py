@@ -23,7 +23,7 @@ class MimeType(StrEnum):
     CURRENT_USER = "application/vnd.com.nsn.cumulocity.currentuser+json"
     EVENT = "application/vnd.com.nsn.cumulocity.event+json"
     EVENT_COLLECTION = "application/vnd.com.nsn.cumulocity.eventcollection+json"
-    EXTERNAL_ID = "application/vnd.com.nsn.cumulocity.externalid+json",
+    EXTERNAL_ID = ("application/vnd.com.nsn.cumulocity.externalid+json",)
     GLOBAL_ROLE = "application/vnd.com.nsn.cumulocity.group+json"
     MANAGED_OBJECT = "application/vnd.com.nsn.cumulocity.managedobject+json"
     MANAGED_OBJECT_COLLECTION = "application/vnd.com.nsn.cumulocity.managedobjectcollection+json"
@@ -144,4 +144,3 @@ class TenantsMeta(ResourceMeta):
     collection_mime_type = MimeType.TENANT_COLLECTION
     resource_path = "tenant/tenants"
     collection_name = "tenants"
-

@@ -25,16 +25,17 @@ class Event(CumulocityObject):
 
     See also: https://cumulocity.com/api/#tag/Events
     """
+
     _meta = EventsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient = None,
-            type: str = None,   # noqa (type)
-            time: str | datetime = None,
-            source: str = None,
-            text: str = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient = None,
+        type: str = None,  # noqa (type)
+        time: str | datetime = None,
+        source: str = None,
+        text: str = None,
+        **kwargs,
     ):
         super().__init__(c8y, **kwargs)
         self.type = type
@@ -163,7 +164,6 @@ class Event(CumulocityObject):
         return await self._apply_to(other_id)
 
 
-
 class Events(CumulocityResource[Event]):
     """Provides access to the Events API.
 
@@ -172,6 +172,7 @@ class Events(CumulocityResource[Event]):
 
     See also: https://cumulocity.com/api/core/#tag/Events
     """
+
     _meta = EventsMeta
     _object_type = Event
 
@@ -198,40 +199,40 @@ class Events(CumulocityResource[Event]):
         return await self._get(event_id)
 
     def select(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            fragment: str | None = None,
-            fragment_type: str | None = None,
-            fragment_value: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: timedelta | None = None,
-            max_age: timedelta | None = None,
-            created_before: str | datetime | None = None,
-            created_after: str | datetime | None = None,
-            created_from: str | datetime | None = None,
-            created_to: str | datetime | None = None,
-            updated_before: str | datetime | None = None,
-            updated_after: str | datetime | None = None,
-            last_updated_from: str | datetime | None = None,
-            last_updated_to: str | datetime | None = None,
-            with_source_assets: bool | None = None,
-            with_source_devices: bool | None = None,
-            reverse: bool = False,
-            revert: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        fragment: str | None = None,
+        fragment_type: str | None = None,
+        fragment_value: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: timedelta | None = None,
+        max_age: timedelta | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        reverse: bool = False,
+        revert: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Event | Any | tuple[Any]]:
         """Query the database for events and iterate over the results.
 
@@ -285,33 +286,37 @@ class Events(CumulocityResource[Event]):
         Returns:
             AsyncIterator of Event objects
         """
-        params = map_params(
-            type=type,
-            source=source,
-            fragment=fragment,
-            fragment_type=fragment_type,
-            fragment_value=fragment_value,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            with_source_assets=with_source_assets,
-            with_source_devices=with_source_devices,
-            reverse=reverse,
-            revert=revert,
-            page_size=page_size,
-            **kwargs
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                fragment=fragment,
+                fragment_type=fragment_type,
+                fragment_value=fragment_value,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                with_source_assets=with_source_assets,
+                with_source_devices=with_source_devices,
+                reverse=reverse,
+                revert=revert,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -324,40 +329,40 @@ class Events(CumulocityResource[Event]):
         )
 
     async def get_all(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            fragment: str | None = None,
-            fragment_type: str | None = None,
-            fragment_value: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: timedelta | None = None,
-            max_age: timedelta | None = None,
-            created_before: str | datetime | None = None,
-            created_after: str | datetime | None = None,
-            created_from: str | datetime | None = None,
-            created_to: str | datetime | None = None,
-            updated_before: str | datetime | None = None,
-            updated_after: str | datetime | None = None,
-            last_updated_from: str | datetime | None = None,
-            last_updated_to: str | datetime | None = None,
-            with_source_assets: bool | None = None,
-            with_source_devices: bool | None = None,
-            reverse: bool = False,
-            revert: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        fragment: str | None = None,
+        fragment_type: str | None = None,
+        fragment_value: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: timedelta | None = None,
+        max_age: timedelta | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        reverse: bool = False,
+        revert: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Event | Any | tuple[Any]]:
         """Query the database for events and return the results as list.
 
@@ -369,65 +374,68 @@ class Events(CumulocityResource[Event]):
         Returns:
             List of Event objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            type=type,
-            source=source,
-            fragment=fragment,
-            fragment_type=fragment_type,
-            fragment_value=fragment_value,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            with_source_assets=with_source_assets,
-            with_source_devices=with_source_devices,
-            reverse=reverse,
-            revert=revert,
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                type=type,
+                source=source,
+                fragment=fragment,
+                fragment_type=fragment_type,
+                fragment_value=fragment_value,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                with_source_assets=with_source_assets,
+                with_source_devices=with_source_devices,
+                reverse=reverse,
+                revert=revert,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def get_count(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            fragment: str | None = None,
-            fragment_type: str | None = None,
-            fragment_value: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: timedelta | None = None,
-            max_age: timedelta | None = None,
-            created_before: str | datetime | None = None,
-            created_after: str | datetime | None = None,
-            created_from: str | datetime | None = None,
-            created_to: str | datetime | None = None,
-            updated_before: str | datetime | None = None,
-            updated_after: str | datetime | None = None,
-            last_updated_from: str | datetime | None = None,
-            last_updated_to: str | datetime | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        fragment: str | None = None,
+        fragment_type: str | None = None,
+        fragment_value: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: timedelta | None = None,
+        max_age: timedelta | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -436,45 +444,49 @@ class Events(CumulocityResource[Event]):
         Returns:
             Number of potential results
         """
-        params = map_params(
-            type=type,
-            source=source,
-            fragment=fragment,
-            fragment_type=fragment_type,
-            fragment_value=fragment_value,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            created_before=created_before,
-            created_after=created_after,
-            created_from=created_from,
-            created_to=created_to,
-            updated_before=updated_before,
-            updated_after=updated_after,
-            last_updated_from=last_updated_from,
-            last_updated_to=last_updated_to,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                fragment=fragment,
+                fragment_type=fragment_type,
+                fragment_value=fragment_value,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                created_before=created_before,
+                created_after=created_after,
+                created_from=created_from,
+                created_to=created_to,
+                updated_before=updated_before,
+                updated_after=updated_after,
+                last_updated_from=last_updated_from,
+                last_updated_to=last_updated_to,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return await self._get_count(expression=expression, params=params)
 
     async def get_last(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            fragment: str | None = None,
-            fragment_type: str | None = None,
-            fragment_value: str | None = None,
-            before: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: timedelta | None = None,
-            with_source_assets: bool | None = None,
-            with_source_devices: bool | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        fragment: str | None = None,
+        fragment_type: str | None = None,
+        fragment_value: str | None = None,
+        before: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: timedelta | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        **kwargs,
     ) -> Event | None:
         """Retrieve the most recent matching event.
 
@@ -497,21 +509,25 @@ class Events(CumulocityResource[Event]):
             The most recent Event, or None if no match is found.
         """
         # ensure a lower bound so the query returns results ordered newest-first
-        after = None if (before or date_to or min_age) else '1970-01-01'
-        params = map_params(
-            type=type,
-            source=source,
-            fragment=fragment,
-            fragment_type=fragment_type,
-            fragment_value=fragment_value,
-            before=before,
-            after=after,
-            date_to=date_to,
-            min_age=min_age,
-            with_source_assets=with_source_assets,
-            with_source_devices=with_source_devices,
-            **kwargs,
-        ) if not expression else ()
+        after = None if (before or date_to or min_age) else "1970-01-01"
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                fragment=fragment,
+                fragment_type=fragment_type,
+                fragment_value=fragment_value,
+                before=before,
+                after=after,
+                date_to=date_to,
+                min_age=min_age,
+                with_source_assets=with_source_assets,
+                with_source_devices=with_source_devices,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return await self._get_last(expression=expression, params=params)
 
     async def create(self, *events: Event, workers: int | None = None) -> None:
@@ -552,19 +568,19 @@ class Events(CumulocityResource[Event]):
         await self._apply_to(model, *event_ids, workers=workers)
 
     async def delete_by(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            fragment: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: timedelta | None = None,
-            max_age: timedelta | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: timedelta | None = None,
+        max_age: timedelta | None = None,
+        **kwargs,
     ) -> None:
         """Query the database and delete matching events.
 
@@ -582,18 +598,22 @@ class Events(CumulocityResource[Event]):
             min_age (timedelta): Minimum age for selected events.
             max_age (timedelta): Maximum age for selected events.
         """
-        params = map_params(
-            type=type,
-            source=source,
-            fragment=fragment,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                fragment=fragment,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         await self.c8y.delete(self._meta.resource_path, params=params)
 
     async def create_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:

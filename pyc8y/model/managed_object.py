@@ -23,13 +23,17 @@ class ObjectReference:
 
     @classmethod
     def to_json(cls, object_id):
-        return {'managedObject': {'id': str(object_id)}}
+        return {"managedObject": {"id": str(object_id)}}
 
 
 def references_property(key: str) -> property:
     # TODO: Other references than managed objects?
     def getter(self):
-        return [ObjectReference(x['managedObject']["id"], x["managedObject"].get("name", None)) for x in self._source_json[key]["references"]]
+        return [
+            ObjectReference(x["managedObject"]["id"], x["managedObject"].get("name", None))
+            for x in self._source_json[key]["references"]
+        ]
+
     return property(getter)
 
 
@@ -39,13 +43,15 @@ class Availability:
 
     class ConnectionStatus:
         """Connection status labels"""
-        CONNECTED = 'CONNECTED'
-        DISCONNECTED = 'DISCONNECTED'
+
+        CONNECTED = "CONNECTED"
+        DISCONNECTED = "DISCONNECTED"
 
     class DataStatus:
         """Data status labels"""
-        AVAILABLE = 'AVAILABLE'
-        UNAVAILABLE = 'UNAVAILABLE'
+
+        AVAILABLE = "AVAILABLE"
+        UNAVAILABLE = "UNAVAILABLE"
 
     def __init__(self, json):
         self._json = json
@@ -61,11 +67,11 @@ class Availability:
     @property
     def interval_minutes(self) -> int:
         """Return the required update interval in minutes as integer."""
-        return int(self.interval.split(' ', 1)[0])
+        return int(self.interval.split(" ", 1)[0])
 
 
 class ManagedObject(CumulocityObject):
-    """ Represent a managed object within the database.
+    """Represent a managed object within the database.
 
     Instances of this class are returned by functions of the corresponding
     Inventory API. Use this class to create new or update managed objects.
@@ -103,17 +109,13 @@ class ManagedObject(CumulocityObject):
 
     See also https://cumulocity.com/guides/reference/inventory/#managed-object
     """
+
     _meta = InventoryMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient = None,
-            type: str = None,
-            name: str = None,
-            owner: str = None,
-            **kwargs
+        self, c8y: CumulocityRestClient = None, type: str = None, name: str = None, owner: str = None, **kwargs
     ):
-        """ Create a new ManagedObject instance.
+        """Create a new ManagedObject instance.
 
         Custom fragments can be added to the object using `kwargs` or after
         creation using += or [] syntax.
@@ -169,7 +171,7 @@ class ManagedObject(CumulocityObject):
         return await self._reload(inplace)
 
     async def create(self) -> Self:
-        """ Create a new representation of this object within the database.
+        """Create a new representation of this object within the database.
 
         This function can be called multiple times to create multiple
         instances of this object with different ID.
@@ -184,7 +186,7 @@ class ManagedObject(CumulocityObject):
         return await self._create()
 
     async def update(self, inplace: bool = True) -> Self:
-        """ Write changes to the database.
+        """Write changes to the database.
 
         Args:
             inplace (bool):  If `True`, this object's data will be updated;
@@ -214,7 +216,7 @@ class ManagedObject(CumulocityObject):
         return await self._apply_to(other_id)
 
     async def delete(self, **_) -> None:
-        """ Delete this object within the database.
+        """Delete this object within the database.
 
         Note: child additions, assets (and devices) are not implicitly
         deleted. The database ID must be defined for this to function.
@@ -233,10 +235,10 @@ class ManagedObject(CumulocityObject):
 
         See also function DeviceInventory.delete_trees to delete multiple objects.
         """
-        await self._delete(forceCascade='true')
+        await self._delete(forceCascade="true")
 
     async def assign_child_asset(self, child: Self | str):
-        """ Link a child asset to this managed object.
+        """Link a child asset to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
@@ -251,7 +253,7 @@ class ManagedObject(CumulocityObject):
     add_child_asset.__doc__ = assign_child_asset.__doc__
 
     async def assign_child_device(self, child: Self | str):
-        """ Link a child device to this managed object.
+        """Link a child device to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
@@ -266,7 +268,7 @@ class ManagedObject(CumulocityObject):
     add_child_device.__doc__ = assign_child_device.__doc__
 
     async def assign_child_addition(self, child: Self | str):
-        """ Link a child addition to this managed object.
+        """Link a child addition to this managed object.
 
         This operation is executed immediately. No additional call to
         the `update` method is required.
@@ -362,9 +364,8 @@ class ManagedObject(CumulocityObject):
         return await self._get_resource("supportedSeries")
 
 
-
 class Device(ManagedObject):
-    """ Represent an instance of a Device object within Cumulocity.
+    """Represent an instance of a Device object within Cumulocity.
 
     Instances of this class are returned by functions of the corresponding
     DeviceInventory API. Use this class to create new or update Device
@@ -377,9 +378,10 @@ class Device(ManagedObject):
         https://cumulocity.com/guides/reference/device-management/
     """
 
-    def __init__(self, c8y: CumulocityRestClient = None,
-                 type: str = None, name: str = None, owner: str = None, **kwargs):  # noqa
-        """ Create a new Device instance.
+    def __init__(
+        self, c8y: CumulocityRestClient = None, type: str = None, name: str = None, owner: str = None, **kwargs
+    ):  # noqa
+        """Create a new Device instance.
 
         A Device object will always have a `c8y_IsDevice` fragment.
         Additional custom fragments can be added using `kwargs` or
@@ -430,7 +432,7 @@ class Device(ManagedObject):
         See also function DeviceInventory.delete to delete multiple objects.
         """
         if with_device_user:
-            await self._delete(withDeviceUser='true')
+            await self._delete(withDeviceUser="true")
         else:
             await self._delete()
 
@@ -447,14 +449,13 @@ class Device(ManagedObject):
         See also function DeviceInventory.delete to delete multiple objects.
         """
         if with_device_user:
-            await self._delete(cascade='true', withDeviceUser='true')
+            await self._delete(cascade="true", withDeviceUser="true")
         else:
-            await self._delete(cascade='true')
-
+            await self._delete(cascade="true")
 
 
 class DeviceGroup(ManagedObject):
-    """ Represent a device group within Cumulocity.
+    """Represent a device group within Cumulocity.
 
     Instances of this class are returned by functions of the corresponding
     DeviceGroupInventory API. Use this class to create new or update
@@ -471,7 +472,7 @@ class DeviceGroup(ManagedObject):
     CHILD_TYPE = "c8y_DeviceSubGroup"
 
     def __init__(self, c8y=None, root: bool = False, name: str = None, owner: str = None, **kwargs):
-        """ Build a new DeviceGroup object.
+        """Build a new DeviceGroup object.
 
         The `type` of a device group will always be either `c8y_DeviceGroup`
         or `c8y_DeviceSubGroup` (depending on it's level). This is handled
@@ -493,12 +494,11 @@ class DeviceGroup(ManagedObject):
         Returns:
             DeviceGroup instance
         """
-        super().__init__(c8y=c8y, type=self.ROOT_TYPE if root else self.CHILD_TYPE,
-                         name=name, owner=owner, **kwargs)
+        super().__init__(c8y=c8y, type=self.ROOT_TYPE if root else self.CHILD_TYPE, name=name, owner=owner, **kwargs)
         self._staged_json["c8Y_IsDeviceGroup"] = {}
 
     async def create_child(self, name: str, owner: str = None, **kwargs) -> Self:
-        """ Create and assign a child group.
+        """Create and assign a child group.
 
         This change is written to the database immediately.
 
@@ -518,7 +518,7 @@ class DeviceGroup(ManagedObject):
         return child
 
     async def create(self) -> Self:
-        """ Create a new representation of this object within the database.
+        """Create a new representation of this object within the database.
 
         This operation will create the group and all added child groups
         within the database.
@@ -533,7 +533,7 @@ class DeviceGroup(ManagedObject):
         return await self._create()
 
     async def update(self, **_) -> Self:
-        """ Write changed to the database.
+        """Write changed to the database.
 
         Note: Removing child groups is currently not supported.
 
@@ -549,7 +549,7 @@ class DeviceGroup(ManagedObject):
         equivalent to using the `cascade=false` parameter in the
         Cumulocity REST API.
         """
-        await self._delete(cascade='false')
+        await self._delete(cascade="false")
 
     async def delete_tree(self) -> None:
         """Delete this device group and its children.
@@ -557,7 +557,7 @@ class DeviceGroup(ManagedObject):
         This is equivalent to using the `cascade=true` parameter in the
         Cumulocity REST API.
         """
-        await self._delete(cascade='true')
+        await self._delete(cascade="true")
 
     async def assign_child_group(self, child: Self | str):
         """Link a child group to this device group.

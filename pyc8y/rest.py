@@ -16,18 +16,20 @@ from pyc8y.auth import Auth, BasicAuth, BearerAuth
 
 logger = logging.getLogger(__name__)
 
+
 def loggable_params(params):
     """Provide a log-friendly formatted string of HTTP parameters."""
     if not params:
-        return '-'
-    return ', '.join(f"{k}={v}" for k, v in params.items())
+        return "-"
+    return ", ".join(f"{k}={v}" for k, v in params.items())
 
 
 class ProcessingMode(StrEnum):
     """Cumulocity REST API processing modes."""
-    PERSISTENT = 'PERSISTENT'
-    TRANSIENT = 'TRANSIENT'
-    QUIESCENT = 'QUIESCENT'
+
+    PERSISTENT = "PERSISTENT"
+    TRANSIENT = "TRANSIENT"
+    QUIESCENT = "QUIESCENT"
 
 
 class HttpMethod(StrEnum):
@@ -42,8 +44,9 @@ class HttpMethod(StrEnum):
 
 class HttpError(Exception):
     """Base class for technical HTTP errors."""
+
     def __init__(self, method: str, url: str, code: int, message: str):
-        super().__init__(f'HTTP {code}: {method} {url} - {message}')
+        super().__init__(f"HTTP {code}: {method} {url} - {message}")
         self.method = method
         self.url = url
         self.code = code
@@ -52,24 +55,28 @@ class HttpError(Exception):
 
 class UnauthorizedError(HttpError):
     """Error raised for unauthorized access."""
+
     def __init__(self, method: str, url: str = None, message: str | None = "Unauthorized."):
         super().__init__(method, url, 401, message)
 
 
 class MissingTfaError(UnauthorizedError):
     """Error raised for unauthorized access."""
+
     def __init__(self, method: str, url: str = None, message: str | None = "Missing TFA Token."):
         super().__init__(method, url, message)
 
 
 class AccessDeniedError(HttpError):
     """Error raised for denied access."""
+
     def __init__(self, method: str, url: str = None, message: str | None = "Access denied."):
         super().__init__(method, url, 403, message)
 
 
 class BatchError(Exception):
     """Error raised after a batch processing."""
+
     def __init__(self, errors: list[BaseException]):
         super().__init__(self._build_message(errors))
         self.errors = errors
@@ -77,24 +84,16 @@ class BatchError(Exception):
     @staticmethod
     def _build_message(errors) -> str:
         counts = Counter(type(e).__name__ for e in errors)
-        parts = [
-            f"{name}({count})" if count > 1 else name
-            for name, count in counts.items()
-        ]
+        parts = [f"{name}({count})" if count > 1 else name for name, count in counts.items()]
         return f"Batch processing raised {len(errors)} errors: {', '.join(parts)}"
 
 
 class CumulocityRestClient(object):
 
     def __init__(
-            self,
-            base_url: str,
-            tenant_id: str,
-            auth: Auth,
-            application_key: str = None,
-            processing_mode: str = None
+        self, base_url: str, tenant_id: str, auth: Auth, application_key: str = None, processing_mode: str = None
     ):
-        self.base_url = base_url.rstrip('/') + '/'
+        self.base_url = base_url.rstrip("/") + "/"
         self.tenant_id = tenant_id
         self.auth = auth
         self.application_key = application_key
@@ -131,17 +130,17 @@ class CumulocityRestClient(object):
         return self._session
 
     @property
-    def  username(self):
+    def username(self):
         return self.auth.get_username()
 
     @classmethod
     async def authenticate(
-            cls,
-            base_url: str,
-            tenant_id: str,
-            username: str,
-            password: str,
-            tfa_token: str = None,
+        cls,
+        base_url: str,
+        tenant_id: str,
+        username: str,
+        password: str,
+        tfa_token: str = None,
     ) -> tuple[Auth, str | None]:
         """Authenticate a user using OAI Secure login method.
 
@@ -179,21 +178,23 @@ class CumulocityRestClient(object):
                 else:
                     logger.info(f"Attempting login using OAUTH2_INTERNAL ...")
                     # include 2nd factor token if available
-                    form_data = {'grant_type': 'PASSWORD', 'username': username, 'password': password}
+                    form_data = {"grant_type": "PASSWORD", "username": username, "password": password}
                     if tfa_token:
-                        form_data['tfa_token'] = tfa_token
-                    async with session.post(build_url(f"tenant/oauth?tenant_id={tenant_id}"), data=form_data, ssl=ssl_context) as response:
+                        form_data["tfa_token"] = tfa_token
+                    async with session.post(
+                        build_url(f"tenant/oauth?tenant_id={tenant_id}"), data=form_data, ssl=ssl_context
+                    ) as response:
                         if response.status == 200:
                             logger.info("Login successful.")
-                            auth_cookie = response.cookies['authorization']
-                            xsrf_cookie = response.cookies.get('XSRF-TOKEN')
+                            auth_cookie = response.cookies["authorization"]
+                            xsrf_cookie = response.cookies.get("XSRF-TOKEN")
                             return BearerAuth(token=auth_cookie.value), xsrf_cookie.value if xsrf_cookie else None
                         # login failed, checking known reasons
                         response_json = orjson.loads(await response.text() or "") or {}
                         if response.status == 401:
                             message = response_json.get("message", None)
                             # 1st request might fail due to missing TFA code
-                            if message and any(x in message for x in ['TOTP', 'TFA']):
+                            if message and any(x in message for x in ["TOTP", "TFA"]):
                                 raise MissingTfaError(HttpMethod.POST, str(response.url), message)
                             raise UnauthorizedError(HttpMethod.POST, str(response.url), message)
                         # this should never happen
@@ -207,7 +208,11 @@ class CumulocityRestClient(object):
                 else:
                     logger.info(f"Attempting login using Basic Authentication ...")
                     auth = BasicAuth(username, password)
-                    async with session.get(build_url("tenant/currentTenant"), headers={"Authorization": auth.build_auth_header()}, ssl=ssl_context) as response:
+                    async with session.get(
+                        build_url("tenant/currentTenant"),
+                        headers={"Authorization": auth.build_auth_header()},
+                        ssl=ssl_context,
+                    ) as response:
                         if response.status == 200:
                             return auth, None
                         response_json = orjson.loads(await response.text() or "") or {}
@@ -217,16 +222,18 @@ class CumulocityRestClient(object):
                         message = response_json.get("message", "Invalid request!")
                         raise HttpError(HttpMethod.GET, str(response.url), response.status, message)
 
-            raise ValueError(f"Unable to authenticate with Cumulocity. Unsupported login options: {' ,'.join(login_options)}.")
+            raise ValueError(
+                f"Unable to authenticate with Cumulocity. Unsupported login options: {' ,'.join(login_options)}."
+            )
 
     async def request(
-            self,
-            method: str,
-            resource: str,
-            params: tuple[str, Any] | dict | None = None,
-            json: dict | None = None,
-            accept: str | None = None,
-            content_type: str | None = None,
+        self,
+        method: str,
+        resource: str,
+        params: tuple[str, Any] | dict | None = None,
+        json: dict | None = None,
+        accept: str | None = None,
+        content_type: str | None = None,
     ) -> dict:
         """Perform an HTTP request.
 
@@ -257,11 +264,11 @@ class CumulocityRestClient(object):
         if content_type is not None:
             additional_headers["Content-Type"] = content_type
         async with session.request(
-                method=method,
-                url=resource,
-                params=params,
-                data=orjson.dumps(json) if json else None,
-                headers=additional_headers,
+            method=method,
+            url=resource,
+            params=params,
+            data=orjson.dumps(json) if json else None,
+            headers=additional_headers,
         ) as r:
             if logger.isEnabledFor(logging.ERROR):
                 if params:
@@ -275,36 +282,56 @@ class CumulocityRestClient(object):
                     "-" if not json else orjson.dumps(json),
                 )
             if r.status == 401:
-                raise UnauthorizedError(method, resource, message=(await r.json())['message'])
+                raise UnauthorizedError(method, resource, message=(await r.json())["message"])
             if r.status == 403:
-                raise AccessDeniedError(method, resource, message=(await r.json())['message'])
+                raise AccessDeniedError(method, resource, message=(await r.json())["message"])
             if r.status == 404:
                 raise KeyError(f"No such object: {resource}")
             if 500 <= r.status <= 599:
                 raise ValueError(f"Invalid {method} request. Status: {r.status}, Response:\n {await r.text()}")
             if r.status not in (200, 201, 202, 204):
-                raise ValueError(f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}")
+                raise ValueError(
+                    f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}"
+                )
             if r.status in (200, 201) and r.content_length != 0:
                 return orjson.loads(await r.read())
             return {}
 
-    async def get(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None, accept: str | None = "application/json") -> dict:
+    async def get(
+        self,
+        resource: str,
+        params: dict | Sequence[tuple[str, str]] | None = None,
+        accept: str | None = "application/json",
+    ) -> dict:
         return await self.request("GET", resource, params, None, accept=accept)
 
-    async def post(self, resource: str, json: dict | Sequence[tuple[str, str]] | None, accept: str | None = "application/json", content_type: str | None = None) -> dict:
+    async def post(
+        self,
+        resource: str,
+        json: dict | Sequence[tuple[str, str]] | None,
+        accept: str | None = "application/json",
+        content_type: str | None = None,
+    ) -> dict:
         return await self.request("POST", resource, None, json, accept=accept, content_type=content_type)
 
-    async def put(self, resource: str, json: dict, params: dict | Sequence[tuple[str, str]] | None = None, accept: str | None = "application/json", content_type: str | None = None) -> dict:
+    async def put(
+        self,
+        resource: str,
+        json: dict,
+        params: dict | Sequence[tuple[str, str]] | None = None,
+        accept: str | None = "application/json",
+        content_type: str | None = None,
+    ) -> dict:
         return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
 
     async def post_file(
-            self,
-            resource: str,
-            file: str | os.PathLike | BinaryIO,
-            filename: str | None = None,
-            form_data: dict[str, str | bytes] | None = None,
-            accept: str | None = None,
-            content_type: str | None = None,
+        self,
+        resource: str,
+        file: str | os.PathLike | BinaryIO,
+        filename: str | None = None,
+        form_data: dict[str, str | bytes] | None = None,
+        accept: str | None = None,
+        content_type: str | None = None,
     ) -> dict:
         """Upload a binary file using multipart/form-data.
 
@@ -331,22 +358,24 @@ class CumulocityRestClient(object):
 
         async def post(file_obj):
             form = aiohttp.FormData()
-            form.add_field('file', file_obj, filename=filename, content_type=content_type)
+            form.add_field("file", file_obj, filename=filename, content_type=content_type)
             if form_data:
                 for key, value in form_data.items():
                     form.add_field(key, value)
             # proper multipart content-type is set by aiohttp
             async with session.request(method="POST", url=resource, data=form, headers={"Accept": accept}) as r:
                 if r.status == 401:
-                    raise UnauthorizedError("POST", resource, message=(await r.json())['message'])
+                    raise UnauthorizedError("POST", resource, message=(await r.json())["message"])
                 if r.status == 403:
-                    raise AccessDeniedError("POST", resource, message=(await r.json())['message'])
+                    raise AccessDeniedError("POST", resource, message=(await r.json())["message"])
                 if r.status == 404:
                     raise KeyError(f"No such object: {resource}")
                 if 500 <= r.status <= 599:
                     raise ValueError(f"Invalid POST request. Status: {r.status}, Response:\n {await r.text()}")
                 if r.status not in (200, 201, 202, 204):
-                    raise ValueError(f"Unable to perform POST request. Status: {r.status}, Response:\n {await r.text()}")
+                    raise ValueError(
+                        f"Unable to perform POST request. Status: {r.status}, Response:\n {await r.text()}"
+                    )
                 if r.status in (200, 201) and r.content_length != 0:
                     return orjson.loads(await r.read())
                 return {}
@@ -354,18 +383,18 @@ class CumulocityRestClient(object):
         if isinstance(file, (str, os.PathLike)):
             path = Path(file)
             filename = filename or path.name
-            with open(path, 'rb') as f:
+            with open(path, "rb") as f:
                 return await post(f)
         else:
-            filename = filename or getattr(file, 'name', None)
+            filename = filename or getattr(file, "name", None)
             return await post(file)
 
     async def put_file(
-            self,
-            resource: str,
-            file: str | os.PathLike | BinaryIO,
-            accept: str | None = None,
-            content_type: str | None = None,
+        self,
+        resource: str,
+        file: str | os.PathLike | BinaryIO,
+        accept: str | None = None,
+        content_type: str | None = None,
     ) -> dict:
         """Update a binary file using multipart/form-data.
 
@@ -390,12 +419,13 @@ class CumulocityRestClient(object):
         session = await self.session
 
         async def put(file_obj):
-            async with session.request(method="PUT", url=resource, data=file_obj,
-                                       headers={"Accept": accept, "Content-Type": content_type}) as r:
+            async with session.request(
+                method="PUT", url=resource, data=file_obj, headers={"Accept": accept, "Content-Type": content_type}
+            ) as r:
                 if r.status == 401:
-                    raise UnauthorizedError("PUT", resource, message=(await r.json())['message'])
+                    raise UnauthorizedError("PUT", resource, message=(await r.json())["message"])
                 if r.status == 403:
-                    raise AccessDeniedError("PUT", resource, message=(await r.json())['message'])
+                    raise AccessDeniedError("PUT", resource, message=(await r.json())["message"])
                 if r.status == 404:
                     raise KeyError(f"No such object: {resource}")
                 if 500 <= r.status <= 599:
@@ -407,7 +437,7 @@ class CumulocityRestClient(object):
                 return {}
 
         if isinstance(file, (str, os.PathLike)):
-            with open(file, 'rb') as f:
+            with open(file, "rb") as f:
                 return await put(f)
         else:
             return await put(file)
@@ -429,9 +459,9 @@ class CumulocityRestClient(object):
         session = await self.session
         async with session.get(url=resource, params=params) as r:
             if r.status == 401:
-                raise UnauthorizedError("GET", resource, message=(await r.json())['message'])
+                raise UnauthorizedError("GET", resource, message=(await r.json())["message"])
             if r.status == 403:
-                raise AccessDeniedError("GET", resource, message=(await r.json())['message'])
+                raise AccessDeniedError("GET", resource, message=(await r.json())["message"])
             if r.status == 404:
                 raise KeyError(f"No such object: {resource}")
             if 500 <= r.status <= 599:

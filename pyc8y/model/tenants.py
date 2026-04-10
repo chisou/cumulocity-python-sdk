@@ -23,19 +23,20 @@ class Tenant(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Tenants
     """
+
     _meta = TenantsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            domain: str | None = None,
-            admin_email: str | None = None,
-            admin_name: str | None = None,
-            admin_pass: str | None = None,
-            company: str | None = None,
-            contact_name: str | None = None,
-            contact_phone: str | None = None,
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        domain: str | None = None,
+        admin_email: str | None = None,
+        admin_name: str | None = None,
+        admin_pass: str | None = None,
+        company: str | None = None,
+        contact_name: str | None = None,
+        contact_phone: str | None = None,
     ):
         super().__init__(c8y)
         self.domain = domain
@@ -68,6 +69,7 @@ class Tenant(CumulocityObject):
     def owned_applications(self) -> list[Application]:
         """Return all owned Application objects as a list."""
         from pyc8y.model.application import Application
+
         refs = self._source_json.get("ownedApplications", {}).get("references", [])
         return [Application.from_json(ref["application"], c8y=self.c8y) for ref in refs]
 
@@ -108,6 +110,7 @@ class Tenants(CumulocityResource[Tenant]):
 
     See also: https://cumulocity.com/api/core/#tag/Tenants
     """
+
     _meta = TenantsMeta
     _object_type = Tenant
 
@@ -117,7 +120,7 @@ class Tenants(CumulocityResource[Tenant]):
         Returns:
             Tenant instance
         """
-        json = await self.c8y.get('tenant/currentTenant')
+        json = await self.c8y.get("tenant/currentTenant")
         return Tenant.from_json(json, c8y=self.c8y)
 
     async def get(self, tenant_id: str) -> Tenant:
@@ -132,18 +135,18 @@ class Tenants(CumulocityResource[Tenant]):
         return await self._get(tenant_id)
 
     def select(
-            self,
-            expression: str | None = None,
-            *,
-            parent: str | None = None,
-            domain: str | None = None,
-            company: str | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        parent: str | None = None,
+        domain: str | None = None,
+        company: str | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Tenant | Any]:
         """Query the database for tenants and iterate over the results.
 
@@ -161,13 +164,17 @@ class Tenants(CumulocityResource[Tenant]):
         Returns:
             AsyncIterator of Tenant instances
         """
-        params = map_params(
-            parent=parent,
-            domain=domain,
-            company=company,
-            page_size=page_size,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                parent=parent,
+                domain=domain,
+                company=company,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -178,18 +185,18 @@ class Tenants(CumulocityResource[Tenant]):
         )
 
     async def get_all(
-            self,
-            expression: str | None = None,
-            *,
-            parent: str | None = None,
-            domain: str | None = None,
-            company: str | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        parent: str | None = None,
+        domain: str | None = None,
+        company: str | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Tenant]:
         """Query the database for tenants and return the results as list.
 
@@ -198,15 +205,18 @@ class Tenants(CumulocityResource[Tenant]):
         Returns:
             List of Tenant instances
         """
-        return [x async for x in self.select(
-            expression=expression,
-            parent=parent,
-            domain=domain,
-            company=company,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                parent=parent,
+                domain=domain,
+                company=company,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]

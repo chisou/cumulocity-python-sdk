@@ -23,12 +23,7 @@ class CumulocityClient(CumulocityRestClient):
     """
 
     def __init__(
-            self,
-            base_url: str,
-            tenant_id: str,
-            auth: Auth,
-            application_key: str = None,
-            processing_mode: str = None
+        self, base_url: str, tenant_id: str, auth: Auth, application_key: str = None, processing_mode: str = None
     ):
         super().__init__(base_url, tenant_id, auth, application_key, processing_mode)
         self.alarms = Alarms(self)

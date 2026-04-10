@@ -21,29 +21,32 @@ from pyc8y.types import MeasurementsMeta, AsValuesSpec
 
 class Units(StrEnum):
     """Predefined, common units."""
-    Grams = 'g'
-    Kilograms = 'kg'
-    Kelvin = 'K'
-    Celsius = '°C'
-    Fahrenheit = '°F'
-    Meters = 'm'
-    Centimeters = 'cm'
-    Millimeters = 'mm'
-    Liters = 'l'
-    CubicMeters = 'm3'
-    Count = '#'
-    Percent = '%'
+
+    Grams = "g"
+    Kilograms = "kg"
+    Kelvin = "K"
+    Celsius = "°C"
+    Fahrenheit = "°F"
+    Meters = "m"
+    Centimeters = "cm"
+    Millimeters = "mm"
+    Liters = "l"
+    CubicMeters = "m3"
+    Count = "#"
+    Percent = "%"
 
 
 class AggregationType(StrEnum):
     """Series aggregation types."""
-    DAILY = 'DAILY'
-    HOURLY = 'HOURLY'
-    MINUTELY = 'MINUTELY'
+
+    DAILY = "DAILY"
+    HOURLY = "HOURLY"
+    MINUTELY = "MINUTELY"
 
 
 class Value(dict):
     """Generic datapoint."""
+
     _unit: ClassVar[str] = ""
 
     def __init__(self, value: float, unit: str | None = None):
@@ -60,56 +63,67 @@ class Value(dict):
 
 class Grams(Value):
     """Weight datapoint (Grams)."""
+
     _unit = Units.Grams
 
 
 class Kilograms(Value):
     """Weight datapoint (Kilograms)."""
+
     _unit = Units.Kilograms
 
 
 class Kelvin(Value):
     """Temperature datapoint (Kelvin)."""
+
     _unit = Units.Kelvin
 
 
 class Celsius(Value):
     """Temperature datapoint (Celsius)."""
+
     _unit = Units.Celsius
 
 
 class Meters(Value):
     """Length datapoint (Meters)."""
+
     _unit = Units.Meters
 
 
 class Centimeters(Value):
     """Length datapoint (Centimeters)."""
+
     _unit = Units.Centimeters
 
 
 class Millimeters(Value):
     """Length datapoint (Millimeters)."""
+
     _unit = Units.Millimeters
 
 
 class Liters(Value):
     """Volume datapoint (Liters)."""
+
     _unit = Units.Liters
 
 
 class CubicMeters(Value):
     """Volume datapoint (Cubic Meters)."""
+
     _unit = Units.CubicMeters
 
 
 class Count(Value):
     """Discrete number datapoint (number/count)."""
+
     _unit = Units.Count
 
 
 class Percent(Value):
     """Percent value datapoint."""
+
     _unit = Units.Percent
 
 
@@ -170,17 +184,15 @@ def percent(value: int | float):
 
 SeriesValue = tuple[str, int | float, str | None]
 
+
 def is_series(series: Iterable[SeriesValue] | SeriesValue) -> bool:
-    return (
-        isinstance(series, tuple)
-        and len(series) in (2, 3)
-        and isinstance(series[0], str)
-    )
+    return isinstance(series, tuple) and len(series) in (2, 3) and isinstance(series[0], str)
 
 
 @dataclass
 class SeriesSpec:
     """Series specifications."""
+
     unit: str
     type: str
     name: str
@@ -188,11 +200,11 @@ class SeriesSpec:
     @property
     def series(self):
         """Return the complete series name."""
-        return f'{self.type}.{self.name}'
+        return f"{self.type}.{self.name}"
 
 
 class Series(dict):
-    """ A wrapper for a series result.
+    """A wrapper for a series result.
 
     See also: `Measurements.get_series` function
 
@@ -206,18 +218,18 @@ class Series(dict):
     def truncated(self):
         """Whether the result was truncated
         (i.e. the query returned more than 5000 values)."""
-        return self['truncated']
+        return self["truncated"]
 
     @property
     def specs(self) -> Sequence[SeriesSpec]:
         """Return specifications for all enclosed series."""
-        return [SeriesSpec(type=i['type'], name=i['name'], unit=i['unit']) for i in self['series']]
+        return [SeriesSpec(type=i["type"], name=i["name"], unit=i["unit"]) for i in self["series"]]
 
     def collect(
-            self,
-            series: str | Sequence[str] | None = None,
-            value: str | Sequence[str] | None = None,
-            timestamps: bool | str | None = None,
+        self,
+        series: str | Sequence[str] | None = None,
+        value: str | Sequence[str] | None = None,
+        timestamps: bool | str | None = None,
     ) -> list | list[tuple]:
         """Collect series results.
 
@@ -243,18 +255,18 @@ class Series(dict):
 
         def indexes_by_name():
             """Mapping series names to indexes in value groups."""
-            return {f'{s[1].type}.{s[1].name}': s[0] for s in enumerate(self.specs)}
+            return {f"{s[1].type}.{s[1].name}": s[0] for s in enumerate(self.specs)}
 
         def parse_timestamp(t):
             """Parse timestamps."""
-            if timestamps == 'datetime':
+            if timestamps == "datetime":
                 return to_datetime(t)
-            if timestamps == 'epoch':
+            if timestamps == "epoch":
                 return to_datetime(t).timestamp()
             return t
 
         def value_keys():
-            for vg in self['values'].values():
+            for vg in self["values"].values():
                 if vg and vg[0] is not None:
                     return vg[0].keys()
             raise ValueError("Unable to collect data, data appears to be empty.")
@@ -274,11 +286,14 @@ class Series(dict):
                     # iterate over all values, select value group at specific
                     # index v[i] and extract specific value [value]. The value
                     # group may be undefined (None), hence filter for value v[i]
-                    return [v[i].get(value, None) for v in self['values'].values() if (len(v) > i and v[i])]
+                    return [v[i].get(value, None) for v in self["values"].values() if (len(v) > i and v[i])]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), v[i].get(value, None)) for k, v in self['values'].items() if
-                            (len(v) > i and v[i])]
+                    return [
+                        (parse_timestamp(k), v[i].get(value, None))
+                        for k, v in self["values"].items()
+                        if (len(v) > i and v[i])
+                    ]
 
             # multiple values
             else:
@@ -287,13 +302,18 @@ class Series(dict):
                     # iterate over all values, select value group at specific
                     # index v[i] and extract all (min, count, ...) values. The value
                     # group may be undefined (None), hence filter for value v[i]
-                    return [tuple(v[i].get(key, None) for key in keys) for v in self['values'].values() if
-                            (len(v) > i and v[i])]
+                    return [
+                        tuple(v[i].get(key, None) for key in keys)
+                        for v in self["values"].values()
+                        if (len(v) > i and v[i])
+                    ]
                 else:
                     # like above, but include timestamps
-                    return [(parse_timestamp(k), *(v[i].get(key, None) for key in keys)) for k, v in
-                            self['values'].items() if
-                            (len(v) > i and v[i])]
+                    return [
+                        (parse_timestamp(k), *(v[i].get(key, None) for key in keys))
+                        for k, v in self["values"].items()
+                        if (len(v) > i and v[i])
+                    ]
 
         # multiple series
         if isinstance(series, Sequence):
@@ -309,13 +329,13 @@ class Series(dict):
                     return [
                         # collect values of all indexes (None of not defined)
                         tuple(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii)
-                        for v in self['values'].values()
+                        for v in self["values"].values()
                     ]
                 else:
                     # like above, but prepend with timestamps
                     return [
                         (parse_timestamp(k), *(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii))
-                        for k, v in self['values'].items()
+                        for k, v in self["values"].items()
                     ]
 
             # multiple values
@@ -328,15 +348,22 @@ class Series(dict):
                     # in a None value in the tuple as well.
                     return [
                         # collect values of all indexes (None of not defined)
-                        tuple((tuple(v[i].get(key, None) for key in keys)) if (len(v) > i and v[i]) else None for i in ii)
-                        for v in self['values'].values()
+                        tuple(
+                            (tuple(v[i].get(key, None) for key in keys)) if (len(v) > i and v[i]) else None for i in ii
+                        )
+                        for v in self["values"].values()
                     ]
                 else:
                     # like above, but prepend with timestamps
                     return [
-                        (parse_timestamp(k),
-                         *(tuple(v[i].get(key, None) for key in keys) if (len(v) > i and v[i]) else None for i in ii))
-                        for k, v in self['values'].items()
+                        (
+                            parse_timestamp(k),
+                            *(
+                                tuple(v[i].get(key, None) for key in keys) if (len(v) > i and v[i]) else None
+                                for i in ii
+                            ),
+                        )
+                        for k, v in self["values"].items()
                     ]
 
         raise ValueError("Invalid combination of arguments")
@@ -346,16 +373,16 @@ class Measurement(CumulocityObject):
     _meta = MeasurementsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            time: str | datetime = None,
-            series: SeriesValue | Iterable[SeriesValue] | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        time: str | datetime = None,
+        series: SeriesValue | Iterable[SeriesValue] | None = None,
+        **kwargs,
     ):
-        """ Create a new Measurement object.
+        """Create a new Measurement object.
 
         Args:
             c8y (CumulocityRestApi)  Cumulocity connection reference; needs
@@ -417,14 +444,15 @@ class Measurement(CumulocityObject):
             A list of series names (e.g. `c8y_Temperature.T`) defined in this measurement.
         """
         return [
-            f"{name0}.{name1}" for name0, value0 in self._json.items()
+            f"{name0}.{name1}"
+            for name0, value0 in self._json.items()
             if isinstance(value0, dict)
             for name1, value1 in value0.items()
             if isinstance(value1, dict) and "value" in value1
         ]
 
     async def create(self) -> Self:
-        """ Store the Measurement within the database.
+        """Store the Measurement within the database.
 
         Returns:  A fresh Measurement object representing what was
             created within the database (including the ID).
@@ -437,33 +465,33 @@ class Measurements(CumulocityResource[Measurement]):
     _object_type = Measurement
 
     async def get(self, id: str) -> Measurement:
-        """ Get a Measurement by ID."""
+        """Get a Measurement by ID."""
         return await self._get(id)
 
     async def get_all(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            value_fragment_type: str | None = None,
-            value_fragment_series: str | None = None,
-            series: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool | None = None,
-            limit: int = None,
-            page_size: int = 1000,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        value_fragment_type: str | None = None,
+        value_fragment_series: str | None = None,
+        series: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool | None = None,
+        limit: int = None,
+        page_size: int = 1000,
+        page_number: int = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Measurement | Any | tuple[Any]]:
-        """ Query the database for measurements and return the results
+        """Query the database for measurements and return the results
         as list.
 
         This function is a greedy version of the select function. All
@@ -473,44 +501,47 @@ class Measurements(CumulocityResource[Measurement]):
             List of matching Measurement objects or values/value
                 tuples if the `as_values` parameter is defined.
         """
-        return [x async for x in self.select(
-            expression=expression,
-            type=type,
-            source=source,
-            value_fragment_type=value_fragment_type,
-            value_fragment_series=value_fragment_series,
-            series=series,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                type=type,
+                source=source,
+                value_fragment_type=value_fragment_type,
+                value_fragment_series=value_fragment_series,
+                series=series,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def get_count(
-            self,
-            expression: str = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            value_fragment_type: str | None = None,
-            value_fragment_series: str | None = None,
-            series: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        value_fragment_type: str | None = None,
+        value_fragment_series: str | None = None,
+        series: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -541,21 +572,21 @@ class Measurements(CumulocityResource[Measurement]):
         return await self._get_count(expression=expression, params=params)
 
     async def get_last(
-            self,
-            expression: str = None,
-            *,
-            type: str = None,
-            source: str = None,
-            value_fragment_type: str = None,
-            value_fragment_series: str = None,
-            series: str = None,
-            date_to: str | datetime = None,
-            before: str | datetime = None,
-            min_age: timedelta = None,
-            as_values: AsValuesSpec | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        type: str = None,
+        source: str = None,
+        value_fragment_type: str = None,
+        value_fragment_series: str = None,
+        series: str = None,
+        date_to: str | datetime = None,
+        before: str | datetime = None,
+        min_age: timedelta = None,
+        as_values: AsValuesSpec | None = None,
+        **kwargs,
     ) -> Measurement | None:
-        """ Query the database and return the last matching measurement.
+        """Query the database and return the last matching measurement.
 
         This function is a special variant of the select function. Only
         the last matching result is returned.
@@ -594,7 +625,7 @@ class Measurements(CumulocityResource[Measurement]):
         # we need at least one date parameter
         after = None
         if all(x is None for x in [date_to, before, min_age]):
-            after = '1970-01-01'
+            after = "1970-01-01"
 
         params = map_params(
             type=type,
@@ -611,29 +642,29 @@ class Measurements(CumulocityResource[Measurement]):
         return await self._get_last(expression=expression, params=params, as_values=as_values)
 
     def select(
-            self,
-            expression: str | None = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            value_fragment_type: str | None = None,
-            value_fragment_series: str | None = None,
-            series: str | None = None,
-            before: str | datetime | None  = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool | None = None,
-            limit: int | None = None,
-            page_size: int | None = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        value_fragment_type: str | None = None,
+        value_fragment_series: str | None = None,
+        series: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool | None = None,
+        limit: int | None = None,
+        page_size: int | None = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Measurement | Any | tuple[Any]]:
-        """ Query the database for measurements and iterate over the results.
+        """Query the database for measurements and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
         fetched from the database as long there is a consumer for them.
@@ -715,20 +746,20 @@ class Measurements(CumulocityResource[Measurement]):
         )
 
     async def get_series(
-            self,
-            expression: str = None,
-            *,
-            source: str = None,
-            aggregation: str = None,
-            aggregation_function: str | Sequence[str] = None,
-            aggregation_interval: str = None,
-            series: str | Sequence[str] = None,
-            before: str | datetime = None,
-            after: str | datetime = None,
-            min_age: timedelta = None,
-            max_age: timedelta = None,
-            reverse: bool = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        source: str = None,
+        aggregation: str = None,
+        aggregation_function: str | Sequence[str] = None,
+        aggregation_interval: str = None,
+        series: str | Sequence[str] = None,
+        before: str | datetime = None,
+        after: str | datetime = None,
+        min_age: timedelta = None,
+        max_age: timedelta = None,
+        reverse: bool = None,
+        **kwargs,
     ) -> Series:
         """Query the database for a list of series and their values.
 
@@ -777,26 +808,26 @@ class Measurements(CumulocityResource[Measurement]):
                 min_age=min_age,
                 max_age=max_age,
                 reverse=reverse,
-                **kwargs
+                **kwargs,
             )
             response_json = await self.c8y.get(resource_path, params=params, accept="application/json")
         return Series(response_json)
 
     async def collect_series(
-            self,
-            expression: str | None = None,
-            *,
-            source: str | None = None,
-            aggregation: str | None = None,
-            series: str | Sequence[str] | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool | None = None,
-            value: str | None = None,
-            timestamps: bool | str | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        source: str | None = None,
+        aggregation: str | None = None,
+        series: str | Sequence[str] | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool | None = None,
+        value: str | None = None,
+        timestamps: bool | str | None = None,
+        **kwargs,
     ):
         """Query the database for series values.
 
@@ -847,13 +878,9 @@ class Measurements(CumulocityResource[Measurement]):
             min_age=min_age,
             max_age=max_age,
             reverse=reverse,
-            **kwargs
+            **kwargs,
         )
-        return result.collect(
-            series=series,
-            value=value,
-            timestamps=timestamps
-        )
+        return result.collect(series=series, value=value, timestamps=timestamps)
 
     async def create(self, *objects: Measurement, workers: int | None = None) -> None:
         await self._create(*objects, workers=workers)
@@ -862,24 +889,24 @@ class Measurements(CumulocityResource[Measurement]):
         await self._delete(*objects, workers=workers)
 
     async def delete_by(
-            self,
-            expression: str | None = None,
-            *,
-            type: str | None = None,
-            source: str | None = None,
-            value_fragment_type: str | None = None,  # todo: this is not supported at the moment
-            value_fragment_series: str | None = None,  # todo: this is not supported at the moment
-            series: str | None = None, # todo: this is not supported at the moment
-            fragment: str | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        value_fragment_type: str | None = None,  # todo: this is not supported at the moment
+        value_fragment_series: str | None = None,  # todo: this is not supported at the moment
+        series: str | None = None,  # todo: this is not supported at the moment
+        fragment: str | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        **kwargs,
     ):
-        """ Query the database and delete matching measurements.
+        """Query the database and delete matching measurements.
 
         All parameters are considered to be filters, limiting the result set
         to objects which meet the filters specification.  Filters can be
@@ -933,23 +960,23 @@ class Measurements(CumulocityResource[Measurement]):
                 after=after,
                 min_age=min_age,
                 max_age=max_age,
-                **kwargs
+                **kwargs,
             )
             await self.c8y.delete(self.resource_path, params=params)
 
     @staticmethod
     def _collate_series_params(
-            series: str | None = None,
-            value_fragment_type: str | None = None,
-            value_fragment_series: str | None = None,
+        series: str | None = None,
+        value_fragment_type: str | None = None,
+        value_fragment_series: str | None = None,
     ) -> (str, str):
         if series and (value_fragment_type or value_fragment_series):
             raise ValueError(
-                "Series parameter must not be combined with 'value_fragment_type' or 'value_fragment_series'.")
+                "Series parameter must not be combined with 'value_fragment_type' or 'value_fragment_series'."
+            )
         if series:
             parts = series.split(".")
             if len(parts) != 2:
                 raise ValueError("Series spec must have exactly two parts.")
             return parts[0], parts[1]
         return value_fragment_type, value_fragment_series
-

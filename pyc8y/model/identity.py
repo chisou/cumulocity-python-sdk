@@ -9,19 +9,18 @@ from pyc8y.types import IdentityMeta
 
 
 def _build_resource_path(managed_object_id: str) -> str:
-    return f'/identity/globalIds/{managed_object_id}/externalIds'
+    return f"/identity/globalIds/{managed_object_id}/externalIds"
 
 
 def _build_object_path(external_id: str, external_type: str) -> str:
-    return f'identity/externalIds/{external_type}/{external_id}'
+    return f"identity/externalIds/{external_type}/{external_id}"
 
 
 def _build_json(external_id: str, external_type: str) -> dict:
     return {
-        'externalId': external_id,
-        'type': external_type,
+        "externalId": external_id,
+        "type": external_type,
     }
-
 
 
 class ExternalId(CumulocityObject):
@@ -32,17 +31,18 @@ class ExternalId(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/External-IDs
     """
+
     # ExternalId uses non-standard paths managed by the Identity class.
     # _meta is not used for standard CRUD; only to satisfy the base class.
     _meta = IdentityMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            external_id: str | None = None,
-            external_type: str | None = None,
-            managed_object_id: str | None = None,
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        external_id: str | None = None,
+        external_type: str | None = None,
+        managed_object_id: str | None = None,
     ):
         super().__init__(c8y)
         self.external_id = external_id
@@ -66,12 +66,15 @@ class ExternalId(CumulocityObject):
             Self reference.
         """
         # can't use _delete function as object IDs are built differently
-        return self._build(await self.c8y.post(
-            _build_resource_path(self.managed_object_id),
-            json=_build_json(self.external_id, self.external_type),
-            content_type="application/vnd.com.nsn.cumulocity.externalid+json",
-            accept="application/vnd.com.nsn.cumulocity.externalid+json",
-        ), c8y=self.c8y)
+        return self._build(
+            await self.c8y.post(
+                _build_resource_path(self.managed_object_id),
+                json=_build_json(self.external_id, self.external_type),
+                content_type="application/vnd.com.nsn.cumulocity.externalid+json",
+                accept="application/vnd.com.nsn.cumulocity.externalid+json",
+            ),
+            c8y=self.c8y,
+        )
 
     async def delete(self) -> None:
         """Remove the external ID from the database."""
@@ -87,7 +90,6 @@ class ExternalId(CumulocityObject):
         return await Inventory(self.c8y).get(self.managed_object_id)
 
 
-
 class Identity(CumulocityResource):
     """Provides access to the Identity API.
 
@@ -97,6 +99,7 @@ class Identity(CumulocityResource):
     See also: https://cumulocity.com/api/core/#tag/External-IDs
               https://cumulocity.com/api/core/#tag/Identity-API
     """
+
     _meta = IdentityMeta
     _object_type: ExternalId
 
@@ -104,12 +107,12 @@ class Identity(CumulocityResource):
         super().__init__(c8y)
 
     async def create(
-            self,
-            *objects: ExternalId,
-            workers: int | None = None,
-            external_id: str | None = None,
-            external_type: str | None = None,
-            managed_object_id: str | None = None
+        self,
+        *objects: ExternalId,
+        workers: int | None = None,
+        external_id: str | None = None,
+        external_type: str | None = None,
+        managed_object_id: str | None = None,
     ) -> None:
         """Create ExternalID objects within the database.
 
@@ -140,19 +143,16 @@ class Identity(CumulocityResource):
         else:
             # try to create a single external ID
             # TODO: ValueError if part is missing?
-            await (ExternalId(
-                self.c8y,
-                external_id=external_id,
-                external_type=external_type,
-                managed_object_id=managed_object_id
-            ).create())
+            await ExternalId(
+                self.c8y, external_id=external_id, external_type=external_type, managed_object_id=managed_object_id
+            ).create()
 
     async def delete(
-            self,
-            *objects: ExternalId,
-            workers: int | None = None,
-            external_id: str | None = None,
-            external_type: str | None = None,
+        self,
+        *objects: ExternalId,
+        workers: int | None = None,
+        external_id: str | None = None,
+        external_type: str | None = None,
     ) -> None:
         """Remove an External ID from the database.
 
@@ -206,7 +206,7 @@ class Identity(CumulocityResource):
             A database ID (string)
         """
         json = await self.c8y.get(_build_object_path(external_id, external_type))
-        return json['managedObject']['id']
+        return json["managedObject"]["id"]
 
     async def get_object(self, external_id: str, external_type: str):
         """Read a managed object by its external ID reference.
@@ -232,5 +232,4 @@ class Identity(CumulocityResource):
             A list of ExternalId instances (can be empty)
         """
         result = await self.c8y.get(_build_resource_path(object_id))
-        return [ExternalId.from_json(x, c8y=self.c8y) for x in result['externalIds']]
-
+        return [ExternalId.from_json(x, c8y=self.c8y) for x in result["externalIds"]]

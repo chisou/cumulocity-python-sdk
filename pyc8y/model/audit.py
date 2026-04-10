@@ -22,44 +22,47 @@ from pyc8y.types import AuditRecordsMeta, AsValuesSpec
 @dataclasses.dataclass
 class Change:
     """Change details fragment within an audit log."""
+
     attribute: str = None
     new_value: str = None
     previous_value: str = None
-    type: str = None   # noqa (type)
+    type: str = None  # noqa (type)
 
     @classmethod
     def from_json(cls, json: dict) -> Self:
         return cls(
-            attribute=json.get('attribute'),
-            new_value=json.get('newValue'),
-            previous_value=json.get('previousValue'),
-            type=json.get('type'),
+            attribute=json.get("attribute"),
+            new_value=json.get("newValue"),
+            previous_value=json.get("previousValue"),
+            type=json.get("type"),
         )
 
     def to_json(self) -> dict:
         result = {}
         if self.attribute is not None:
-            result['attribute'] = self.attribute
+            result["attribute"] = self.attribute
         if self.new_value is not None:
-            result['newValue'] = self.new_value
+            result["newValue"] = self.new_value
         if self.previous_value is not None:
-            result['previousValue'] = self.previous_value
+            result["previousValue"] = self.previous_value
         if self.type is not None:
-            result['type'] = self.type
+            result["type"] = self.type
         return result
 
 
 class Severity(StrEnum):
     """Audit severity levels."""
-    MAJOR = 'MAJOR'
-    CRITICAL = 'CRITICAL'
-    MINOR = 'MINOR'
-    WARNING = 'WARNING'
-    INFORMATION = 'information'  # for whatever reason, lowercase is correct
+
+    MAJOR = "MAJOR"
+    CRITICAL = "CRITICAL"
+    MINOR = "MINOR"
+    WARNING = "WARNING"
+    INFORMATION = "information"  # for whatever reason, lowercase is correct
 
 
 class Type(StrEnum):
     """Audit record source types."""
+
     ALARM = "Alarm"
     APPLICATION = "Application"
     BULKOPERATION = "BulkOperation"
@@ -90,23 +93,24 @@ class AuditRecord(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Audits
     """
+
     _meta = AuditRecordsMeta
     _change_type: ClassVar[type[Change]] = Change
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            time: str | datetime | None = None,
-            source: str | None = None,
-            activity: str | None = None,
-            text: str | None = None,
-            changes: list[Change] | None = None,
-            severity: str | None = None,
-            application: str | None = None,
-            user: str | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        time: str | datetime | None = None,
+        source: str | None = None,
+        activity: str | None = None,
+        text: str | None = None,
+        changes: list[Change] | None = None,
+        severity: str | None = None,
+        application: str | None = None,
+        user: str | None = None,
+        **kwargs,
     ):
         super().__init__(c8y, **kwargs)
         self.type = type
@@ -161,6 +165,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
 
     See also: https://cumulocity.com/api/core/#tag/Audits
     """
+
     _meta = AuditRecordsMeta
     _object_type = AuditRecord
 
@@ -176,28 +181,28 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         return await self._get(record_id)
 
     def select(
-            self,
-            expression: str | None = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            application: str | None = None,
-            user: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        application: str | None = None,
+        user: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[AuditRecord | Any | tuple[Any]]:
         """Query the database for audit records and iterate over the results.
 
@@ -229,21 +234,25 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         Returns:
             AsyncIterator of AuditRecord objects
         """
-        params = map_params(
-            type=type,
-            source=source,
-            application=application,
-            user=user,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            page_size=page_size,
-            **kwargs,
-        ) if not expression else ()
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                application=application,
+                user=user,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                page_size=page_size,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
         return self._iterate(
             expression=expression,
             params=params,
@@ -256,28 +265,28 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         )
 
     async def get_all(
-            self,
-            expression: str | None = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            source: str | None = None,
-            application: str | None = None,
-            user: str | None = None,
-            before: str | datetime | None = None,
-            after: str | datetime | None = None,
-            date_from: str | datetime | None = None,
-            date_to: str | datetime | None = None,
-            min_age: str | timedelta | None = None,
-            max_age: str | timedelta | None = None,
-            reverse: bool = False,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        application: str | None = None,
+        user: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool = False,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[AuditRecord | Any | tuple[Any]]:
         """Query the database for audit records and return the results as list.
 
@@ -286,28 +295,31 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         Returns:
             List of AuditRecord objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            type=type,
-            source=source,
-            application=application,
-            user=user,
-            before=before,
-            after=after,
-            date_from=date_from,
-            date_to=date_to,
-            min_age=min_age,
-            max_age=max_age,
-            reverse=reverse,
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                type=type,
+                source=source,
+                application=application,
+                user=user,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                reverse=reverse,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def create(self, *records: AuditRecord, workers: int | None = None) -> None:
         """Create audit record objects within the database.

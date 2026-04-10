@@ -30,16 +30,17 @@ class TenantOption(CumulocityObject):
 
     See also: https://cumulocity.com/api/core/#tag/Options
     """
+
     _meta = TenantOptionsMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            category: str | None = None,
-            key: str | None = None,
-            value: str | None = None,
-            encrypted: bool | None = None,
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        category: str | None = None,
+        key: str | None = None,
+        value: str | None = None,
+        encrypted: bool | None = None,
     ):
         super().__init__(c8y)
         self.category = category
@@ -113,6 +114,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
 
     See also: https://cumulocity.com/api/core/#tag/Options
     """
+
     _meta = TenantOptionsMeta
     _object_type = TenantOption
 
@@ -145,13 +147,13 @@ class TenantOptions(CumulocityResource[TenantOption]):
         return TenantOption.from_json(json, c8y=self.c8y)
 
     def select(
-            self,
-            *,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
+        self,
+        *,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
     ) -> AsyncIterator[TenantOption | Any | tuple[Any]]:
         """Query the database for tenant options and iterate over the results.
 
@@ -182,14 +184,14 @@ class TenantOptions(CumulocityResource[TenantOption]):
         )
 
     async def get_all(
-            self,
-            *,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_map: bool = False,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
+        self,
+        *,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_map: bool = False,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
     ) -> list[TenantOption] | dict[str, str] | dict[str, dict[str, str]]:
         """Query the database for tenant options and return the results as list.
 
@@ -212,13 +214,16 @@ class TenantOptions(CumulocityResource[TenantOption]):
         """
         if as_map and as_values:
             raise ValueError("Only one of as_values and as_map can be specified.")
-        result = [x async for x in self.select(
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-        )]
+        result = [
+            x
+            async for x in self.select(
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
         if not as_map:
             return result
         r = {}
@@ -240,7 +245,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
             The value of the specified option
         """
         json = await self.c8y.get(self.build_object_path(category, key))
-        return json['value']
+        return json["value"]
 
     async def get_values(self, category: str) -> dict[str, str]:
         """Retrieve all values for a specific category from the database.
@@ -303,11 +308,11 @@ class TenantOptions(CumulocityResource[TenantOption]):
             )
 
     async def delete(
-            self,
-            *options: TenantOption,
-            category: str | None = None,
-            key: str | None = None,
-            workers: int | None = None,
+        self,
+        *options: TenantOption,
+        category: str | None = None,
+        key: str | None = None,
+        workers: int | None = None,
     ) -> None:
         """Delete options within the database.
 
@@ -328,8 +333,4 @@ class TenantOptions(CumulocityResource[TenantOption]):
                 raise ValueError("Both option category and key must be set to allow direct object access.")
             await self.c8y.delete(build_value_resource(category, key))
         else:
-            await run_batched(
-                options,
-                workers,
-                lambda o: self.delete(category=o.category, key=o.key)
-            )
+            await run_batched(options, workers, lambda o: self.delete(category=o.category, key=o.key))

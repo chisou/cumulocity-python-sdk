@@ -22,10 +22,10 @@ _clients: dict[tuple, CumulocityClient] = {}
 
 
 def get_client(
-        base_url: str | None = None,
-        tenant_id: str | None = None,
-        username: str | None = None,
-        password: str | None = None,
+    base_url: str | None = None,
+    tenant_id: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
 ):
     """Get a ready to use CumulocityClient instance for use in interactive
     sessions.
@@ -52,10 +52,10 @@ def get_client(
     ¹ See also the go-c8y-cli (https://goc8ycli.netlify.app/docs/concepts/sessions/#continuous-integration-usage-environment-variables)
     and Cumulocity microservice bootstrap (https://cumulocity.com/docs/microservice-sdk/general-aspects/#microservice-bootstrap)
     """
-    base_url = base_url or os.environ.get('C8Y_BASEURL')
-    tenant_id = tenant_id or os.environ.get('C8Y_TENANT')
-    username = username or os.environ.get('C8Y_USER')
-    password = password or os.environ.get('C8Y_PASSWORD')
+    base_url = base_url or os.environ.get("C8Y_BASEURL")
+    tenant_id = tenant_id or os.environ.get("C8Y_TENANT")
+    username = username or os.environ.get("C8Y_USER")
+    password = password or os.environ.get("C8Y_PASSWORD")
 
     async def _get_client() -> CumulocityClient:
         nonlocal base_url, tenant_id, username, password
@@ -69,24 +69,24 @@ def get_client(
             return getpass.getpass(prompt) if secret else input(prompt)
 
         # (1) resolve what we can from a token in the environment
-        token = os.environ.get('C8Y_TOKEN')
+        token = os.environ.get("C8Y_TOKEN")
         if token:
             jwt = JWT(token)
-            base_url = base_url or jwt.get_claim('aud')
-            tenant_id = tenant_id or jwt.get_claim('ten')
-            username = username or jwt.get_claim('sub')
-            exp = int(jwt.get_claim('exp'))
+            base_url = base_url or jwt.get_claim("aud")
+            tenant_id = tenant_id or jwt.get_claim("ten")
+            username = username or jwt.get_claim("sub")
+            exp = int(jwt.get_claim("exp"))
             if time.time() <= (exp - 60 * 60):
                 auth = BearerAuth(token)
             else:
                 print("Access token found but invalidated as it was almost expired.")
 
         # (2) resolve remaining parameters (interactively if needed)
-        base_url = base_url or read_variable('C8Y_BASEURL', "Please enter the Cumulocity base URL or hostname:")
-        tenant_id = tenant_id or read_variable('C8Y_TENANT', "Please enter the Cumulocity tenant ID:")
-        username = username or read_variable('C8Y_USER', "Please enter the Cumulocity username:")
+        base_url = base_url or read_variable("C8Y_BASEURL", "Please enter the Cumulocity base URL or hostname:")
+        tenant_id = tenant_id or read_variable("C8Y_TENANT", "Please enter the Cumulocity tenant ID:")
+        username = username or read_variable("C8Y_USER", "Please enter the Cumulocity username:")
         if base_url and not urlparse(base_url).scheme:
-            base_url = f'https://{base_url}'
+            base_url = f"https://{base_url}"
 
         # (3) return cached client if one exists for these parameters
         client_key = (base_url, tenant_id, username)
@@ -97,7 +97,7 @@ def get_client(
         if not auth:
             needs_tfa = False
             while not auth:
-                pw = password or read_variable('C8Y_PASSWORD', "Please enter the Cumulocity password:", secret=True)
+                pw = password or read_variable("C8Y_PASSWORD", "Please enter the Cumulocity password:", secret=True)
                 if not pw:
                     raise UnauthorizedError("No password provided. Authentication failed.")
                 tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
@@ -150,7 +150,7 @@ def c8y_keys() -> set[str]:
 
     Returns: A set of environment variable names, starting with 'C8Y_'
     """
-    return set(filter(lambda x: 'C8Y_' in x, os.environ.keys()))
+    return set(filter(lambda x: "C8Y_" in x, os.environ.keys()))
 
 
 class _CumulocityAppBase(ABC):
@@ -166,7 +166,9 @@ class _CumulocityAppBase(ABC):
     def _build_user_instance(self, auth: Auth) -> CumulocityClient:
         """This must be defined by the implementing classes."""
 
-    def get_user_instance(self, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityClient:
+    def get_user_instance(
+        self, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None
+    ) -> CumulocityClient:
         """Return a user-specific CumulocityApi instance.
 
         The instance will have user access, based on the Authorization header
@@ -223,8 +225,10 @@ class _CumulocityAppBase(ABC):
             cookie_auth = f"Bearer {cookie_auth}"  # cookie auth is just a JWT
 
         if header_auth and cookie_auth and header_auth != cookie_auth:
-            log.warning("Conflicting Authorization values in headers "
-                        f"({header_auth}) and cookies ({cookie_auth}). Using cookie.")
+            log.warning(
+                "Conflicting Authorization values in headers "
+                f"({header_auth}) and cookies ({cookie_auth}). Using cookie."
+            )
         if cookie_auth:
             return cookie_auth
         if header_auth:
@@ -252,7 +256,7 @@ class _CumulocityAppBase(ABC):
         except KeyError as e:
             if default is not _sentinel:
                 return default
-            keys = ', '.join(c8y_keys()) or "none"
+            keys = ", ".join(c8y_keys()) or "none"
             raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
 
 
@@ -276,11 +280,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
     _log = logging.getLogger(__name__)
 
     def __init__(
-            self,
-            application_key: str = None,
-            processing_mode: str = None,
-            cache_size: int = 100,
-            cache_ttl: int = 3600
+        self, application_key: str = None, processing_mode: str = None, cache_size: int = 100, cache_ttl: int = 3600
     ):
         """Create a new tenant specific instance.
 
@@ -298,27 +298,39 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
         Returns:
             A new CumulocityApp instance
         """
-        baseurl = self._get_env('C8Y_BASEURL')
-        tenant_id = self._get_env('C8Y_TENANT')
+        baseurl = self._get_env("C8Y_BASEURL")
+        tenant_id = self._get_env("C8Y_TENANT")
         # authentication is either token or username/password
         try:
-            token = self._get_env('C8Y_TOKEN')
+            token = self._get_env("C8Y_TOKEN")
             auth = BearerAuth(token)
         except ValueError:
-            username = self._get_env('C8Y_USER')
-            password = self._get_env('C8Y_PASSWORD')
-            auth = BasicAuth(f'{tenant_id}/{username}', password)
+            username = self._get_env("C8Y_USER")
+            password = self._get_env("C8Y_PASSWORD")
+            auth = BasicAuth(f"{tenant_id}/{username}", password)
         if not application_key:
-            application_key = self._get_env('APPLICATION_KEY', default=None)
-        super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl,
-                         base_url=baseurl, tenant_id=tenant_id, auth=auth,
-                         application_key=application_key, processing_mode=processing_mode)
+            application_key = self._get_env("APPLICATION_KEY", default=None)
+        super().__init__(
+            log=self._log,
+            cache_size=cache_size,
+            cache_ttl=cache_ttl,
+            base_url=baseurl,
+            tenant_id=tenant_id,
+            auth=auth,
+            application_key=application_key,
+            processing_mode=processing_mode,
+        )
 
     def _build_user_instance(self, auth) -> CumulocityClient:
         """Build a CumulocityApi instance for a specific user, using the
         same Base URL, Tenant ID and Application Key as the main instance."""
-        return CumulocityClient(base_url=self.base_url, tenant_id=self.tenant_id, auth=auth,
-                                application_key=self.application_key, processing_mode=self.processing_mode)
+        return CumulocityClient(
+            base_url=self.base_url,
+            tenant_id=self.tenant_id,
+            auth=auth,
+            application_key=self.application_key,
+            processing_mode=self.processing_mode,
+        )
 
 
 class MultiTenantCumulocityApp(_CumulocityAppBase):
@@ -341,8 +353,9 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     _log = logging.getLogger(__name__)
 
-    def __init__(self, application_key: str = None,  processing_mode: str = None,
-                 cache_size: int = 100, cache_ttl: int = 3600):
+    def __init__(
+        self, application_key: str = None, processing_mode: str = None, cache_size: int = 100, cache_ttl: int = 3600
+    ):
         """Create a new instance.
 
         Args:
@@ -360,7 +373,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             A new MultiTenantCumulocityApp instance
         """
         super().__init__(log=self._log, cache_size=cache_size, cache_ttl=cache_ttl)
-        self.application_key = application_key or self._get_env('APPLICATION_KEY', default=None)
+        self.application_key = application_key or self._get_env("APPLICATION_KEY", default=None)
         self.processing_mode = processing_mode
         self.cache_size = cache_size
         self.cache_ttl = cache_ttl
@@ -386,8 +399,8 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         Returns:
             A list of tenant details dicts.
         """
-        subscriptions = await bootstrap_instance.get('/application/currentApplication/subscriptions')
-        return subscriptions['users']
+        subscriptions = await bootstrap_instance.get("/application/currentApplication/subscriptions")
+        return subscriptions["users"]
 
     @classmethod
     async def _read_subscription_auths(cls, bootstrap_instance: CumulocityClient) -> dict[str, Auth]:
@@ -398,10 +411,10 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         """
         cache = {}
         for subscription in await cls._read_subscriptions(bootstrap_instance):
-            tenant = subscription['tenant']
-            username = subscription['name']
-            password = subscription['password']
-            cache[tenant] = BasicAuth(f'{tenant}/{username}', password)
+            tenant = subscription["tenant"]
+            username = subscription["name"]
+            password = subscription["password"]
+            cache[tenant] = BasicAuth(f"{tenant}/{username}", password)
         return cache
 
     async def get_subscribers(self) -> list[str]:
@@ -410,15 +423,15 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         Returns:
             A list of tenant ID.
         """
-        return [x['tenant'] for x in await self._read_subscriptions(self.bootstrap_instance)]
+        return [x["tenant"] for x in await self._read_subscriptions(self.bootstrap_instance)]
 
     @classmethod
     def _create_bootstrap_instance(cls, application_key: str = None, processing_mode: str = None) -> CumulocityClient:
         """Build the bootstrap instance from the environment."""
-        base_url = cls._get_env('C8Y_BASEURL')
-        tenant_id = cls._get_env('C8Y_BOOTSTRAP_TENANT')
-        username = cls._get_env('C8Y_BOOTSTRAP_USER')
-        password = cls._get_env('C8Y_BOOTSTRAP_PASSWORD')
+        base_url = cls._get_env("C8Y_BASEURL")
+        tenant_id = cls._get_env("C8Y_BOOTSTRAP_TENANT")
+        username = cls._get_env("C8Y_BOOTSTRAP_USER")
+        password = cls._get_env("C8Y_BOOTSTRAP_PASSWORD")
         return CumulocityClient(
             base_url=base_url,
             tenant_id=tenant_id,
@@ -430,17 +443,28 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
     async def _create_tenant_instance(self, tenant_id: str) -> CumulocityClient:
         """Build a tenant instance."""
         auth = await self._get_tenant_auth(tenant_id)
-        return CumulocityClient(self.bootstrap_instance.base_url, tenant_id, auth=auth,
-                                application_key=self.application_key, processing_mode=self.processing_mode)
+        return CumulocityClient(
+            self.bootstrap_instance.base_url,
+            tenant_id,
+            auth=auth,
+            application_key=self.application_key,
+            processing_mode=self.processing_mode,
+        )
 
     def _build_user_instance(self, auth) -> CumulocityClient:
         """Build a CumulocityApi instance for a specific user."""
         tenant_id = auth.get_tenant_id()
-        return CumulocityClient(base_url=self.bootstrap_instance.base_url, tenant_id=tenant_id, auth=auth,
-                                application_key=self.application_key, processing_mode=self.processing_mode)
+        return CumulocityClient(
+            base_url=self.bootstrap_instance.base_url,
+            tenant_id=tenant_id,
+            auth=auth,
+            application_key=self.application_key,
+            processing_mode=self.processing_mode,
+        )
 
-    async def get_tenant_instance(self, tenant_id: str = None,
-                                  headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> CumulocityClient:
+    async def get_tenant_instance(
+        self, tenant_id: str = None, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None
+    ) -> CumulocityClient:
         """Provide access to a tenant-specific instance in a multi-tenant
         application setup.
 

@@ -7,6 +7,7 @@ from c8y_api.model.matcher._matcher import JsonMatcher
 
 class PydfMatcher(JsonMatcher):
     """JsonMatcher implementation for PyDF (Python Display Filter)."""
+
     # pylint: disable=protected-access
 
     def __init__(self, expression: str, warn_on_error: bool = True):

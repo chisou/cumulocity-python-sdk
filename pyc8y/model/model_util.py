@@ -19,7 +19,7 @@ def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = F
     Return:
         The extracted value or the specified default.
     """
-    keys = path.split('.')
+    keys = path.split(".")
     current = dictionary
 
     for key in keys:
@@ -56,16 +56,12 @@ def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
     if isinstance(paths, list):
         return tuple(
             get_by_path(
-                data,
-                path[0] if isinstance(path, tuple) else path,
-                path[1] if isinstance(path, tuple) else None
+                data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
             )
             for path in paths
         )
     return get_by_path(
-        data,
-        paths[0] if isinstance(paths, tuple) else paths,
-        paths[1] if isinstance(paths, tuple) else None
+        data, paths[0] if isinstance(paths, tuple) else paths, paths[1] if isinstance(paths, tuple) else None
     )
 
 
@@ -84,9 +80,7 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
     """
     return {
         key: get_by_path(
-            data,
-            path[0] if isinstance(path, tuple) else path,
-            path[1] if isinstance(path, tuple) else None
+            data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
         )
         for key, path in mapping.items()
     }
@@ -115,7 +109,7 @@ def now_timestring() -> str:
 def to_pascal_case(name: str) -> str:
     """Convert a given `snake_case` (default Python style) name to `pascalCase`
     (default for names in Cumulocity)"""
-    parts = list(filter(None, name.split('_')))
+    parts = list(filter(None, name.split("_")))
     if len(parts) == 1:
         return name
     return parts[0] + "".join([x.title() for x in parts[1:]])

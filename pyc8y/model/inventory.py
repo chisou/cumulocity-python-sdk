@@ -10,9 +10,18 @@ from c8y_api.model import JsonMatcher
 from pyc8y.rest import CumulocityRestClient, BatchError
 from pyc8y.base_util import encode_odata_query_value, sanitize_page_size, flatten
 from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
-from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, assert_c8y, \
-    assert_id, \
-    tag_property, CumulocityResource, map_params, CO
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    json_property,
+    time_property,
+    datetime_property,
+    assert_c8y,
+    assert_id,
+    tag_property,
+    CumulocityResource,
+    map_params,
+    CO,
+)
 from pyc8y.types import MimeType, InventoryMeta, AsValuesSpec
 
 
@@ -23,12 +32,13 @@ class ObjectReference:
 
     @classmethod
     def to_json(cls, object_id):
-        return {'managedObject': {'id': str(object_id)}}
+        return {"managedObject": {"id": str(object_id)}}
 
 
 def references_property(key: str) -> property:
     def getter(self):
         return [ObjectReference(x["id"], x.get("name", None)) for x in self._source_json[key]["references"]]
+
     return property(getter)
 
 
@@ -38,13 +48,15 @@ class Availability:
 
     class ConnectionStatus:
         """Connection status labels"""
-        CONNECTED = 'CONNECTED'
-        DISCONNECTED = 'DISCONNECTED'
+
+        CONNECTED = "CONNECTED"
+        DISCONNECTED = "DISCONNECTED"
 
     class DataStatus:
         """Data status labels"""
-        AVAILABLE = 'AVAILABLE'
-        UNAVAILABLE = 'UNAVAILABLE'
+
+        AVAILABLE = "AVAILABLE"
+        UNAVAILABLE = "UNAVAILABLE"
 
     def __init__(self, json):
         self._json = json
@@ -61,7 +73,7 @@ class Availability:
     @property
     def interval_minutes(self) -> int:
         """Return the required update interval in minutes as integer."""
-        return int(self.interval.split(' ', 1)[0])
+        return int(self.interval.split(" ", 1)[0])
 
 
 # class OtherManagedObject(CumulocityObject):
@@ -109,7 +121,7 @@ class Availability:
 #     def __init__(
 #             self,
 #             c8y: CumulocityRestApi = None,
-#             type: str = None,
+# type: str = None,
 #             name: str = None,
 #             owner: str = None,
 #             **kwargs
@@ -370,7 +382,7 @@ class Availability:
 #     """
 #
 #     def __init__(self, c8y: CumulocityRestApi = None,
-#                  type: # str = None, name: str = None, owner: str = None, **kwargs):
+# type: # str = None, name: str = None, owner: str = None, **kwargs):
 #         """ Create a new Device instance.
 #
 #         A Device object will always have a `c8y_IsDevice` fragment.
@@ -576,22 +588,24 @@ class Availability:
 
 MO = TypeVar("MO", bound="ManagedObject")
 
+
 class Inventory(CumulocityResource[MO]):
     _meta = InventoryMeta
     _object_type = ManagedObject
     _only_devices = False
 
     async def get(
-            self,
-            id: str,  # noqa
-            *,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            **kwargs) -> MO:
-        """ Retrieve a specific managed object from the database.
+        self,
+        id: str,  # noqa
+        *,
+        with_children: bool = None,
+        with_children_count: bool = None,
+        skip_children_names: bool = None,
+        with_parents: bool = None,
+        with_latest_values: bool = None,
+        **kwargs,
+    ) -> MO:
+        """Retrieve a specific managed object from the database.
 
         Args:
             id (str): Cumulocity ID of the managed object
@@ -614,38 +628,40 @@ class Inventory(CumulocityResource[MO]):
             KeyError:  if the ID is not defined within the database
         """
         return await self._get(
-                id,
-                with_children=with_children,
-                with_children_count=with_children_count,
-                skip_children_names=skip_children_names,
-                with_parents=with_parents,
-                with_latest_values=with_latest_values,
-                **kwargs)
+            id,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            **kwargs,
+        )
 
     async def get_by(
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: list[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: bool = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            as_values: AsValuesSpec | None = None,
-            **kwargs) -> MO | Any | tuple[Any]:
-        """ Query the database for a specific managed object.
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: list[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        only_roots: bool = None,
+        with_children: bool = None,
+        with_children_count: bool = None,
+        skip_children_names: bool = None,
+        with_groups: bool = None,
+        with_parents: bool = None,
+        with_latest_values: bool = None,
+        as_values: AsValuesSpec | None = None,
+        **kwargs,
+    ) -> MO | Any | tuple[Any]:
+        """Query the database for a specific managed object.
 
         This function is a special version of the `select` function assuming a single
         result being returned by the query.
@@ -677,26 +693,28 @@ class Inventory(CumulocityResource[MO]):
             with_latest_values=with_latest_values,
             page_size=2,
             as_values=as_values,
-            **kwargs)
+            **kwargs,
+        )
         if len(result) == 1:
             return result[0]
-        raise ValueError("No matching object found." if not result
-                         else "Ambiguous query; multiple matching objects found.")
+        raise ValueError(
+            "No matching object found." if not result else "Ambiguous query; multiple matching objects found."
+        )
 
     async def get_count(
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: str | Sequence[str] = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: Sequence[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: str | Sequence[str] = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: Sequence[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
@@ -705,54 +723,58 @@ class Inventory(CumulocityResource[MO]):
         Returns:
             Number of potential results
         """
-        params = map_params(
-            **self._collate_filter_params(
-                only_devices=self._only_devices,
-                query=query,
-                ids=ids,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                **kwargs,
+        params = (
+            map_params(
+                **self._collate_filter_params(
+                    only_devices=self._only_devices,
+                    query=query,
+                    ids=ids,
+                    type=type,
+                    parent=parent,
+                    fragment=fragment,
+                    fragments=fragments,
+                    name=name,
+                    owner=owner,
+                    text=text,
+                    **kwargs,
+                )
             )
-        ) if not expression else {}
+            if not expression
+            else {}
+        )
         return await self._get_count(expression=expression, params=params)
 
     async def get_all(
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: list[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: bool = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            limit: int = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            page_size: int = 1000,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: list[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        only_roots: bool = None,
+        with_children: bool = None,
+        with_children_count: bool = None,
+        skip_children_names: bool = None,
+        with_groups: bool = None,
+        with_parents: bool = None,
+        with_latest_values: bool = None,
+        limit: int = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        page_size: int = 1000,
+        page_number: int = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[MO | Any | tuple[Any]]:
-        """ Query the database for managed objects and return the results
+        """Query the database for managed objects and return the results
         as list.
 
         This function is a greedy version of the `select` function. All
@@ -762,7 +784,9 @@ class Inventory(CumulocityResource[MO]):
             List of ManagedObject instances or values/value tuples if
                 the `as_values` parameter is defined,
         """
-        return [x async for x in self.select(
+        return [
+            x
+            async for x in self.select(
                 expression=expression,
                 query=query,
                 ids=ids,
@@ -789,103 +813,105 @@ class Inventory(CumulocityResource[MO]):
                 as_values=as_values,
                 workers=workers,
                 **kwargs,
-            )]
+            )
+        ]
 
     def select(  # not async, because it is just a pass-through. still returns an AsyncIterator
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: list[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: bool = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            limit: int = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            page_size: int = 1000,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: list[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        only_roots: bool = None,
+        with_children: bool = None,
+        with_children_count: bool = None,
+        skip_children_names: bool = None,
+        with_groups: bool = None,
+        with_parents: bool = None,
+        with_latest_values: bool = None,
+        limit: int = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        page_size: int = 1000,
+        page_number: int = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
-            """ Query the database for managed objects and iterate over the
-            results.
+        """Query the database for managed objects and iterate over the
+        results.
 
-            This function is implemented in a lazy fashion - results will only be
-            fetched from the database as long there is a consumer for them.
+        This function is implemented in a lazy fashion - results will only be
+        fetched from the database as long there is a consumer for them.
 
-            All parameters are considered to be filters, limiting the result set
-            to objects which meet the filters specification.  Filters can be
-            combined (within reason).
+        All parameters are considered to be filters, limiting the result set
+        to objects which meet the filters specification.  Filters can be
+        combined (within reason).
 
-            Args:
-                expression (str):  Arbitrary filter expression which will be
-                    passed to Cumulocity without change; all other filters
-                    are ignored if this is provided
-                limit (int): Limit the number of results to this number.
-                include (str | JsonMatcher): Matcher/expression to filter the query
-                    results (on client side). The inclusion is applied first.
-                    Creates a PyDF (Python Display Filter) matcher by default for strings.
-                exclude (str | JsonMatcher): Matcher/expression to filter the query
-                    results (on client side). The exclusion is applied second.
-                    Creates a PyDF (Python Display Filter) matcher by default for strings.
-                page_size (int): Define the number of events which are read (and
-                    parsed in one chunk). This is a performance related setting.
-                page_number (int): Pull a specific page; this effectively disables
-                    automatic follow-up page retrieval.
-                as_values: (*str|tuple):  Don't parse objects, but directly extract
-                    the values at certain JSON paths as tuples; If the path is not
-                    defined in a result, None is used; Specify a tuple to define
-                    a proper default value for each path.
+        Args:
+            expression (str):  Arbitrary filter expression which will be
+                passed to Cumulocity without change; all other filters
+                are ignored if this is provided
+            limit (int): Limit the number of results to this number.
+            include (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The inclusion is applied first.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
+            exclude (str | JsonMatcher): Matcher/expression to filter the query
+                results (on client side). The exclusion is applied second.
+                Creates a PyDF (Python Display Filter) matcher by default for strings.
+            page_size (int): Define the number of events which are read (and
+                parsed in one chunk). This is a performance related setting.
+            page_number (int): Pull a specific page; this effectively disables
+                automatic follow-up page retrieval.
+            as_values: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
 
-            Returns:
-                Async iterator for ManagedObject instances or values/value
-                    tuples if the `as_values` parameter is defined.
+        Returns:
+            Async iterator for ManagedObject instances or values/value
+                tuples if the `as_values` parameter is defined.
 
-            See also:
-                https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
-            """
-            return self._select(
-                device_mode=self._only_devices,
-                expression=expression,
-                query=query,
-                ids=ids,
-                order_by=order_by,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                only_roots=only_roots,
-                with_children=with_children,
-                with_children_count=with_children_count,
-                skip_children_names=skip_children_names,
-                with_groups=with_groups,
-                with_parents=with_parents,
-                with_latest_values=with_latest_values,
-                limit=limit,
-                include=include,
-                exclude=exclude,
-                page_size=sanitize_page_size(limit, page_size),
-                page_number=page_number,
-                as_values=as_values,
-                workers=workers,
-                **kwargs)
+        See also:
+            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        """
+        return self._select(
+            device_mode=self._only_devices,
+            expression=expression,
+            query=query,
+            ids=ids,
+            order_by=order_by,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            only_roots=only_roots,
+            with_children=with_children,
+            with_children_count=with_children_count,
+            skip_children_names=skip_children_names,
+            with_groups=with_groups,
+            with_parents=with_parents,
+            with_latest_values=with_latest_values,
+            limit=limit,
+            include=include,
+            exclude=exclude,
+            page_size=sanitize_page_size(limit, page_size),
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+            **kwargs,
+        )
 
     async def get_latest_availability(self, mo_id: str) -> Availability:
         """Retrieve the latest availability information of a managed object.
@@ -930,51 +956,55 @@ class Inventory(CumulocityResource[MO]):
     async def update(self, *objects: MO, workers: int | None) -> None:
         return await self._update(*objects, workers=workers)
 
-    async def apply_to(self, model: dict | MO, *objects: str | MO , workers: int | None = None) -> None:
+    async def apply_to(self, model: dict | MO, *objects: str | MO, workers: int | None = None) -> None:
         return await self._apply_to(model, *objects, workers=workers)
 
     async def delete(self, *objects: str | MO, workers: int | None = None) -> None:
         return await self._delete(*objects, workers=workers)
 
     def _select(
-            self,
-            device_mode: bool,
-            expression: str = None,
-            query: str = None,
-            ids: list[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: str | list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            limit: int = None,
-            page_number: int = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        device_mode: bool,
+        expression: str = None,
+        query: str = None,
+        ids: list[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: str | list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        limit: int = None,
+        page_number: int = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[MO | Any | tuple[Any]]:
         """Generic select function to be used by derived classes as well."""
-        params = map_params(
-            **self._collate_filter_params(
-                only_devices=device_mode,
-                query=query,
-                ids=ids,
-                order_by=order_by,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                **kwargs,
+        params = (
+            map_params(
+                **self._collate_filter_params(
+                    only_devices=device_mode,
+                    query=query,
+                    ids=ids,
+                    order_by=order_by,
+                    type=type,
+                    parent=parent,
+                    fragment=fragment,
+                    fragments=fragments,
+                    name=name,
+                    owner=owner,
+                    text=text,
+                    **kwargs,
+                )
             )
-        ) if not expression else {}
+            if not expression
+            else {}
+        )
         return super()._iterate(
             expression=expression,
             params=params,
@@ -988,40 +1018,40 @@ class Inventory(CumulocityResource[MO]):
 
     @staticmethod
     def _collate_filter_params(
-            only_devices: bool,
-            query: str = None,
-            ids: list[str] = None,
-            filters: list[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            **kwargs,
+        only_devices: bool,
+        query: str = None,
+        ids: list[str] = None,
+        filters: list[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        **kwargs,
     ) -> dict:
         """Collate the various different filtering options."""
-        query_key = 'q' if only_devices else 'query'
+        query_key = "q" if only_devices else "query"
 
         # if query is directly specified -> use it and ignore everything else
         if query:
             return {query_key: query, **kwargs}
         # if ids are directly specified -> use it and ignore everything else
         if ids:
-            return {'ids': ids, **kwargs}
+            return {"ids": ids, **kwargs}
 
         def filter_none(**xs):
             return {k: v for k, v in xs.items() if v is not None}
 
         if only_devices:
             if fragments:
-                fragments = ['c8y_IsDevice', *fragments]
+                fragments = ["c8y_IsDevice", *fragments]
             elif fragment:
-                fragments = ['c8y_IsDevice', fragment]
+                fragments = ["c8y_IsDevice", fragment]
             else:
-                fragment = 'c8y_IsDevice'
+                fragment = "c8y_IsDevice"
         use_query = parent or filters or order_by or name or fragments
         if not use_query:
             return filter_none(type=type, owner=owner, text=text, fragment=fragment, **kwargs)
@@ -1032,9 +1062,9 @@ class Inventory(CumulocityResource[MO]):
         # add fragment filters
         fragments = fragments or ([fragment] if fragment else [])
         if fragments:
-            filters.extend([f'has({x})' for x in fragments])
+            filters.extend([f"has({x})" for x in fragments])
         if parent:
-            filters.append(f'bygroupid({parent})')
+            filters.append(f"bygroupid({parent})")
         if name:
             filters.append(f"name eq '{encode_odata_query_value(name)}'")
         if type:
@@ -1045,7 +1075,7 @@ class Inventory(CumulocityResource[MO]):
             filters.append(f"text eq '{encode_odata_query_value(text)}'")
 
         # convert to single query parameter
-        order_by = f'+$orderby={order_by}' if order_by else ''
+        order_by = f"+$orderby={order_by}" if order_by else ""
         query = f'$filter=({" and ".join(filters)}){order_by}'
 
         return {query_key: query, **kwargs}
@@ -1059,10 +1089,11 @@ class DeviceInventory(Inventory[Device]):
 
     See also: https://cumulocity.com/api/#tag/Inventory-API
     """
+
     _only_devices = True
 
     async def request(self, id: str):  # noqa (id)
-        """ Create a device request.
+        """Create a device request.
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
@@ -1071,7 +1102,7 @@ class DeviceInventory(Inventory[Device]):
         await self.c8y.post("/devicecontrol/newDeviceRequests", {"id": id})
 
     async def accept(self, id: str):  # noqa (id)
-        """ Accept a device request.
+        """Accept a device request.
 
         Args:
             id (str): Unique ID of the device (e.g. Serial, IMEI); this is
@@ -1080,7 +1111,7 @@ class DeviceInventory(Inventory[Device]):
         await self.c8y.put("/devicecontrol/newDeviceRequests/" + str(id), {"status": "ACCEPTED"})
 
     async def delete(self, workers: int = None, *devices: Device) -> None:
-        """ Delete one or more devices and the corresponding within the database.
+        """Delete one or more devices and the corresponding within the database.
 
         The objects can be specified as instances of a database object
         (then, the id field needs to be defined) or simply as ID (integers
@@ -1105,7 +1136,7 @@ class DeviceInventory(Inventory[Device]):
 
         errors: list[BaseException] = []
         for i in range(0, len(devices), workers):
-            batch = devices[i: i + workers]
+            batch = devices[i : i + workers]
             results = await asyncio.gather(*(d.delete() for d in batch), return_exceptions=True)
             errors.extend(r for r in results if isinstance(r, BaseException))
 
@@ -1123,19 +1154,20 @@ class DeviceGroupInventory(Inventory):
     """
 
     async def get_count(  # noqa (changed signature)
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: list[str] = None,
-            parent: str = None,
-            type: str = None,
-            fragment: str = None,
-            fragments: list[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            **kwargs) -> int:
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: list[str] = None,
+        parent: str = None,
+        type: str = None,
+        fragment: str = None,
+        fragments: list[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        **kwargs,
+    ) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
         if fragments:
@@ -1146,47 +1178,48 @@ class DeviceGroupInventory(Inventory):
             fragment = "c8y_IsDeviceGroup"
 
         return await super().get_count(
-                expression=expression,
-                query=query,
-                ids=ids,
-                type=type,
-                parent=parent,
-                fragment=fragment,
-                fragments=fragments,
-                name=name,
-                owner=owner,
-                text=text,
-                **kwargs)
+            expression=expression,
+            query=query,
+            ids=ids,
+            type=type,
+            parent=parent,
+            fragment=fragment,
+            fragments=fragments,
+            name=name,
+            owner=owner,
+            text=text,
+            **kwargs,
+        )
 
     def select(  # noqa (changed signature)
-            self,
-            expression: str = None,
-            *,
-            query: str = None,
-            ids: Sequence[str] = None,
-            order_by: str = None,
-            type: str = None,
-            parent: str = None,
-            fragment: str = None,
-            fragments: Sequence[str] = None,
-            name: str = None,
-            owner: str = None,
-            text: str = None,
-            only_roots: bool = None,
-            with_children: bool = None,
-            with_children_count: bool = None,
-            skip_children_names: bool = None,
-            with_groups: bool = None,
-            with_parents: bool = None,
-            with_latest_values: bool = None,
-            limit: int = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            page_size: int = 100,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        expression: str = None,
+        *,
+        query: str = None,
+        ids: Sequence[str] = None,
+        order_by: str = None,
+        type: str = None,
+        parent: str = None,
+        fragment: str = None,
+        fragments: Sequence[str] = None,
+        name: str = None,
+        owner: str = None,
+        text: str = None,
+        only_roots: bool = None,
+        with_children: bool = None,
+        with_children_count: bool = None,
+        skip_children_names: bool = None,
+        with_groups: bool = None,
+        with_parents: bool = None,
+        with_latest_values: bool = None,
+        limit: int = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        page_size: int = 100,
+        page_number: int = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[DeviceGroup | Any | tuple[Any]]:
         # pylint: disable=arguments-differ, arguments-renamed
         type = type or (DeviceGroup.CHILD_TYPE if parent else None)
@@ -1223,11 +1256,13 @@ class DeviceGroupInventory(Inventory):
             page_number=page_number,
             as_values=as_values,
             workers=workers,
-            **kwargs)
+            **kwargs,
+        )
 
 
 def update_doc(doc, object_type, object_name):
     return doc.replace("ManagedObject", object_type).replace("managed object", object_name)
+
 
 as_device_doc = lambda doc: update_doc(doc, "Device", "device")
 

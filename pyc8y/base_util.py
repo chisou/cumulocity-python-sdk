@@ -38,7 +38,7 @@ def first(*values: Any) -> Any | None:
 
 def concat(*strings: str | None):
     """Concatenate non-None strings."""
-    return ''.join(x for x in strings if x)
+    return "".join(x for x in strings if x)
 
 
 def concat_with(sep: str, *strings: str | None):
@@ -52,10 +52,13 @@ def like(expression: str, string: str):
     Only supports * at beginning and end.
     """
     return (
-        expression[1:-1] in string if expression.startswith('*') and expression.endswith('*')
-        else string.startswith(expression[:-1]) if expression.endswith('*')
-        else string.endswith(expression[1:]) if expression.startswith('*')
-        else expression == string
+        expression[1:-1] in string
+        if expression.startswith("*") and expression.endswith("*")
+        else (
+            string.startswith(expression[:-1])
+            if expression.endswith("*")
+            else string.endswith(expression[1:]) if expression.startswith("*") else expression == string
+        )
     )
 
 
@@ -83,15 +86,15 @@ def sanitize_page_size(limit: int, page_size: int) -> int:
 def encode_odata_query_value(value):
     """Encode value strings according to OData query rules.
     http://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_URLParsing
-    http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt """
+    http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt"""
     # single quotes escaped through single quote
-    return re.sub('\'', '\'\'', value)
+    return re.sub("'", "''", value)
 
 
 def encode_odata_text_value(value):
     """Encode value strings according to OData query rules.
     http://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part2-url-conventions.html#sec_URLParsing
-    http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt """
+    http://docs.oasis-open.org/odata/odata/v4.01/cs01/abnf/odata-abnf-construction-rules.txt"""
     # single quotes escaped through single quote
-    encoded_quotes = re.sub('\'', '\'\'', value)
+    encoded_quotes = re.sub("'", "''", value)
     return encoded_quotes if " " not in encoded_quotes else f"'{encoded_quotes}'"

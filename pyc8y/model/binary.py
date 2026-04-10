@@ -21,18 +21,19 @@ class Binary(ManagedObject):
 
     See also: https://cumulocity.com/api/core/#tag/Binaries
     """
+
     _meta = BinariesMeta
 
     def __init__(
-            self,
-            c8y: CumulocityRestClient | None = None,
-            *,
-            type: str | None = None,   # noqa (type)
-            name: str | None = None,
-            owner: str | None = None,
-            content_type: str | None = None,
-            file: FileSpec | None = None,
-            **kwargs
+        self,
+        c8y: CumulocityRestClient | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        name: str | None = None,
+        owner: str | None = None,
+        content_type: str | None = None,
+        file: FileSpec | None = None,
+        **kwargs,
     ):
         filename = None
         if isinstance(file, str):
@@ -104,6 +105,7 @@ class Binaries(CumulocityResource[Binary]):
 
     See also: https://cumulocity.com/api/core/#tag/Binaries
     """
+
     _meta = BinariesMeta
     _object_type = Binary
 
@@ -162,7 +164,7 @@ class Binaries(CumulocityResource[Binary]):
                 file=b.file,
                 filename=b.name,
                 form_data={"object": orjson.dumps(b.to_json()).decode("utf8")},
-                content_type=b.get('content_type'),
+                content_type=b.get("content_type"),
             )
             n += 1
         return n
@@ -181,22 +183,22 @@ class Binaries(CumulocityResource[Binary]):
         return await self._delete(*objects, workers=workers)
 
     def select(
-            self,
-            *,
-            ids: list[str] | None = None,
-            type: str | None = None,   # noqa (type)
-            owner: str | None = None,
-            child_device: str | None = None,
-            child_asset: str | None = None,
-            child_addition: str | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        *,
+        ids: list[str] | None = None,
+        type: str | None = None,  # noqa (type)
+        owner: str | None = None,
+        child_device: str | None = None,
+        child_asset: str | None = None,
+        child_addition: str | None = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> AsyncIterator[Binary | Any | tuple[Any]]:
         """Query the database for binaries and iterate over the results.
 
@@ -239,22 +241,22 @@ class Binaries(CumulocityResource[Binary]):
         )
 
     async def get_all(
-            self,
-            *,
-            ids: list[str] | None = None,
-            type: str | None = None,   # noqa (type)
-            owner: str | None = None,
-            child_device: str | None = None,
-            child_asset: str | None = None,
-            child_addition: str | None = None,
-            include: str | JsonMatcher | None = None,
-            exclude: str | JsonMatcher | None = None,
-            limit: int | None = None,
-            page_size: int = 1000,
-            page_number: int | None = None,
-            as_values: AsValuesSpec | None = None,
-            workers: int | None = None,
-            **kwargs
+        self,
+        *,
+        ids: list[str] | None = None,
+        type: str | None = None,  # noqa (type)
+        owner: str | None = None,
+        child_device: str | None = None,
+        child_asset: str | None = None,
+        child_addition: str | None = None,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
+        limit: int | None = None,
+        page_size: int = 1000,
+        page_number: int | None = None,
+        as_values: AsValuesSpec | None = None,
+        workers: int | None = None,
+        **kwargs,
     ) -> list[Binary | Any | tuple[Any]]:
         """Query the database for binary objects and return the results as list.
 
@@ -263,33 +265,36 @@ class Binaries(CumulocityResource[Binary]):
         Returns:
             List of Binary instances
         """
-        return [x async for x in self.select(
-            ids=ids,
-            type=type,
-            owner=owner,
-            child_device=child_device,
-            child_asset=child_asset,
-            child_addition=child_addition,
-            include=include,
-            exclude=exclude,
-            limit=limit,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-            **kwargs,
-        )]
+        return [
+            x
+            async for x in self.select(
+                ids=ids,
+                type=type,
+                owner=owner,
+                child_device=child_device,
+                child_asset=child_asset,
+                child_addition=child_addition,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def get_count(
-            self,
-            *,
-            ids: list[str] | None = None,
-            type: str | None = None,   # noqa (type)
-            owner: str | None = None,
-            child_device: str | None = None,
-            child_asset: str | None = None,
-            child_addition: str | None = None,
-            **kwargs
+        self,
+        *,
+        ids: list[str] | None = None,
+        type: str | None = None,  # noqa (type)
+        owner: str | None = None,
+        child_device: str | None = None,
+        child_asset: str | None = None,
+        child_addition: str | None = None,
+        **kwargs,
     ) -> int:
         """Calculate the number of potential results of a database query.
 
