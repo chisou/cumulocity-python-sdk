@@ -18,6 +18,133 @@ _sentinel = object()
 
 log = logging.getLogger(__name__)
 
+_clients: dict[tuple, CumulocityClient] = {}
+
+
+def get_client(
+        base_url: str | None = None,
+        tenant_id: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+):
+    """Get a ready to use CumulocityClient instance for use in interactive
+    sessions.
+
+    Reads connection details from standard¹ Cumulocity environment variables
+    when not explicitly provided, and falls back to interactive prompts for
+    anything still missing.
+
+    Supports both direct await and async context manager usage:
+
+    ```python
+    c8y = await get_client()
+
+    async with get_client() as c8y:
+        ...
+    ```
+
+    Args:
+        base_url (str):  Cumulocity base URL; reads C8Y_BASEURL if omitted.
+        tenant_id (str):  Tenant ID; reads C8Y_TENANT if omitted.
+        username (str):  Username; reads C8Y_USER if omitted.
+        password (str):  Password; reads C8Y_PASSWORD if omitted.
+        processing_mode (str):  Connection processing mode.
+
+    ¹ See also the go-c8y-cli (https://goc8ycli.netlify.app/docs/concepts/sessions/#continuous-integration-usage-environment-variables)
+    and Cumulocity microservice bootstrap (https://cumulocity.com/docs/microservice-sdk/general-aspects/#microservice-bootstrap)
+    """
+    base_url = base_url or os.environ.get('C8Y_BASEURL')
+    tenant_id = tenant_id or os.environ.get('C8Y_TENANT')
+    username = username or os.environ.get('C8Y_USER')
+    password = password or os.environ.get('C8Y_PASSWORD')
+
+    async def _get_client() -> CumulocityClient:
+        nonlocal base_url, tenant_id, username, password
+        auth = None
+
+        def read_variable(env_name: str, prompt: str = None, secret: bool = False) -> str | None:
+            if env_name in os.environ:
+                return os.environ[env_name]
+            if not prompt:
+                return None
+            return getpass.getpass(prompt) if secret else input(prompt)
+
+        # (1) resolve what we can from a token in the environment
+        token = os.environ.get('C8Y_TOKEN')
+        if token:
+            jwt = JWT(token)
+            base_url = base_url or jwt.get_claim('aud')
+            tenant_id = tenant_id or jwt.get_claim('ten')
+            username = username or jwt.get_claim('sub')
+            exp = int(jwt.get_claim('exp'))
+            if time.time() <= (exp - 60 * 60):
+                auth = BearerAuth(token)
+            else:
+                print("Access token found but invalidated as it was almost expired.")
+
+        # (2) resolve remaining parameters (interactively if needed)
+        base_url = base_url or read_variable('C8Y_BASEURL', "Please enter the Cumulocity base URL or hostname:")
+        tenant_id = tenant_id or read_variable('C8Y_TENANT', "Please enter the Cumulocity tenant ID:")
+        username = username or read_variable('C8Y_USER', "Please enter the Cumulocity username:")
+        if base_url and not urlparse(base_url).scheme:
+            base_url = f'https://{base_url}'
+
+        # (3) return cached client if one exists for these parameters
+        client_key = (base_url, tenant_id, username)
+        if client_key in _clients:
+            return _clients[client_key]
+
+        # (4) authenticate if still needed
+        if not auth:
+            needs_tfa = False
+            while not auth:
+                pw = password or read_variable('C8Y_PASSWORD', "Please enter the Cumulocity password:", secret=True)
+                if not pw:
+                    raise UnauthorizedError("No password provided. Authentication failed.")
+                tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
+
+                try:
+                    auth, _ = await CumulocityRestClient.authenticate(
+                        base_url=base_url,
+                        tenant_id=tenant_id,
+                        username=username,
+                        password=pw,
+                        tfa_token=tfa_code,
+                    )
+                except MissingTfaError:
+                    needs_tfa = True
+                except HttpError:
+                    print(f"Invalid username or password (URL: {base_url}, User: {username}).")
+                    password = None
+
+        # (5) init client and write to cache
+        client = CumulocityClient(
+            base_url=base_url,
+            tenant_id=tenant_id,
+            auth=auth,
+        )
+        _clients[client_key] = client
+        return client
+
+    class Connection:
+        def __init__(self, coro):
+            self._coro = coro
+            self._client: CumulocityClient | None = None
+
+        def __await__(self):
+            return self._coro.__await__()
+
+        async def __aenter__(self) -> CumulocityClient:
+            self._client = await self._coro
+            await self._client.__aenter__()
+            return self._client
+
+        async def __aexit__(self, *args):
+            if self._client:
+                await self._client.__aexit__(*args)
+
+    return Connection(_get_client())
+
 
 def c8y_keys() -> set[str]:
     """Provide the names of defined Cumulocity environment variables.
@@ -359,117 +486,3 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     def __exit__(self, __exc_type, __exc_value, __traceback):
         pass
-
-
-class CumulocityApp(CumulocityClient):
-    """Cumulocity API wrapper to be used for interactive sessions.
-
-    As a context manager it ensures that a valid Cumulocity connection is
-    available at runtime.  It uses standard environment variables when
-    defined (C8Y_BASEURL, C8Y_TENANT, C8Y_USER, C8Y_PASSWORD, as well
-    as C8Y_TOKEN) and interactively requests updated information in case
-    some data is missing.
-
-    ```
-    async with CumulocityApp() as c8y:
-        alarms = await c8y.alarms.get_all(type="cx_MyAlarm")
-        ...
-    ```
-    """
-
-    _cached_passwords: dict[str, str] = {}
-
-    @staticmethod
-    def _read_variable(env_name: str, prompt: str = None, secret: bool = False):
-        if env_name in os.environ:
-            return os.environ[env_name]
-
-        if not prompt:
-            return None
-
-        if secret:
-            return getpass.getpass(prompt)
-        return input(prompt)
-
-    def __init__(self):
-        base_url = None
-        tenant_id = None
-        username = None
-
-        # (1) check if there is a token defined
-        token = os.environ.get('C8Y_TOKEN', None)
-        if token:
-            jwt = JWT(token)
-            # preserve info
-            base_url = jwt.get_claim('aud')
-            tenant_id = jwt.get_claim('ten')
-            username = jwt.get_claim('sub')
-            # check validity
-            exp = int(jwt.get_claim('exp'))
-            if time.time() > (exp - 60*60):
-                print("Access token found, but invalidated as it was almost expired.")
-                token = None
-
-        # (2) no token (or invalidated)
-        if not token:
-            # read necessary info for auth, this can also be resolved from an invalid token
-            base_url = base_url or self._read_variable(
-                'C8Y_BASEURL',
-                "Please enter the Cumulocity base URL or hostname:"
-            )
-
-            tenant_id = tenant_id or self._read_variable(
-                'C8Y_TENANT',
-                "Please enter the Cumulocity tenant ID:"
-            )
-            username = username or self._read_variable(
-                'C8Y_USER',
-                "Please enter the Cumulocity username:"
-            )
-            if not urlparse(base_url).scheme:
-                base_url = f'https://{base_url}'
-
-            # authenticate (in a loop in case of wrong passwords entered)
-            needs_tfa = False
-            while not token:
-                # read password (might already been cached)
-                password = self._cached_passwords.get(username, None)
-                password = password or self._read_variable(
-                    'C8Y_PASSWORD',
-                    "Please enter the Cumulocity password:",
-                    secret=True
-                )
-                # if no password is provided, exit the loop
-                if not password:
-                    raise UnauthorizedError("No password provided. Authentication failed.")
-                # preserve password for next time
-                self._cached_passwords[username] = password
-                # request TFA code if needed
-                tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
-
-                try:
-                    token, _ = CumulocityRestClient.authenticate(
-                        base_url=base_url,
-                        tenant_id=tenant_id,
-                        username=username,
-                        password=password,
-                        tfa_token=tfa_code,
-                    )
-                except MissingTfaError:
-                    needs_tfa = True
-                    # we can just go to the next loop iteration, password is cached
-                    continue
-                except HttpError:
-                    print(f"Invalid username or password (URL: {base_url}, User: {username}).")
-                    self._cached_passwords.pop(username, None)
-                    continue
-
-        # (1) build new connection from token and put to cache
-        os.environ['C8Y_TOKEN'] = token
-        super().__init__(base_url=base_url, tenant_id=tenant_id, auth=BearerAuth(token))
-
-    async def __aenter__(self) -> Self:
-        return await super().__aenter__()
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        await super().__aexit__(exc_type, exc_value, traceback)
