@@ -1,10 +1,12 @@
 # Copyright (c) 2026 Christoph Souris
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator, Any
 
+from pyc8y.base_util import is_sequence
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
@@ -225,6 +227,17 @@ class Series(dict):
         """Return specifications for all enclosed series."""
         return [SeriesSpec(type=i["type"], name=i["name"], unit=i["unit"]) for i in self["series"]]
 
+    @property
+    def values(self) -> dict[str, list[dict[str, float] | None]]:
+        """Return series values.
+
+        Returns:
+            A dict of timestamp strings mapped to a list of dictionaries
+            mapping value names (min, max, ...) to values (float) or None
+            the series doesn't have values for this timestamp.
+        """
+        return self["values"]
+
     def collect(
         self,
         series: str | Sequence[str] | None = None,
@@ -367,6 +380,220 @@ class Series(dict):
                     ]
 
         raise ValueError("Invalid combination of arguments")
+
+    @staticmethod
+    def _encode_name(n: str) -> str:
+        """Encode a series name for use as a column name."""
+        return re.sub(r'[ \\.+-]', '_', n)
+
+    def to_numpy(
+        self,
+        series: str | None = None,
+        value: str | None = None,
+    ):
+        """Build a NumPy array from a single series and value.
+
+        All available data points/timestamps are included in the result.
+        Missing values are represented as NaN, preserving alignment with other
+        series extracted from the same object.
+
+        Args:
+            series (str):  Series name (e.g. 'c8y_Temperature.T'); can be
+                omitted if this object holds only one series.
+            value (str):  Value key to extract (e.g. 'min' or 'max'); can be
+                omitted if the series holds only one value.
+
+        Returns:
+            A 1-dimensional NumPy array.
+
+        See also: `to_series` and `to_dataframe` to convert multiple series
+            and/or values into a Pandas Series/DataFrame optionally using the
+            timestamps as index.
+        """
+        try:
+            import numpy as np
+        except ImportError as e:
+            raise ImportError("numpy is required. Install with: pip install pyc8y[pandas]") from e
+
+        if not series:
+            if len(self.specs) > 1:
+                raise ValueError(f"Series name must be specified if the data holds multiple series. Found {', '.join(x.series for x in self.specs)}.")
+            series = self.specs[0].series
+
+        series_index = {s.series: i for i, s in enumerate(self.specs)}.get(series, None)
+        if series_index is None:
+            raise KeyError(f"No such series: {series}. Available series are {', '.join(x.series for x in self.specs)}.")
+
+        value_keys = next(
+            (
+                row[series_index].keys()
+                for row in self["values"].values()
+                if series_index < len(row) and row[series_index] is not None
+            ),
+            None,
+        )
+        if not value_keys:
+            return np.empty(0)
+        if not value:
+            if len(value_keys) > 1:
+                raise ValueError(f"Value must be specified if the data holds multiple values. Found {', '.join(value_keys)}.")
+            value = value_keys[0]
+        else:
+            if value not in value_keys:
+                raise KeyError(
+                    f"No such series value: {value}. Available values are {', '.join(value_keys)}.")
+
+        rows = list(self['values'].values())
+        n = len(rows)
+
+        return np.fromiter(
+            (row[series_index].get(value, float('nan')) if (series_index < len(row) and row[series_index] is not None) else float('nan')
+             for row in rows),
+            dtype=float, count=n,
+        )
+
+    def to_dataframe(
+        self,
+        series: str | Sequence[str] = None,
+        value: str | Sequence[str] | None = None,
+        timestamps: bool | str = None,
+    ):
+        """Build a Pandas DataFrame from this Series object.
+
+        All timestamps are included as rows; missing values for a series at a
+        given timestamp are represented as NaN.
+
+        Args:
+            series (str|list):  A series name or list of series names; defaults
+                to all available series. Names are used as column names (special
+                characters replaced with underscores).
+            value (str|list):  Value key or list of value keys to extract
+                (e.g. 'min', 'max', or ['min', 'max']); if omitted all
+                available value keys are extracted. Column names are suffixed
+                with the value key when multiple values are extracted.
+            timestamps (bool|str):  Use timestamps as the DataFrame index; use
+                True for raw strings, 'datetime' for parsed datetimes, or
+                'epoch' for epoch floats.
+
+        Returns:
+            A Pandas DataFrame.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError("pandas is required. Install with: pip install pyc8y[pandas]") from e
+
+        # ensure sequences
+        series = [series] if isinstance(series, str) else series
+        value = [value] if isinstance(value, str) else value
+        selected: list[tuple[int, str]] = []   # selected indexed and series names
+
+        index_by_name = {s.series: i for i, s in enumerate(self.specs)}
+        if series:
+            unknown = [x for x in series if x not in index_by_name]
+            if unknown:
+                raise KeyError(f"No such series: {', '.join(unknown)}. Available series are: {', '.join(index_by_name)}.")
+            selected = [(index_by_name[x], x) for x in series]
+        else:
+            # select all
+            selected = [(v, k) for k, v in index_by_name]
+
+        rows = list(self.values.values())
+        ts_strings = list(self.values.keys())
+
+        if isinstance(value, str):
+            value_keys = [value]
+        elif isinstance(value, list):
+            value_keys = value
+        else:
+            value_keys = next(
+                (list(vg.keys()) for row in rows for vg in row if vg is not None),
+                [],
+            )
+
+        if isinstance(value, (str, list)):
+            available_keys = next(
+                (list(vg.keys()) for row in rows for vg in row if vg is not None),
+                [],
+            )
+            unknown_keys = [k for k in value_keys if k not in available_keys]
+            if unknown_keys:
+                raise KeyError(f"No such value key(s): {', '.join(unknown_keys)}. Available values are: {', '.join(available_keys)}.")
+
+        columns = {}
+        for idx, name in selected:
+            base = self._encode_name(name)
+            for key in value_keys:
+                col = base if len(value_keys) == 1 else f'{base}_{key}'
+                columns[col] = [
+                    row[idx].get(key, None) if (idx < len(row) and row[idx] is not None) else None
+                    for row in rows
+                ]
+
+        if timestamps == 'datetime':
+            index = pd.to_datetime(ts_strings)
+        elif timestamps == 'epoch':
+            from datetime import datetime
+            index = [datetime.fromisoformat(t).timestamp() for t in ts_strings]
+        elif timestamps:
+            index = ts_strings
+        else:
+            index = None
+
+        return pd.DataFrame(columns, index=index)
+
+    def to_series(
+        self,
+        series: str = None,
+        value: str = 'min',
+        timestamps: bool | str = None,
+    ):
+        """Build a Pandas Series from a single Cumulocity series.
+
+        All timestamps are included; missing values are represented as NaN.
+
+        Args:
+            series (str):  Series name; can be omitted if this object holds
+                only one series.
+            value (str):  Value key to extract; defaults to 'min'.
+            timestamps (bool|str):  Use timestamps as the index; use True for
+                raw strings, 'datetime' for parsed datetimes, or 'epoch' for
+                epoch floats.
+
+        Returns:
+            A Pandas Series.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError("pandas is required. Install with: pip install pyc8y[pandas]") from e
+
+        if not series:
+            all_series = [s.series for s in self.specs]
+            if len(all_series) > 1:
+                raise ValueError(f"Multiple series found ({', '.join(all_series)}); specify one.")
+            series = all_series[0]
+
+        idx = {s.series: i for i, s in enumerate(self.specs)}[series]
+
+        ts_strings = []
+        values = []
+        for ts, row in self['values'].items():
+            ts_strings.append(ts)
+            vg = row[idx] if idx < len(row) else None
+            values.append(vg.get(value, float('nan')) if vg is not None else float('nan'))
+
+        if timestamps == 'datetime':
+            index = pd.to_datetime(ts_strings)
+        elif timestamps == 'epoch':
+            from datetime import datetime
+            index = [datetime.fromisoformat(t).timestamp() for t in ts_strings]
+        elif timestamps:
+            index = ts_strings
+        else:
+            index = None
+
+        return pd.Series(values, index=index, name=self._encode_name(series))
 
 
 class Measurement(CumulocityObject):
