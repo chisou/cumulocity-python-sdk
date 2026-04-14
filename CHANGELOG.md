@@ -28,6 +28,9 @@
   needs to be overwritten. This is in conformance with Cumulocity's data model in which a attribute cannot be altered
   but only overwritten with the new value resp. structure.
 
+* The module now being exclusively async, the `AsyncListener` and `AsyncQueueListener` have been renamed to `Listener`
+  and `QueueListener`. The synchronous variants have been dropped. 
+
 #### Minor changes
 
 * All ID are now required to be `string`s. Integers are no longer supported.
