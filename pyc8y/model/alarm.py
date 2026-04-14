@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import AsyncGenerator, TypedDict, Unpack, Any, AsyncIterator, Sequence, Self
@@ -566,6 +567,64 @@ class Alarms(CumulocityResource[Alarm]):
             **kwargs,
         )
         return await self.c8y.get(f"{self._meta.resource_path}/count", params=params, accept="text/plain")
+
+    async def get_count(
+        self,
+        expression: str = None,
+        *,
+        type: str | None = None,
+        source: str | None = None,
+        status: str | None = None,
+        resolved: str | None = None,
+        severity: str | None = None,
+        fragment: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        with_source_children: bool = None,
+        with_source_assets: bool = None,
+        with_source_devices: bool = None,
+        with_source_additions: bool = None,
+        **kwargs,
+    ) -> int:
+        """Count the number of certain alarms.
+
+        Note: Unlike other collection classes, Alarms has a dedicated
+        /alarms/count endpoint. Consider using count() directly.
+
+        See `count` for a documentation of arguments.
+
+        Returns:
+            Number of matching alarms in Cumulocity.
+        """
+        warnings.warn(
+            "Alarms has a dedicated /alarms/count endpoint; prefer using count() directly.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return await self.count(
+            expression,
+            type=type,
+            source=source,
+            status=status,
+            resolved=resolved,
+            severity=severity,
+            fragment=fragment,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            with_source_children=with_source_children,
+            with_source_assets=with_source_assets,
+            with_source_devices=with_source_devices,
+            with_source_additions=with_source_additions,
+            **kwargs,
+        )
 
     async def create(self, *alarms, workers: int | None = None):
         """Create alarm objects within the database.

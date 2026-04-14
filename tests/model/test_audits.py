@@ -89,3 +89,44 @@ async def test_select_min_max_age():
     params = dict(c8y.get.call_args[0][1])
     assert 'dateFrom' in params
     assert 'dateTo' in params
+
+
+async def test_get_count():
+    """Verify that get_count returns totalPages and forwards filter params."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 7}})
+
+    count = await AuditRecords(c8y).get_count(type='Alarm', source='123', user='u@example.com')
+
+    assert count == 7
+    params = dict(c8y.get.call_args[0][1])
+    assert params['type'] == 'Alarm'
+    assert params['source'] == '123'
+    assert params['user'] == 'u@example.com'
+    assert params['pageSize'] == '1'
+    assert params['withTotalPages'] == 'true'
+
+
+async def test_get_count_expression():
+    """Verify that an expression is passed directly and other filters are ignored."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 2}})
+
+    count = await AuditRecords(c8y).get_count(expression='type=Alarm', type='ignored')
+
+    assert count == 2
+    call_url = c8y.get.call_args[0][0]
+    assert 'type=Alarm' in call_url
+    assert len(c8y.get.call_args[0]) == 1  # no params tuple when expression is used
+
+
+async def test_get_count_application_filter():
+    """Verify that the application filter is forwarded."""
+    c8y = MagicMock()
+    c8y.get = AsyncMock(return_value={'auditRecords': [], 'statistics': {'totalPages': 5}})
+
+    count = await AuditRecords(c8y).get_count(application='myapp')
+
+    assert count == 5
+    params = dict(c8y.get.call_args[0][1])
+    assert params['application'] == 'myapp'

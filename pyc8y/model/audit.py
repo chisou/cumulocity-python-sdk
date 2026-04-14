@@ -321,6 +321,48 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             )
         ]
 
+    async def get_count(
+        self,
+        expression: str | None = None,
+        *,
+        type: str | None = None,  # noqa (type)
+        source: str | None = None,
+        application: str | None = None,
+        user: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        **kwargs,
+    ) -> int:
+        """Calculate the number of potential results of a database query.
+
+        This function uses the same parameters as the `select` function.
+
+        Returns:
+            Number of potential results
+        """
+        params = (
+            map_params(
+                type=type,
+                source=source,
+                application=application,
+                user=user,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                **kwargs,
+            )
+            if not expression
+            else ()
+        )
+        return await self._get_count(expression=expression, params=params)
+
     async def create(self, *records: AuditRecord, workers: int | None = None) -> None:
         """Create audit record objects within the database.
 

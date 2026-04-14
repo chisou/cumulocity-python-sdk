@@ -28,7 +28,7 @@ class CumulocityClient(CumulocityRestClient):
         super().__init__(base_url, tenant_id, auth, application_key, processing_mode)
         self.alarms = Alarms(self)
         self.applications = Applications(self)
-        self.audit = AuditRecords(self)
+        self.audit_records = AuditRecords(self)
         self.binaries = Binaries(self)
         self.bulk_operations = BulkOperations(self)
         self.events = Events(self)
