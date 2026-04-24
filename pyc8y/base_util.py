@@ -9,6 +9,11 @@ def is_sequence(obj: Any) -> bool:
     return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray))
 
 
+def ensure_sequence(obj: Any | Sequence[Any]) -> Sequence[Any]:
+    """Determine if an object is a sequence, i.e. list or tuple."""
+    return obj if is_sequence(obj) else (obj,)
+
+
 def flatten(items: Sequence[Any] | Sequence[Sequence[Any]]) -> tuple[Any, ...]:
     """Ensure a flat list.
 
