@@ -125,6 +125,7 @@ class CumulocityRestClient(object):
                 connector=aiohttp.TCPConnector(ssl=ssl_context),
                 base_url=self.base_url,
                 headers=headers,
+                skip_auto_headers=frozenset({"Accept"}),
             )
             return self._session
         return self._session
@@ -256,7 +257,6 @@ class CumulocityRestClient(object):
         """
         if json is not None:
             content_type = content_type or "application/json"
-        accept = accept or "application/json"
         session = await self.session
         additional_headers = {}
         if accept is not None:
