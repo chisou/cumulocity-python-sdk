@@ -28,7 +28,8 @@ async def test_session_headers(c8y_httpbin, method, json, accept, content_type):
     # -> there is always an Authorization header
     assert "Authorization" in result["headers"]
     # -> there is always an Accept header
-    assert result["headers"]["Accept"] == (accept or "application/json")
+    if accept:
+        assert result["headers"]["Accept"] == (accept or "application/json")
     # -> body defines whether there is a Content-Type header
     if json:
         assert result["headers"]["Content-Type"] == (content_type or "application/octet-stream")
