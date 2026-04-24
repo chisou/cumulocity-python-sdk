@@ -92,10 +92,10 @@ class BasicAuth(Auth):
     def parse(cls, auth_value: str) -> Self:
         decoded = base64.b64decode(bytes(auth_value, "utf-8"))
         parts = [x.decode("utf-8") for x in decoded.split(b":", 1)]
-        return BasicAuth(username=parts[0], password=parts[1])
+        return cls(username=parts[0], password=parts[1])
 
     def get_username(self) -> str:
-        return self.username
+        return self.username.split("/", 1)[-1]
 
     def get_tenant_id(self) -> str:
         i = self.username.index("/")
@@ -116,7 +116,7 @@ class BearerAuth(Auth):
 
     @classmethod
     def parse(cls, auth_value: str) -> Self:
-        return BearerAuth(auth_value)
+        return cls(auth_value)
 
     def get_username(self) -> str:
         return self.token  # TODO: read from JWT token
