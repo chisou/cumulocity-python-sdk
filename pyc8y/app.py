@@ -1,11 +1,12 @@
 # Copyright (c) 2026 Christoph Souris
 
+import asyncio
 import getpass
 import time
 from abc import abstractmethod, ABC
 import logging
 import os
-from typing import Mapping, Self
+from typing import Callable, Mapping, Self
 from urllib.parse import urlparse
 
 from cachetools import TTLCache
@@ -14,9 +15,10 @@ from pyc8y.auth import parse_auth, BearerAuth, BasicAuth, JWT
 from pyc8y.client import CumulocityClient
 from pyc8y.rest import Auth, UnauthorizedError, MissingTfaError, HttpError, CumulocityRestClient
 
-_sentinel = object()
 
 log = logging.getLogger(__name__)
+
+_sentinel = object()
 
 _clients: dict[tuple, CumulocityClient] = {}
 
@@ -87,6 +89,7 @@ def get_client(
         username = username or read_variable("C8Y_USER", "Please enter the Cumulocity username:")
         if base_url and not urlparse(base_url).scheme:
             base_url = f"https://{base_url}"
+        assert base_url and tenant_id and username
 
         # (3) return cached client if one exists for these parameters
         client_key = (base_url, tenant_id, username)
@@ -135,6 +138,7 @@ def get_client(
 
         async def __aenter__(self) -> CumulocityClient:
             self._client = await self._coro
+            assert self._client
             await self._client.__aenter__()
             return self._client
 
@@ -151,6 +155,28 @@ def c8y_keys() -> set[str]:
     Returns: A set of environment variable names, starting with 'C8Y_'
     """
     return set(filter(lambda x: "C8Y_" in x, os.environ.keys()))
+
+def get_c8y_env(name: str, default: str | None = _sentinel) -> str | None:
+    """Try to read a specific Cumulocity environment variable.
+
+    Args:
+        name (str):  Environment variable key
+        default (str):  Default value to use if key is not defined
+
+    Returns:
+        The value of the environment variable.
+
+    Raises:
+        ValueError:  (not KeyError!) if the variable is not present.
+    """
+    try:
+        return os.environ[name]
+    except KeyError as e:
+        if default is not _sentinel:
+            return default
+        keys = ", ".join(c8y_keys()) or "none"
+        raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
+
 
 
 class _CumulocityAppBase(ABC):
@@ -238,7 +264,7 @@ class _CumulocityAppBase(ABC):
         raise KeyError(f"Unable to resolve Authorization information. Found keys: {keys}.")
 
     @staticmethod
-    def _get_env(name: str, default: str | None = _sentinel) -> str:
+    def _get_env(name: str, default: str | None = _sentinel) -> str | None:
         """Try to read a specific Cumulocity environment variable.
 
         Args:
@@ -280,7 +306,11 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
     _log = logging.getLogger(__name__)
 
     def __init__(
-        self, application_key: str = None, processing_mode: str = None, cache_size: int = 100, cache_ttl: int = 3600
+            self,
+            application_key: str | None = None,
+            processing_mode: str | None = None,
+            cache_size: int = 100,
+            cache_ttl: int = 3600,
     ):
         """Create a new tenant specific instance.
 
@@ -303,10 +333,12 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
         # authentication is either token or username/password
         try:
             token = self._get_env("C8Y_TOKEN")
+            assert token
             auth = BearerAuth(token)
         except ValueError:
             username = self._get_env("C8Y_USER")
             password = self._get_env("C8Y_PASSWORD")
+            assert username and password
             auth = BasicAuth(f"{tenant_id}/{username}", password)
         if not application_key:
             application_key = self._get_env("APPLICATION_KEY", default=None)
@@ -425,6 +457,36 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         """
         return [x["tenant"] for x in await self._read_subscriptions(self.bootstrap_instance)]
 
+    def create_listener(
+            self,
+            callback: Callable[[set[str]], None] = None,
+            max_concurrent: int = 5,
+            polling_interval: float = 3600,
+            startup_delay: float = 60,
+    ) -> "SubscriptionListener":
+        """Create a subscription listener for this app.
+
+        Args:
+            callback (Callable): an async callback function to be invoked
+                when the subscribers change; Use the `add_callback` function
+                to add callbacks for individually added/removed subscribers.
+            max_concurrent (int): Maximum number of concurrent callback
+                executions; Use `1` to serialize callback execution.
+            polling_interval (float): How often to poll for changes.
+            startup_delay (float): How many seconds to wait after a
+                subscriber change before invoking the callbacks.
+
+        Returns:
+            A SubscriptionListener instance.
+        """
+        return SubscriptionListener(
+            app=self,
+            callback=callback,
+            max_concurrent=max_concurrent,
+            polling_interval=polling_interval,
+            startup_delay=startup_delay,
+        )
+
     @classmethod
     def _create_bootstrap_instance(cls, application_key: str = None, processing_mode: str = None) -> CumulocityClient:
         """Build the bootstrap instance from the environment."""
@@ -432,6 +494,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         tenant_id = cls._get_env("C8Y_BOOTSTRAP_TENANT")
         username = cls._get_env("C8Y_BOOTSTRAP_USER")
         password = cls._get_env("C8Y_BOOTSTRAP_PASSWORD")
+        assert base_url and tenant_id and username and password
         return CumulocityClient(
             base_url=base_url,
             tenant_id=tenant_id,
@@ -506,3 +569,182 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     async def __aexit__(self, *args):
         pass
+
+
+class SubscriptionListener:
+    """Multi-tenant subscription listener.
+
+    Polls the MultiTenantCumulocityApp for subscriber changes and invokes
+    registered callbacks when tenants subscribe or unsubscribe.
+
+    Note: Not thread-safe, expected to run in async code.
+    """
+
+    _n = 0
+
+    def __init__(
+        self,
+        app: MultiTenantCumulocityApp,
+        callback: Callable[[set[str]], None] = None,
+        max_concurrent: int = 5,
+        polling_interval: float = 3600,
+        startup_delay: float = 60,
+    ):
+        """Create a subscription listener.
+
+        Args:
+            app (MultiTenantCumulocityApp): The Cumulocity application
+                managing subscribers.
+            callback (Callable): an async callback function to be invoked
+                when the subscribers change; Use the `add_callback` function
+                to add callbacks for individually added/removed subscribers.
+            max_concurrent (int): Maximum number of concurrent callback
+                executions; Use `1` to serialize callback execution.
+            polling_interval (float): How often to poll for changes.
+            startup_delay (float): How many seconds to wait after a
+                subscriber change before invoking the callbacks.
+        """
+        instance_id = f"[{SubscriptionListener._n}]" if SubscriptionListener._n > 0 else ""
+        SubscriptionListener._n += 1
+        self._instance_name = type(self).__name__ + instance_id
+        self._log = logging.getLogger(__name__ + instance_id)
+        self.app = app
+        self.polling_interval = polling_interval
+        self.startup_delay = startup_delay
+        self.callbacks: list[Callable] = [callback] if callback else []
+        self.callbacks_on_add: list[Callable] = []
+        self.callbacks_on_remove: list[Callable] = []
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._listen_task: asyncio.Task | None = None
+        self._callback_tasks: set[asyncio.Task] = set()
+        self._stop_event = asyncio.Event()
+
+    async def __aenter__(self) -> Self:
+        self.start()
+        return self
+
+    async def __aexit__(self, *args):
+        self.stop()
+        if self._listen_task:
+            await self._listen_task
+
+    def add_callback(
+        self,
+        callback: Callable[[str | set[str]], None],
+        when: str = "any",
+    ) -> Self:
+        """Add a callback for subscription changes.
+
+        Args:
+            callback: Async function invoked on subscription changes. Receives
+                a single tenant ID (str) for 'added'/'removed' events, or the
+                full set of current subscriber IDs for 'any'/'always'.
+            when: When to invoke the callback — 'added', 'removed', or
+                'any'/'always' (default).
+
+        Returns:
+            self, to support chaining.
+        """
+        if when in {"always", "any"}:
+            self.callbacks.append(callback)
+        elif when == "added":
+            self.callbacks_on_add.append(callback)
+        elif when == "removed":
+            self.callbacks_on_remove.append(callback)
+        else:
+            raise ValueError(f"Invalid activation mode: {when}")
+        return self
+
+    async def listen(self):
+        """Run the subscription polling loop.
+
+        Blocks until stop() is called or the task is cancelled.
+        """
+        if not self._listen_task:
+            self._listen_task = asyncio.current_task()
+        self._stop_event.clear()
+        self._log.debug("Listener started.")
+
+        async def limit(cr):
+            async with self._semaphore:
+                await cr
+
+        async def invoke(fun, arg):
+
+            def on_done(task):
+                self._callback_tasks.discard(task)
+                if not task.cancelled() and task.exception():
+                    self._log.error(f"Uncaught exception in callback: {task.exception()}", exc_info=task.exception())
+
+            if self._log.isEnabledFor(logging.DEBUG):
+                self._log.debug(f"Invoking callback: {fun.__module__}.{fun.__name__}")
+            callback_task = asyncio.create_task(limit(fun(arg)))
+            self._callback_tasks.add(callback_task)
+            callback_task.add_done_callback(on_done)
+
+        try:
+            last_subscribers: set[str] = set()
+            while not self._stop_event.is_set():
+                loop_start = time.monotonic()
+
+                current_subscribers = set(await self.app.get_subscribers())
+                added = current_subscribers - last_subscribers
+                removed = last_subscribers - current_subscribers
+
+                for tenant_id in removed:
+                    self._log.info(f"Tenant subscription removed: {tenant_id}.")
+                    for cb in self.callbacks_on_remove:
+                        await invoke(cb, tenant_id)
+
+                if added and self.startup_delay:
+                    elapsed = time.monotonic() - loop_start
+                    delay = self.startup_delay - elapsed
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+
+                for tenant_id in added:
+                    self._log.info(f"Tenant subscription added: {tenant_id}.")
+                    for cb in self.callbacks_on_add:
+                        await invoke(cb, tenant_id)
+
+                if added or removed:
+                    self._log.info(f"Current subscriptions: {', '.join(current_subscribers) or 'None'}.")
+                    for cb in self.callbacks:
+                        await invoke(cb, current_subscribers)
+
+                last_subscribers = current_subscribers
+
+                try:
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=self.polling_interval)
+                    break  # stop() was called
+                except asyncio.TimeoutError:
+                    pass  # interval elapsed, poll again
+
+        except Exception as e:
+            self._log.error(f"Uncaught exception during listen: {e}", exc_info=e)
+        finally:
+            pending = self.get_callbacks()
+            if pending:
+                self._log.debug(f"Awaiting {len(pending)} ending callbacks.")
+                await asyncio.gather(*pending)
+        self._log.debug("Listener ended.")
+
+    def start(self) -> asyncio.Task:
+        """Start the listener as an asyncio Task.
+
+        Returns:
+            The created asyncio Task.
+        """
+        self._listen_task = asyncio.create_task(self.listen(), name=self._instance_name)
+        return self._listen_task  # type: ignore (never None)
+
+    def stop(self):
+        """Signal the listener to stop.
+
+        Returns immediately without awaiting the listener to finish.
+        """
+        self._stop_event.set()
+
+    def get_callbacks(self) -> list[asyncio.Task]:
+        """Return currently running (not yet done) callback tasks."""
+        return [t for t in self._callback_tasks if not t.done()]
