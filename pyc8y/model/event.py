@@ -10,11 +10,9 @@ from pyc8y.model.model_base import (
     id_property,
     time_property,
     map_params,
-    assert_c8y,
-    assert_id,
 )
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.types import EventsMeta, AsValuesSpec, FileSpec
+from pyc8y.types import EventMeta, AsValuesSpec, FileSpec
 
 
 class Event(CumulocityObject):
@@ -26,7 +24,7 @@ class Event(CumulocityObject):
     See also: https://cumulocity.com/api/#tag/Events
     """
 
-    _meta = EventsMeta
+    _meta = EventMeta
 
     def __init__(
         self,
@@ -85,8 +83,8 @@ class Event(CumulocityObject):
         Returns:
             Attachment details as JSON object (dict).
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         return await self.c8y.post_file(self.attachment_path, file=file, content_type=content_type)
 
     async def update_attachment(self, file: FileSpec, content_type: str = None) -> dict:
@@ -100,8 +98,8 @@ class Event(CumulocityObject):
         Returns:
             Attachment details as JSON object (dict).
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         return await self.c8y.put_file(self.attachment_path, file=file, content_type=content_type)
 
     async def download_attachment(self) -> bytes:
@@ -110,14 +108,14 @@ class Event(CumulocityObject):
         Returns:
             The event's binary attachment as bytes.
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         return await self.c8y.get_file(self.attachment_path)
 
     async def delete_attachment(self) -> None:
         """Remove the binary attachment."""
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         await self.c8y.delete(self.attachment_path)
 
     async def create(self) -> Self:
@@ -173,7 +171,7 @@ class Events(CumulocityResource[Event]):
     See also: https://cumulocity.com/api/core/#tag/Events
     """
 
-    _meta = EventsMeta
+    _meta = EventMeta
     _object_type = Event
 
     def build_attachment_path(self, event_id: str) -> str:
@@ -614,7 +612,7 @@ class Events(CumulocityResource[Event]):
             if not expression
             else ()
         )
-        await self.c8y.delete(self._meta.resource_path, params=params)
+        await self.c8y.delete(self.resource_path, params=params)
 
     async def create_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:
         """Add a binary attachment to an event.

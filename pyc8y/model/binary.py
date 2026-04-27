@@ -10,10 +10,8 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     map_params,
-    assert_c8y,
-    assert_id,
 )
-from pyc8y.types import BinariesMeta, AsValuesSpec, FileSpec
+from pyc8y.types import BinaryMeta, AsValuesSpec, FileSpec
 
 
 class Binary(ManagedObject):
@@ -22,7 +20,7 @@ class Binary(ManagedObject):
     See also: https://cumulocity.com/api/core/#tag/Binaries
     """
 
-    _meta = BinariesMeta
+    _meta = BinaryMeta
 
     def __init__(
         self,
@@ -58,9 +56,9 @@ class Binary(ManagedObject):
         Raises:
             FileNotFoundError:  if the file attribute refers to an invalid path
         """
-        assert_c8y(self)
+        self._assert_c8y()
         result_json = await self.c8y.post_file(
-            self._meta.resource_path,
+            self.resource_path,
             file=self.file,
             filename=self.name,
             form_data={"object": orjson.dumps(self.to_json()).decode("utf8")},
@@ -77,8 +75,8 @@ class Binary(ManagedObject):
         Raises:
             FileNotFoundError:  if the file attribute refers to an invalid path
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         result_json = await self.c8y.put_file(
             self.object_path,
             file=self.file,
@@ -95,8 +93,8 @@ class Binary(ManagedObject):
         Returns:
             The binary attachment's content as bytes
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         return await Binaries(self.c8y).read_file(self.id)
 
 
@@ -106,7 +104,7 @@ class Binaries(CumulocityResource[Binary]):
     See also: https://cumulocity.com/api/core/#tag/Binaries
     """
 
-    _meta = BinariesMeta
+    _meta = BinaryMeta
     _object_type = Binary
 
     async def read_file(self, id: str) -> bytes:  # noqa (id)

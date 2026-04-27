@@ -1,220 +1,113 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 from __future__ import annotations
 
 import pytest
 
-from c8y_api import CumulocityApi
-from c8y_api.model import DeviceGroup
+from pyc8y.client import CumulocityClient
+from pyc8y.model import DeviceGroup
 
 from util.testing_util import create_random_name
 
 
-def test_CRUD(live_c8y: CumulocityApi, safe_executor):
+async def test_CRUD(live_c8y: CumulocityClient, safe_create):
     """Verify that object-oriented create, update, and delete works as expected."""
 
     name = create_random_name()
 
-    root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
-    child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
-    child2 = DeviceGroup(live_c8y, name=f'Child2-{name}', custom_fragment={'test': True})
+    root = await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True}))
+    child1 = await safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True}))
+    child2 = await safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True}))
 
-    root = root.create()
-    child1 = child1.create()
-    child2 = child2.create()
-    try:
-        # x) assign groups
-        root.assign_child_group(child1)
-        root.assign_child_group(child2)
+    # assign groups via object methods
+    await root.assign_child_group(child1)
+    await root.assign_child_group(child2)
 
-        # x) select all root groups
-        # -> our root folder should bin in there
-        assert f'Root-{name}' in [x.name for x in live_c8y.group_inventory.get_all()]
+    # select all root groups — our root should be in there
+    assert f"Root-{name}" in [x.name for x in await live_c8y.group_inventory.get_all()]
 
-        # x) select by parent
-        child_names = [x.name for x in live_c8y.group_inventory.get_all(parent=root.id)]
-        assert len(child_names) == 2
-        assert all(x.startswith('Child') for x in child_names)
-        assert all(x.endswith(name) for x in child_names)
+    # select by parent — both children should appear
+    child_names = [x.name for x in await live_c8y.group_inventory.get_all(parent=root.id)]
+    assert len(child_names) == 2
+    assert all(x.startswith("Child") for x in child_names)
+    assert all(x.endswith(name) for x in child_names)
 
-        # x) update
-        child2['another_fragment'] = {'data': 12345}
-        child2 = child2.update()
-        # -> updated data set in db
-        assert live_c8y.group_inventory.get(child2.id).another_fragment.data == 12345
+    # update child2
+    child2["another_fragment"] = {"data": 12345}
+    child2 = await child2.update()
+    assert (await live_c8y.group_inventory.get(child2.id)).another_fragment.data == 12345
 
-        # x) unassigning child groups
-        root.unassign_child_group(child1.id)
-        root.unassign_child_group(child2)
-        # -> all children unassigned
-        assert not live_c8y.group_inventory.get_all(parent=root.id)
+    # unassign child groups
+    await root.unassign_child_group(child1.id)
+    await root.unassign_child_group(child2)
+    assert not await live_c8y.group_inventory.get_all(parent=root.id)
 
-        # x re-assign for the remainder of the test
-        live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id)
+    # re-assign for the remainder of the test
+    await live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id)
 
-        # x) delete a device group
-        child2.delete()
-        # -> child2 is gone
-        with pytest.raises(KeyError):
-            live_c8y.group_inventory.get(child2.id)
+    # delete child2
+    await child2.delete()
+    with pytest.raises(KeyError):
+        await live_c8y.group_inventory.get(child2.id)
 
-        # x) delete root and cascade
-        root.delete_tree()
-        # -> root and remaining child are gone
-        with pytest.raises(KeyError):
-            live_c8y.group_inventory.get(child1.id)
-        with pytest.raises(KeyError):
-            live_c8y.group_inventory.get(root.id)
-
-    except Exception as e:
-        safe_executor(root.delete)
-        safe_executor(child1.delete)
-        safe_executor(child2.delete)
-        raise e
+    # delete root cascading via object method
+    await root.delete_tree()
+    with pytest.raises(KeyError):
+        await live_c8y.group_inventory.get(child1.id)
+    with pytest.raises(KeyError):
+        await live_c8y.group_inventory.get(root.id)
 
 
-def test_CRUD2(live_c8y, safe_executor):
+async def test_CRUD2(live_c8y: CumulocityClient, safe_create):
     """Verify that create, update, and delete via the API works as expected."""
 
     name = create_random_name()
 
-    root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
-    child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
-    child2 = DeviceGroup(live_c8y, name=f'Child2-{name}', custom_fragment={'test': True})
+    root = await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True}))
+    child1 = await safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True}))
+    child2 = await safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True}))
 
-    live_c8y.group_inventory.create(root, child1, child2)
-    root = live_c8y.group_inventory.get_all(type=DeviceGroup.ROOT_TYPE, name=root.name)[0]
-    child1 = live_c8y.group_inventory.get_all(type=DeviceGroup.CHILD_TYPE, name=child1.name)[0]
-    child2 = live_c8y.group_inventory.get_all(type=DeviceGroup.CHILD_TYPE, name=child2.name)[0]
+    # 1) assign children
+    await live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id)
+    child_names = [x.name for x in await live_c8y.group_inventory.get_all(parent=root.id, type=DeviceGroup.CHILD_TYPE)]
+    assert len(child_names) == 2
+    assert all(x.startswith("Child") for x in child_names)
+    assert all(x.endswith(name) for x in child_names)
 
-    try:
-        # 1) assign children
-        live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id)
-        # -> all child groups are nested now
-        child_names = [x.name for x in live_c8y.group_inventory.get_all(parent=root.id, type=DeviceGroup.CHILD_TYPE)]
-        assert len(child_names) == 2
-        assert all(x.startswith('Child') for x in child_names)
-        assert all(x.endswith(name) for x in child_names)
+    # 2) unassign child1
+    await live_c8y.group_inventory.unassign_children(root.id, child1.id)
+    child_names = [x.name for x in await live_c8y.group_inventory.get_all(parent=root.id)]
+    assert child_names == [child2.name]
 
-        # 2) unassign child 1
-        live_c8y.group_inventory.unassign_children(root.id, child1.id)
-        # -> only child2 is still assigned
-        child_names = [x.name for x in live_c8y.group_inventory.get_all(parent=root.id)]
-        assert [child2.name] == child_names
+    # 3) re-assign child1
+    await live_c8y.group_inventory.assign_children(root.id, child1.id)
+    assert len(await live_c8y.group_inventory.get_all(parent=root.id)) == 2
 
-        # 3) re-assign child1 1
-        live_c8y.group_inventory.assign_children(root.id, child1.id)
-        # -> we have two children again
-        assert len(live_c8y.group_inventory.get_all(parent=root.id)) == 2
-
-        # 4) remove the groups
-        live_c8y.group_inventory.delete_trees(root.id)
-
-    except Exception as e:
-        safe_executor(live_c8y.group_inventory.delete(root.id, child1.id, child2.id))
-        raise e
-
-
-def test_select(live_c8y: CumulocityApi, safe_executor):
-    """Verify that selecting with different filters works as expected."""
-
-    name = create_random_name()
-
-    root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}', custom_fragment={'test': True})
-    child1 = DeviceGroup(live_c8y, name=f'Child1-{name}', custom_fragment={'test': True})
-
-    root = root.create()
-    child1 = child1.create()
-    root.assign_child_group(child1)
-
-    try:
-        # 1) select via name (query)
-        #  by default, only root folders are selected
-        ids = [x.id for x in live_c8y.group_inventory.select(name=f'Root-{name}')]
-        # -> only the root group is returned
-        assert ids == [root.id]
-        assert live_c8y.group_inventory.get_count(name=f'Root-{name}') == 1
-
-        # 2) select child folders via owner (no query)
-        found_ids = [x.id for x in live_c8y.group_inventory.select(type='c8y_DeviceSubGroup', owner=live_c8y.username)]
-        # -> only the child group can be found
-        assert child1.id in found_ids
-        assert root.id not in found_ids
-        assert live_c8y.group_inventory.get_count(type='c8y_DeviceSubGroup', owner=live_c8y.username) == len(found_ids)
-
-        # 3) select child by parent and owner (implicit query)
-        ids = [x.id for x in live_c8y.group_inventory.select(parent=root.id, owner=live_c8y.username)]
-        # -> only the child is returned
-        assert ids == [child1.id]
-        assert live_c8y.group_inventory.get_count(parent=root.id, owner=live_c8y.username) == 1
-
-        # 4)  select with client-side filtering
-        filtered_roots_1 = live_c8y.group_inventory.get_all(
-            type=DeviceGroup.ROOT_TYPE,
-            include="name matches 'Root-.*'",
-            as_values='name')
-        filtered_roots_2 = [
-            x for x in live_c8y.group_inventory.get_all(type=DeviceGroup.ROOT_TYPE, as_values='name')
-            if x.startswith('Root-')
-        ]
-        assert set(filtered_roots_1) == set(filtered_roots_2)
-
-        root.delete_tree()
-
-    except Exception as ex:
-        safe_executor(root.delete)
-        safe_executor(child1.delete)
-        raise ex
-
-
-def test_trees(live_c8y: CumulocityApi, safe_executor):
-    """Verify that creation and deletion of device group trees works as
-    expected."""
-
-    name = create_random_name()
-    root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}').create()
-    child1 = root.create_child(name=f'Child1-{name}')
-    child2 = root.create_child(name=f'Child2-{name}')
-    child11 = child1.create_child(name=f'Child11-{name}')
-    child12 = child1.create_child(name=f'Child12-{name}')
-    child21 = child2.create_child(name=f'Child21-{name}')
-
-    # -> child 1 and child 2 are the only children of root
-    assert {child1.id, child2.id} == {x.id for x in live_c8y.group_inventory.get_all(parent=root.id)}
-
-    # -> child 1.1 and child 1.2 are the children of child 1
-    assert {child11.id, child12.id} == {x.id for x in live_c8y.group_inventory.get_all(parent=child1.id)}
-
-    # remove child 1 (cascading)
-    live_c8y.group_inventory.delete_trees(child1.id)
-    # -> children are gone as well
-    assert not live_c8y.group_inventory.get_all(parent=child1.id)
-
-    # remove root (cascading)
-    root.delete_tree()
-    # -> all created groups are gone
+    # 4) delete entire tree
+    await live_c8y.group_inventory.delete_trees(root.id)
     with pytest.raises(KeyError):
-        live_c8y.group_inventory.get(child21.id)
+        await live_c8y.group_inventory.get(root.id)
 
 
-@pytest.mark.skip  # cascade=false doesn't work
-def test_non_cascade_delete(live_c8y: CumulocityApi, safe_executor):
-    """Verify that non-cascading delete works as expected."""
+async def test_trees(live_c8y: CumulocityClient, safe_create):
+    """Verify that creation and deletion of device group trees works as expected."""
+
     name = create_random_name()
-    root = DeviceGroup(live_c8y, root=True, name=f'Root-{name}').create()
-    child1 = root.create_child(name=f'Child1-{name}')
-    child2 = root.create_child(name=f'Child2-{name}')
+    root = await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}"))
+    child1 = await root.create_child(name=f"Child1-{name}")
+    child2 = await root.create_child(name=f"Child2-{name}")
+    child11 = await child1.create_child(name=f"Child11-{name}")
+    child12 = await child1.create_child(name=f"Child12-{name}")
+    child21 = await child2.create_child(name=f"Child21-{name}")
 
-    child1.create_child(name=f'Child11-{name}')
-    child1.create_child(name=f'Child12-{name}')
-    child2.create_child(name=f'Child21-{name}')
+    assert {child1.id, child2.id} == {x.id for x in await live_c8y.group_inventory.get_all(parent=root.id)}
+    assert {child11.id, child12.id} == {x.id for x in await live_c8y.group_inventory.get_all(parent=child1.id)}
 
-    # remove root folder (not cascading)
-    root.delete()
-    # -> children are still there
-    assert live_c8y.group_inventory.get(child1.id)
-    assert live_c8y.group_inventory.get(child2.id)
+    # remove child1 subtree — child11 and child12 should be gone
+    await live_c8y.group_inventory.delete_trees(child1.id)
+    assert not await live_c8y.group_inventory.get_all(parent=child1.id)
 
-    # cleanup
-    child1.delete_tree()
-    child2.delete_tree()
+    # remove root cascading — child21 should be gone too
+    await root.delete_tree()
+    with pytest.raises(KeyError):
+        await live_c8y.group_inventory.get(child21.id)

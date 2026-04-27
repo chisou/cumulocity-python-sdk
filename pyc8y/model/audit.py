@@ -16,7 +16,7 @@ from pyc8y.model.model_base import (
     time_property,
     map_params,
 )
-from pyc8y.types import AuditRecordsMeta, AsValuesSpec
+from pyc8y.types import AuditRecordMeta, AsValuesSpec
 
 
 @dataclasses.dataclass
@@ -94,7 +94,7 @@ class AuditRecord(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Audits
     """
 
-    _meta = AuditRecordsMeta
+    _meta = AuditRecordMeta
     _change_type: ClassVar[type[Change]] = Change
 
     def __init__(
@@ -166,7 +166,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
     See also: https://cumulocity.com/api/core/#tag/Audits
     """
 
-    _meta = AuditRecordsMeta
+    _meta = AuditRecordMeta
     _object_type = AuditRecord
 
     async def get(self, record_id: str) -> AuditRecord:

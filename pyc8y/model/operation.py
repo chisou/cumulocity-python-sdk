@@ -17,9 +17,8 @@ from pyc8y.model.model_base import (
     map_params,
     run_batched,
     ensure_ids,
-    assert_c8y,
 )
-from pyc8y.types import OperationsMeta, BulkOperationsMeta, AsValuesSpec
+from pyc8y.types import OperationMeta, BulkOperationMeta, AsValuesSpec
 
 
 class OperationStatus(StrEnum):
@@ -40,7 +39,7 @@ class Operation(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Operations
     """
 
-    _meta = OperationsMeta
+    _meta = OperationMeta
 
     def __init__(
         self,
@@ -85,13 +84,13 @@ class Operation(CumulocityObject):
             *devices (str | Device): A collection of devices or device IDs
             workers (int): The number of parallel processes to use
         """
-        assert_c8y(self)
+        self._assert_c8y()
         skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
         operation_json = {k: v for k, v in self.to_json(only_updated=False).items() if k not in skip_keys}
         await run_batched(
             ensure_ids(flatten(devices)),
             workers,
-            lambda x: self.c8y.post(self._meta.resource_path, operation_json | {"deviceId": x}, accept=None),
+            lambda x: self.c8y.post(self.resource_path, operation_json | {"deviceId": x}, accept=None),
         )
 
 
@@ -104,7 +103,7 @@ class Operations(CumulocityResource[Operation]):
     See also: https://cumulocity.com/api/core/#tag/Operations
     """
 
-    _meta = OperationsMeta
+    _meta = OperationMeta
     _object_type = Operation
 
     async def get(self, operation_id: str) -> Operation:
@@ -430,7 +429,7 @@ class BulkOperation(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Bulk-operations
     """
 
-    _meta = BulkOperationsMeta
+    _meta = BulkOperationMeta
 
     def __init__(
         self,
@@ -490,7 +489,7 @@ class BulkOperations(CumulocityResource[BulkOperation]):
     See also: https://cumulocity.com/api/core/#tag/Bulk-operations
     """
 
-    _meta = BulkOperationsMeta
+    _meta = BulkOperationMeta
     _object_type = BulkOperation
 
     async def get(self, operation_id: str) -> BulkOperation:

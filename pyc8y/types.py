@@ -38,6 +38,9 @@ class MimeType(StrEnum):
     TENANT_OPTION = "application/vnd.com.nsn.cumulocity.option+json"
     TENANT_OPTION_COLLECTION = "application/vnd.com.nsn.cumulocity.optionCollection+json"
     USER = "application/vnd.com.nsn.cumulocity.user+json"
+    USER_COLLECTION = "application/vnd.com.nsn.cumulocity.usercollection+json"
+    USER_GROUP = "application/vnd.com.nsn.cumulocity.group+json"
+    USER_GROUP_COLLECTION = "application/vnd.com.nsn.cumulocity.groupcollection+json"
 
 
 class ResourceMeta(ABC):
@@ -58,35 +61,35 @@ class AlarmMeta(ResourceMeta):
     collection_name = "alarms"
 
 
-class ApplicationsMeta(ResourceMeta):
+class ApplicationMeta(ResourceMeta):
     object_mime_type = MimeType.APPLICATION
     collection_mime_type = MimeType.APPLICATION_COLLECTION
     resource_path = "application/applications"
     collection_name = "applications"
 
 
-class AuditRecordsMeta(ResourceMeta):
+class AuditRecordMeta(ResourceMeta):
     object_mime_type = MimeType.AUDIT_RECORD
     collection_mime_type = MimeType.AUDIT_RECORD_COLLECTION
     resource_path = "audit/auditRecords"
     collection_name = "auditRecords"
 
 
-class BinariesMeta(ResourceMeta):
+class BinaryMeta(ResourceMeta):
     object_mime_type = MimeType.MANAGED_OBJECT
     collection_mime_type = MimeType.MANAGED_OBJECT_COLLECTION
     resource_path = "inventory/binaries"
     collection_name = "managedObjects"
 
 
-class BulkOperationsMeta(ResourceMeta):
+class BulkOperationMeta(ResourceMeta):
     object_mime_type = MimeType.BULK_OPERATION
     collection_mime_type = MimeType.BULK_OPERATION_COLLECTION
     resource_path = "devicecontrol/bulkoperations"
     collection_name = "bulkOperations"
 
 
-class EventsMeta(ResourceMeta):
+class EventMeta(ResourceMeta):
     object_mime_type = MimeType.EVENT
     collection_mime_type = MimeType.EVENT_COLLECTION
     resource_path = "event/events"
@@ -96,7 +99,6 @@ class EventsMeta(ResourceMeta):
 class IdentityMeta(ResourceMeta):
     object_mime_type = MimeType.EXTERNAL_ID
     collection_mime_type = MimeType.EXTERNAL_ID
-    resource_path = None  # dynamic
     collection_name = "externalIds"
 
     @classmethod
@@ -111,36 +113,69 @@ class InventoryMeta(ResourceMeta):
     collection_name = "managedObjects"
 
 
-class MeasurementsMeta(ResourceMeta):
+class MeasurementMeta(ResourceMeta):
     object_mime_type = MimeType.MEASUREMENT
     collection_mime_type = MimeType.MEASUREMENT_COLLECTION
     resource_path = "measurement/measurements"
     collection_name = "measurements"
 
 
-class OperationsMeta(ResourceMeta):
+class OperationMeta(ResourceMeta):
     object_mime_type = MimeType.OPERATION
     collection_mime_type = MimeType.OPERATION_COLLECTION
     resource_path = "devicecontrol/operations"
     collection_name = "operations"
 
 
-class SubscriptionsMeta(ResourceMeta):
+class SubscriptionMeta(ResourceMeta):
     object_mime_type = MimeType.SUBSCRIPTION
     collection_mime_type = MimeType.SUBSCRIPTION_COLLECTION
     resource_path = "notification2/subscriptions"
     collection_name = "subscriptions"
 
 
-class TenantOptionsMeta(ResourceMeta):
+class TenantOptionMeta(ResourceMeta):
     object_mime_type = MimeType.TENANT_OPTION
     collection_mime_type = MimeType.TENANT_OPTION_COLLECTION
     resource_path = "tenant/options"
     collection_name = "options"
 
 
-class TenantsMeta(ResourceMeta):
+class TenantMeta(ResourceMeta):
     object_mime_type = MimeType.TENANT
     collection_mime_type = MimeType.TENANT_COLLECTION
     resource_path = "tenant/tenants"
     collection_name = "tenants"
+
+
+class InventoryRoleMeta(ResourceMeta):
+    object_mime_type = None
+    collection_mime_type = None
+    resource_path = "user/inventoryroles"
+    collection_name = "roles"
+
+
+class UserGroupMeta(ResourceMeta):
+    object_mime_type = MimeType.USER_GROUP
+    collection_mime_type = MimeType.USER_GROUP_COLLECTION
+    collection_name = "groups"
+
+
+class UserMeta(ResourceMeta):
+    object_mime_type = MimeType.USER
+    collection_mime_type = MimeType.USER_COLLECTION
+    collection_name = "users"
+
+    @classmethod
+    def build_object_path(cls, _) -> str:
+        raise NotImplementedError("Function not available for User API.")
+
+
+class CurrentUserMeta(ResourceMeta):
+    object_mime_type = MimeType.CURRENT_USER
+    collection_mime_type = None
+    collection_name = None
+
+    @classmethod
+    def build_object_path(cls, _) -> str:
+        raise NotImplementedError("Function not available for CurrentUser API.")

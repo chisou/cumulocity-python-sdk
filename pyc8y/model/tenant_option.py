@@ -8,18 +8,17 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     map_params,
-    assert_c8y,
     run_batched,
 )
-from pyc8y.types import TenantOptionsMeta, AsValuesSpec
+from pyc8y.types import TenantOptionMeta, AsValuesSpec
 
 
 def build_category_resource(category: str) -> str:
-    return f"{TenantOptionsMeta.resource_path}/{category}"
+    return f"{TenantOptionMeta.resource_path}/{category}"
 
 
 def build_value_resource(category: str, key: str) -> str:
-    return f"{TenantOptionsMeta.resource_path}/{category}/{key}"
+    return f"{TenantOptionMeta.resource_path}/{category}/{key}"
 
 
 class TenantOption(CumulocityObject):
@@ -31,7 +30,7 @@ class TenantOption(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Options
     """
 
-    _meta = TenantOptionsMeta
+    _meta = TenantOptionMeta
 
     def __init__(
         self,
@@ -82,7 +81,7 @@ class TenantOption(CumulocityObject):
         Returns:
             A fresh TenantOption instance representing the updated option.
         """
-        assert_c8y(self)
+        self._assert_c8y()
         if not self.category or not self.key:
             raise ValueError("Both option category and key must be set to allow direct object access.")
         result_json = await self.c8y.put(
@@ -100,7 +99,7 @@ class TenantOption(CumulocityObject):
 
     async def delete(self) -> None:
         """Remove the option from the database."""
-        assert_c8y(self)
+        self._assert_c8y()
         if not self.category or not self.key:
             raise ValueError("Both option category and key must be set to allow direct object access.")
         await self.c8y.delete(build_value_resource(self.category, self._key))
@@ -115,7 +114,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
     See also: https://cumulocity.com/api/core/#tag/Options
     """
 
-    _meta = TenantOptionsMeta
+    _meta = TenantOptionMeta
     _object_type = TenantOption
 
     def build_object_path(self, category: str, key: str) -> str:  # noqa (signature differs)
@@ -128,7 +127,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
         Returns:
             The relative path to the option within Cumulocity.
         """
-        return f"{self._meta.resource_path}/{category}/{key}"
+        return f"{self.resource_path}/{category}/{key}"
 
     async def get(self, category: str, key: str) -> TenantOption:  # noqa (signature differs)
         """Retrieve a specific option from the database.

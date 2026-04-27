@@ -19,6 +19,7 @@ from util.testing_util import create_random_name
 
 
 # Configure logging
+logging.basicConfig(level=logging.WARNING)
 logging.getLogger('urllib3').setLevel(logging.DEBUG)
 logging.getLogger('websockets').setLevel(logging.DEBUG)
 logging.getLogger('pyc8y').setLevel(logging.DEBUG)

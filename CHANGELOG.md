@@ -29,7 +29,16 @@
   but only overwritten with the new value resp. structure.
 
 * The module now being exclusively async, the `AsyncListener` and `AsyncQueueListener` have been renamed to `Listener`
-  and `QueueListener`. The synchronous variants have been dropped. 
+  and `QueueListener`. The synchronous variants have been dropped.
+
+* The `GlobalRole` class has been renamed to `UserGroup` to match the REST API naming.  TODO: global_roles API alias?
+  Likewise, the `permission_ids` property has been renamed to `role_ids`. `add_permissions` to `assign_roles` etc. 
+
+* The `level` attribute in the `Permission` class has been renamed to `permission` to match the JSON structure.
+
+* The `SubscriptionListener` listener implementation has been promoted to a standard component. It has been simplified
+  and converted to run async callbacks. It can be created from `MultiTenantCumulocityApp` using the `create_listener`
+  function. 
 
 #### Minor changes
 
@@ -53,7 +62,12 @@
   functions `delete` and `update_values` instead. The `get_all_mapped` function was optimized and replaced by function
   `get_values`. 
 
-* In the Binary API, the 
+
+* The `UserG`
+
+* In the Binary API, the
+
+
 
 
 ## Version 3.7.2

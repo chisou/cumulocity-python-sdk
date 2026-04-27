@@ -6,7 +6,7 @@ import ssl
 from collections import Counter
 from enum import StrEnum
 from pathlib import Path
-from typing import BinaryIO, Self, Sequence, Any
+from typing import BinaryIO, Self, Sequence, Any, Mapping
 
 import aiohttp
 import certifi
@@ -56,21 +56,21 @@ class HttpError(Exception):
 class UnauthorizedError(HttpError):
     """Error raised for unauthorized access."""
 
-    def __init__(self, method: str, url: str = None, message: str | None = "Unauthorized."):
+    def __init__(self, method: str, url: str, message: str = "Unauthorized."):
         super().__init__(method, url, 401, message)
 
 
 class MissingTfaError(UnauthorizedError):
     """Error raised for unauthorized access."""
 
-    def __init__(self, method: str, url: str = None, message: str | None = "Missing TFA Token."):
+    def __init__(self, method: str, url: str, message: str = "Missing TFA Token."):
         super().__init__(method, url, message)
 
 
 class AccessDeniedError(HttpError):
     """Error raised for denied access."""
 
-    def __init__(self, method: str, url: str = None, message: str | None = "Access denied."):
+    def __init__(self, method: str, url: str, message: str = "Access denied."):
         super().__init__(method, url, 403, message)
 
 
@@ -218,7 +218,7 @@ class CumulocityRestClient(object):
                             return auth, None
                         response_json = orjson.loads(await response.text() or "") or {}
                         if response.status == 401:
-                            raise UnauthorizedError(HttpMethod.GET, str(response.url), response_json.get("message"))
+                            raise UnauthorizedError(HttpMethod.GET, str(response.url), response_json.get("message", "No detailed error provided."))
                         # this should never happen
                         message = response_json.get("message", "Invalid request!")
                         raise HttpError(HttpMethod.GET, str(response.url), response.status, message)
@@ -231,7 +231,7 @@ class CumulocityRestClient(object):
         self,
         method: str,
         resource: str,
-        params: tuple[str, Any] | dict | None = None,
+        params: Sequence[tuple[str, Any]] | Mapping[str, Any] = (),
         json: dict | None = None,
         accept: str | None = None,
         content_type: str | None = None,
@@ -241,7 +241,7 @@ class CumulocityRestClient(object):
         Args:
             method(str): The HTTP method to use.
             resource(str): The resource path.
-            params (dict): Additional request parameters
+            params (Sequence | Mapping): Additional request parameters
             json (dict): JSON body (nested dict)
             accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
             content_type(str): Content-Type header value; `application/json` is assumed/automatically inserted
@@ -300,29 +300,33 @@ class CumulocityRestClient(object):
     async def get(
         self,
         resource: str,
-        params: dict | Sequence[tuple[str, str]] | None = None,
+        *,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
         accept: str | None = "application/json",
     ) -> dict:
-        return await self.request("GET", resource, params, None, accept=accept)
+        return await self.request("GET", resource, params or (), None, accept=accept)
 
     async def post(
         self,
         resource: str,
-        json: dict | Sequence[tuple[str, str]] | None,
+        *,
+        json: dict,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = (),
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
-        return await self.request("POST", resource, None, json, accept=accept, content_type=content_type)
+        return await self.request("POST", resource, params or (), json, accept=accept, content_type=content_type)
 
     async def put(
         self,
         resource: str,
+        *,
         json: dict,
-        params: dict | Sequence[tuple[str, str]] | None = None,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
-        return await self.request("PUT", resource, params, json, accept=accept, content_type=content_type)
+        return await self.request("PUT", resource, params or (), json, accept=accept, content_type=content_type)
 
     async def post_file(
         self,
@@ -470,8 +474,8 @@ class CumulocityRestClient(object):
                 raise ValueError(f"Unable to perform GET request. Status: {r.status}, Response:\n {await r.text()}")
             return await r.read()
 
-    async def delete(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> dict:
-        return await self.request("DELETE", resource, params)
+    async def delete(self, resource: str, params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None) -> dict:
+        return await self.request("DELETE", resource, params or ())
 
     async def close(self):
         if self._session and not self._session.closed:

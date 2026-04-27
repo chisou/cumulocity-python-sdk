@@ -8,7 +8,6 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.auth import BasicAuth
 
 
-# @pytest.mark.asyncio(loop_scope='function')
 def test(benchmark):
     dotenv.load_dotenv()
 
@@ -22,4 +21,8 @@ def test(benchmark):
         ) as c8y:
             await c8y.get("/inventory/managedObjects?pageSize=100")
 
-    benchmark(lambda: asyncio.run(run()))
+    loop = asyncio.new_event_loop()
+    try:
+        benchmark(lambda: loop.run_until_complete(run()))
+    finally:
+        loop.close()

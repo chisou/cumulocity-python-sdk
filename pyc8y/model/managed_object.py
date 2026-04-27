@@ -1,16 +1,15 @@
 # Copyright (c) 2026 Christoph Souris
 
 from dataclasses import dataclass
-from typing import Self
+from typing import Self, Any
 
+from pyc8y.model.user import User, Users
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     json_property,
     time_property,
     datetime_property,
-    assert_c8y,
-    assert_id,
     tag_property,
 )
 from pyc8y.types import InventoryMeta
@@ -316,24 +315,24 @@ class ManagedObject(CumulocityObject):
         await self._unassign_child("childAdditions", child)
 
     async def _assign_child(self, resource, child: Self | str):
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         child_id = child.id if hasattr(child, "id") else child
         await self.c8y.post(f"{self.object_path}/{resource}", json=ObjectReference.to_json(child_id), accept=None)
 
     async def _unassign_child(self, resource, child: Self | str):
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         child_id = child.id if hasattr(child, "id") else child
         await self.c8y.delete(f"{self.object_path}/{resource}/{child_id}")
 
-    async def _get_resource(self, resource) -> dict | list:
+    async def _get_resource(self, resource) -> Any:
         """Retrieve a sub resource for this managed object.
 
         This will automatically unwrap the JSON's top-level element if there is any.
         """
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         result_json = await self.c8y.get(f"{self.object_path}/{resource}")
         if len(result_json) == 1:
             return next(iter(result_json.values()))
@@ -411,13 +410,14 @@ class Device(ManagedObject):
         assert self.name, "Device name must be defined."
         return f"device_{self.name}"
 
-    # def get_user(self) -> User:  TODO: fix
-    #     """Return the device user.
-    #
-    #     Returns:
-    #         Device's user.
-    #     """
-    #     return Users(self.c8y).get(self.get_username())
+    async def get_user(self) -> User:
+        """Return the device user.
+
+        Returns:
+            Device's user.
+        """
+        self._assert_c8y()
+        return await Users(self.c8y).get(self.get_username())  # type: ignore (asserted)
 
     async def delete(self, with_device_user=False, **_) -> None:
         """Delete this device object within the database.
@@ -511,9 +511,9 @@ class DeviceGroup(ManagedObject):
         Returns:
             The newly created DeviceGroup object
         """
-        assert_id(self)
-        assert_c8y(self)
-        child = await DeviceGroup(c8y=self.c8y, name=name, owner=owner if owner else self.owner, **kwargs).create()
+        self._assert_key()
+        self._assert_c8y()
+        child = await DeviceGroup(c8y=self.c8y, name=name, owner=owner if owner else self.owner, **kwargs).create()  # type: ignore (asserted)
         await self.assign_child_asset(child.id)
         return child
 

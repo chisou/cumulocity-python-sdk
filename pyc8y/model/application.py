@@ -1,19 +1,15 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-# from __future__ import annotations  # need late import for CumulocityClient
-
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Self
 
 import aiohttp
 
-from pyc8y.auth import BasicAuth
 from pyc8y.base_util import first
-from pyc8y.model.tenant_option import TenantOptions, TenantOption
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, assert_c8y
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationsMeta, AsValuesSpec, FileSpec
+from pyc8y.types import ApplicationMeta, AsValuesSpec, FileSpec
 
 
 class Application(CumulocityObject):
@@ -25,7 +21,7 @@ class Application(CumulocityObject):
     See also: https://cumulocity.com/api/#tag/Application-API
     """
 
-    _meta = ApplicationsMeta
+    _meta = ApplicationMeta
 
     EXTERNAL_TYPE = "EXTERNAL"
     HOSTED_TYPE = "HOSTED"
@@ -204,7 +200,7 @@ class Applications(CumulocityResource[Application]):
     See also: https://cumulocity.com/api/#tag/Application-API
     """
 
-    _meta = ApplicationsMeta
+    _meta = ApplicationMeta
     _object_type = Application
 
     async def get(self, application_id: str) -> Application:

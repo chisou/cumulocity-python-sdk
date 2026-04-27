@@ -13,7 +13,7 @@ from pyc8y.model.model_base import (
     json_property,
     map_params,
 )
-from pyc8y.types import SubscriptionsMeta, AsValuesSpec
+from pyc8y.types import SubscriptionMeta, AsValuesSpec
 
 
 class Subscription(CumulocityObject):
@@ -25,7 +25,7 @@ class Subscription(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Subscriptions
     """
 
-    _meta = SubscriptionsMeta
+    _meta = SubscriptionMeta
 
     class Context:
         """Notification context types."""
@@ -131,7 +131,7 @@ class Subscriptions(CumulocityResource[Subscription]):
               https://cumulocity.com/guides/reference/notifications/
     """
 
-    _meta = SubscriptionsMeta
+    _meta = SubscriptionMeta
     _object_type = Subscription
 
     async def get(self, subscription_id: str) -> Subscription:

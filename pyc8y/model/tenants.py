@@ -12,7 +12,7 @@ from pyc8y.model.model_base import (
     map_params,
 )
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import TenantsMeta, AsValuesSpec
+from pyc8y.types import TenantMeta, AsValuesSpec
 
 
 class Tenant(CumulocityObject):
@@ -24,7 +24,7 @@ class Tenant(CumulocityObject):
     See also: https://cumulocity.com/api/core/#tag/Tenants
     """
 
-    _meta = TenantsMeta
+    _meta = TenantMeta
 
     def __init__(
         self,
@@ -111,7 +111,7 @@ class Tenants(CumulocityResource[Tenant]):
     See also: https://cumulocity.com/api/core/#tag/Tenants
     """
 
-    _meta = TenantsMeta
+    _meta = TenantMeta
     _object_type = Tenant
 
     async def get_current(self) -> Tenant:

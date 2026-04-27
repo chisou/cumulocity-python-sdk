@@ -1,69 +1,64 @@
-# Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
-import json
-import os
 import random
 
-from c8y_api.model import InventoryRole, ReadPermission, WritePermission, Permission
+from pyc8y.model.user import InventoryRole, Permission, ReadPermission, WritePermission
+from tests.model.conftest import load_sample_file
+
+SAMPLE_JSON = load_sample_file('inventoryrole.json')
 
 
 def test_parsing():
-    """Verify that parsing a InventoryRole from JSON works."""
-    path = os.path.dirname(__file__) + '/inventoryrole.json'
-    with open(path, encoding='utf-8', mode='rt') as f:
-        role_json = json.load(f)
-    role = InventoryRole.from_json(role_json)
+    """Verify that parsing an InventoryRole from JSON works."""
+    role = InventoryRole.from_json(SAMPLE_JSON)
 
-    assert role.id == role_json['id']
-    assert role.name == role_json['name']
-    assert role.description == role_json['description']
+    assert role.id == SAMPLE_JSON['id']
+    assert role.name == SAMPLE_JSON['name']
+    assert role.description == SAMPLE_JSON['description']
 
     permissions = {p.id: p for p in role.permissions}
-    assert set(permissions.keys()) == {p['id'] for p in role_json['permissions']}
+    assert set(permissions.keys()) == {p['id'] for p in SAMPLE_JSON['permissions']}
 
-    for p in role_json['permissions']:
-        pid = p['id']
-        assert permissions[pid].type == p['type']
-        assert permissions[pid].scope == p['scope']
-        assert permissions[pid].level == p['permission']
+    for p_json in SAMPLE_JSON['permissions']:
+        pid = p_json['id']
+        assert permissions[pid].type == p_json['type']
+        assert permissions[pid].scope == p_json['scope']
+        assert permissions[pid].level == p_json['permission']
 
 
 def test_formatting():
-    """Verify that formatting an InventoryRole as JSON works as expected."""
-    role = InventoryRole(name='SomeRole', description='SomeDescription',
-                         permissions=[ReadPermission(scope=Permission.Scope.ANY),
-                                      WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom')])
-    # hacking in permission ID:
-    for p in role.permissions:
-        p.id = random.randint(1, 999)
+    """Verify that to_json formatting works as expected."""
+    permissions = [
+        ReadPermission(scope=Permission.Scope.ANY),
+        WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom'),
+    ]
+    role = InventoryRole(name='SomeRole', description='SomeDescription', permissions=permissions)
+
+    # Permission is a dict; assign IDs via key access and write back
+    perms = role.permissions
+    for p in perms:
+        p["id"] = random.randint(1, 999)
+    role.permissions = perms
 
     full_json = role.to_json(only_updated=False)
-    assert full_json['name'] == role.name
-    assert full_json['description'] == role.description
+    assert full_json['name'] == 'SomeRole'
+    assert full_json['description'] == 'SomeDescription'
 
     json_permissions = {p['id']: p for p in full_json['permissions']}
     for p in role.permissions:
-        json_permission = json_permissions[p.id]
-        assert json_permission['type'] == p.type
-        assert json_permission['scope'] == p.scope
-        assert json_permission['permission'] == p.level
+        jp = json_permissions[p.id]
+        assert jp['type'] == p.type
+        assert jp['scope'] == p.scope
+        assert jp['permission'] == p.level
 
 
 def test_formatting_diff():
-    """Verify that diff formatting an InventoryRole as JSON works as expected."""
-    role = InventoryRole(name='SomeRole', description='SomeDescription',
-                         permissions=[ReadPermission(scope=Permission.Scope.ANY),
-                                      WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom')])
-    # hacking in permission ID:
-    for p in role.permissions:
-        p.id = random.randint(1, 999)
+    """Verify that to_json(only_updated=True) returns only staged changes."""
+    role = InventoryRole.from_json(SAMPLE_JSON)
 
-    # writing an update and building diff json
     role.name = "NewName"
     diff_json = role.to_json(only_updated=True)
-    # -> name is updated in JSON
-    assert diff_json['name'] == role.name
-    # -> description is not in the diff
+
+    assert diff_json['name'] == 'NewName'
     assert 'description' not in diff_json
-    # -> all permissions are always there
-    assert len(diff_json['permissions']) == len(role.permissions)
+    assert 'permissions' not in diff_json

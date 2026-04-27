@@ -4,23 +4,19 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Self, AsyncGenerator, Any, AsyncIterator, Sequence, TypeVar
+from typing import Any, AsyncIterator, Sequence, TypeVar
 
 from c8y_api.model import JsonMatcher
-from pyc8y.rest import CumulocityRestClient, BatchError
+from pyc8y.rest import BatchError
 from pyc8y.base_util import encode_odata_query_value, sanitize_page_size, flatten
 from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
 from pyc8y.model.model_base import (
-    CumulocityObject,
     json_property,
-    time_property,
     datetime_property,
-    assert_c8y,
-    assert_id,
-    tag_property,
     CumulocityResource,
     map_params,
-    CO,
+    run_batched,
+    ensure_ids,
 )
 from pyc8y.types import MimeType, InventoryMeta, AsValuesSpec
 
@@ -177,8 +173,8 @@ class Availability:
 #         Returns:
 #             New instance built from latest data.
 #         """
-#         assert_c8y(self)
-#         assert_id(self)
+#         self._assert_c8y()
+#         self._assert_key()
 #         return type(self)._build(
 #             json=await self.c8y.get(Inventory.build_object_path(self.id)),
 #             c8y=self.c8y,
@@ -318,14 +314,14 @@ class Availability:
 #         await self._unassign_child("childAdditions", child)
 #
 #     async def _assign_child(self, resource, child: ManagedObject | str):
-#         assert_c8y(self)
-#         assert_id(self)
+#         self._assert_c8y()
+#         self._assert_key()
 #         child_id = child.id if hasattr(child, "id") else child
 #         await self.c8y.post(f"{self.object_path}/{resource}", json=ObjectReference.to_json(child_id), accept=None)
 #
 #     async def _unassign_child(self, resource, child: ManagedObject | str):
-#         assert_c8y(self)
-#         assert_id(self)
+#         self._assert_c8y()
+#         self._assert_key()
 #         child_id = child.id if hasattr(child, "id") else child
 #         await self.c8y.delete(f"{self.object_path}/{resource}/{child_id}")
 #
@@ -334,8 +330,8 @@ class Availability:
 #
 #         This will automatically unwrap the JSON's top-level element if there is any.
 #         """
-#         assert_c8y(self)
-#         assert_id(self)
+#         self._assert_c8y()
+#         self._assert_key()
 #         result_json = await self.c8y.get(f"{self.object_path}/{resource}")
 #         if len(result_json) == 1:
 #             return next(iter(result_json.values()))
@@ -515,8 +511,8 @@ class Availability:
 #         Returns:
 #             The newly created DeviceGroup object
 #         """
-#         assert_id(self)
-#         assert_c8y(self)
+#         self._assert_key()
+#         self._assert_c8y()
 #         child = await DeviceGroup(c8y=self.c8y, name=name, owner=owner if owner else self.owner, **kwargs).create()
 #         await self.assign_child_asset(child.id)
 #         return child
@@ -937,7 +933,7 @@ class Inventory(CumulocityResource[MO]):
         result_json = await self.c8y.get(f"{self.build_object_path(mo_id)}/supportedMeasurements")
         return result_json["c8y_SupportedMeasurements"]
 
-    async def get_supported_series(self, mo_id: str) -> [str]:
+    async def get_supported_series(self, mo_id: str) -> list[str]:
         """Retrieve all supported measurement series names of a specific
         managed object.
 
@@ -1155,17 +1151,17 @@ class DeviceGroupInventory(Inventory):
 
     async def get_count(  # noqa (changed signature)
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
-        query: str = None,
-        ids: list[str] = None,
-        parent: str = None,
-        type: str = None,
+        query: str | None = None,
+        ids: list[str] | None = None,
+        parent: str | None = None,
+        type: str | None = None,
         fragment: str = None,
-        fragments: list[str] = None,
-        name: str = None,
-        owner: str = None,
-        text: str = None,
+        fragments: list[str] | None = None,
+        name: str | None = None,
+        owner: str | None = None,
+        text: str | None = None,
         **kwargs,
     ) -> int:
         # pylint: disable=arguments-differ, arguments-renamed
@@ -1257,6 +1253,47 @@ class DeviceGroupInventory(Inventory):
             as_values=as_values,
             workers=workers,
             **kwargs,
+        )
+
+    async def assign_children(self, root_id: str, *child_ids: str, workers: int | None = None) -> None:
+        """Link child groups to a device group.
+
+        Args:
+            root_id (str): ID of the root device group.
+            *child_ids (str): IDs of the child device groups to assign.
+            workers (int|None): Number of parallel requests; sequential if None.
+        """
+        path = f"{self.build_object_path(root_id)}/childAssets"
+        await run_batched(
+            list(child_ids),
+            workers,
+            lambda child_id: self.c8y.post(path, json=ObjectReference.to_json(child_id), accept=None),
+        )
+
+    async def unassign_children(self, root_id: str, *child_ids: str) -> None:
+        """Unlink child groups from a device group.
+
+        Args:
+            root_id (str): ID of the root device group.
+            *child_ids (str): IDs of the child device groups to unassign.
+        """
+        refs = {"references": [ObjectReference.to_json(child_id) for child_id in child_ids]}
+        await self.c8y.request("DELETE", f"{self.build_object_path(root_id)}/childAssets", json=refs)
+
+    async def delete_trees(self, *groups: DeviceGroup | str, workers: int | None = None) -> None:
+        """Delete one or more device group trees from the database.
+
+        Child groups are deleted recursively. This is equivalent to using
+        the `cascade=true` parameter in the Cumulocity REST API.
+
+        Args:
+            *groups (DeviceGroup|str): Groups (or IDs) to delete.
+            workers (int|None): Number of parallel requests; sequential if None.
+        """
+        await run_batched(
+            ensure_ids(flatten(groups)),
+            workers,
+            lambda x: self.c8y.request("DELETE", self.build_object_path(x), params={"cascade": "true"}),
         )
 
 

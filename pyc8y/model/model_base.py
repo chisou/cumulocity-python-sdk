@@ -12,6 +12,8 @@ from typing import (
     AsyncIterator,
     Awaitable,
     Sequence,
+    Protocol,
+    overload,
 )
 
 from pyc8y.rest import CumulocityRestClient, BatchError
@@ -42,18 +44,7 @@ from pyc8y.model.matcher import JsonMatcher
 from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec
 
 CO = TypeVar("CO", bound="CumulocityObject")
-
-
-def assert_c8y(obj):
-    """Assert that a model object has a Cumulocity connection."""
-    if not obj.c8y:
-        raise ValueError("Cumulocity connection reference must be set to allow direct database access.")
-
-
-def assert_id(obj):
-    """Assert that a model object has a Cumulocity connection."""
-    if not obj.id:
-        raise ValueError("The object ID must be set to allow direct object access.")
+T = TypeVar("T")
 
 
 def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
@@ -76,7 +67,7 @@ def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime 
     except ValueError:
         raise ValueError(f"Unable to convert to datetime{param_name()}.")
 
-
+# TODO: Bit unelegant that it might return None, no? Small if around for each invocation?
 def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedelta | None:
     def param_name():
         return f" ({name})" if name else ""
@@ -157,15 +148,32 @@ def expand_dotted(kwargs):
     return result
 
 
-def json_property(key: str, read_only=False) -> property:
-    def getter(self):
-        return self._json[key]
+class json_property(Generic[T]):
+    """Descriptor for a JSON-backed property.
 
-    def setter(self, value):
+    Supports an optional type parameter for IDE type inference:
+        name = json_property[str]("name")
+    """
+
+    def __init__(self, key: str, read_only: bool = False) -> None:
+        self._key = key
+        self._read_only = read_only
+
+    @overload
+    def __get__(self, obj: None, objtype: type) -> Self: ...
+    @overload
+    def __get__(self, obj: Any, objtype: type | None = None) -> T: ...
+
+    def __get__(self, obj, objtype=None):
+        if obj is None:
+            return self
+        return obj._json.get(self._key)
+
+    def __set__(self, obj: Any, value: T) -> None:
+        if self._read_only:
+            raise AttributeError(f"cannot set read-only property '{self._key}'")
         if value is not None:
-            self._staged_json[key] = value
-
-    return property(getter) if read_only else property(getter, setter)
+            obj._staged_json[self._key] = value
 
 
 def id_property(key: str, read_only=False) -> property:
@@ -203,6 +211,13 @@ def time_property(key: str, read_only=False) -> property:
 def datetime_property(key: str) -> property:
     def getter(self):
         return to_datetime(self._json[key])
+
+    return property(getter)
+
+
+def references_property(collection: str, item: str) -> property:
+    def getter(self):
+        return {r[item]["id"] for r in self._json.get(collection, {}).get("references", [])}
 
     return property(getter)
 
@@ -311,45 +326,21 @@ def encode(value: Any | None) -> Sequence | str | None:
     raise ValueError(f"Unexpected value type '{type(value)}'. No idea how to encode.")
 
 
-class AttrDict:
-    """Minimal implementation.
-    Known issues:
-        - breaks identity checks `obj.a is obj.a` (because AttrDict is instantiated on each access.
-        - doesn't have any "internal attribute" check, so technically `obj._d = something` would destroy the instance
+class JsonObject(dict):
+    """Base class for JSON structures, wrapping standard dicts.
+
+    This implementation features virtual `_json` and `_staged_json`
+    attributes which enables use of the property helpers.
     """
+    @property
+    def _json(self) -> dict:
+        return self
 
-    __slots__ = ("_d", "_cb")
+    @property
+    def _staged_json(self) -> dict:
+        return self
 
-    def __init__(self, d: Mapping, cb: Callable | None):
-        object.__setattr__(self, "_d", d)
-        object.__setattr__(self, "_cb", cb)
-
-    def __getattr__(self, key):
-        try:
-            return self[key]
-        except KeyError:
-            raise AttributeError(key)
-
-    def __getitem__(self, key):
-        if key in self._d:
-            value = self._d[key]
-        else:
-            pascal_key = to_pascal_case(key)
-            if pascal_key in self._d:
-                value = self._d[pascal_key]
-            else:
-                raise AttributeError(f"No such attribute: {key} (or {pascal_key})")
-
-        if isinstance(value, Mapping):
-            value = AttrDict(value, self._cb)
-        return value
-
-    def __setattr__(self, key, value):
-        self._d[key] = value
-        if self._cb is not None:
-            self._cb()
-
-
+ 
 class CumulocityObject:
     """Base class for all Cumulocity database objects."""
 
@@ -376,6 +367,10 @@ class CumulocityObject:
     @property
     def object_path(self) -> str:
         return self._meta.build_object_path(self.id)
+
+    @property
+    def resource_path(self) -> str:
+        return self._meta.resource_path
 
     def __repr__(self) -> str:
         return "".join(
@@ -522,10 +517,10 @@ class CumulocityObject:
             A fresh object representing what was created within the database;
             this includes the Cumulocity ID.
         """
-        assert_c8y(self)
+        self._assert_c8y()
         return self._build(
             json=await self.c8y.post(
-                self._meta.resource_path,
+                self.resource_path,
                 json=self.to_json(),
                 accept=self._meta.object_mime_type,
             ),
@@ -541,8 +536,8 @@ class CumulocityObject:
             A fresh object representing the updated state within the database.
         """
         # TODO: to update itself - it would need to update the ._json variable?
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         object_json = await self.c8y.put(
             self.object_path,
             json=self.to_json(True),
@@ -564,7 +559,7 @@ class CumulocityObject:
             A fresh object representing the updated object's state within
             the database.
         """
-        assert_c8y(self)
+        self._assert_c8y()
         return self._build(
             json=await self.c8y.put(
                 self._meta.build_object_path(other_id),
@@ -576,13 +571,13 @@ class CumulocityObject:
         )
 
     async def _delete(self, **params):
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         await self.c8y.delete(self.object_path, params=params)
 
     async def _reload(self, inplace: bool = False) -> Self:
-        assert_c8y(self)
-        assert_id(self)
+        self._assert_c8y()
+        self._assert_key()
         object_json = await self.c8y.get(
             self.object_path,
             accept=self._meta.object_mime_type,
@@ -595,6 +590,20 @@ class CumulocityObject:
     async def delete(self, **_) -> None:  # allow override with parameters
         """Delete the object within the database."""
         await self._delete()
+
+    def _assert_c8y(self):
+        """Assert that a model object has a Cumulocity connection."""
+        if not self.c8y:
+            raise ValueError("Cumulocity connection reference must be set to allow direct database access.")
+
+    def _assert_key(self):
+        """Assert that a model object has a database key (e.g. a Cumulocity ID)."""
+        if not self.id:
+            raise ValueError("The object ID must be set to allow direct object access.")
+
+
+class PageFetcher(Protocol):
+    async def __call__(self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_) -> list: ...
 
 
 class CumulocityResource(Generic[CO]):
@@ -619,8 +628,7 @@ class CumulocityResource(Generic[CO]):
     def collection_mime_type(self) -> str:
         return self._meta.collection_mime_type
 
-    @classmethod
-    def build_object_path(cls, object_id: str) -> str:
+    def build_object_path(self, object_id: str) -> str:
         """Build the path to a specific object of this resource.
 
         Args:
@@ -629,7 +637,7 @@ class CumulocityResource(Generic[CO]):
         Returns:
             The relative path to the object within Cumulocity.
         """
-        return cls._meta.build_object_path(object_id)
+        return self._meta.build_object_path(object_id)
 
     async def _get(self, object_id: str, **kwargs) -> CO:
         return self._object_type.from_json(
@@ -670,6 +678,13 @@ class CumulocityResource(Generic[CO]):
             )
         return result_json["statistics"]["totalPages"]
 
+    async def _fetch_page(self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_) -> list:
+        if expression:
+            result = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page}")
+        else:
+            result = await self.c8y.get(self.resource_path, params=(*(params or ()), ("currentPage", str(page))))
+        return result[self._meta.collection_name]
+
     async def _iterate(
         self,
         *,
@@ -681,6 +696,7 @@ class CumulocityResource(Generic[CO]):
         exclude: str | JsonMatcher | None = None,
         as_values: AsValuesSpec | None = None,
         workers: int | None = None,
+        fetch_page: PageFetcher | None = None,
     ) -> AsyncIterator[CO | Any | tuple[CO]]:
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
@@ -695,12 +711,7 @@ class CumulocityResource(Generic[CO]):
                 raise ValueError("No default matcher defined (client-side filtering not supported?)")
             exclude = self.default_matcher(exclude)
 
-        async def fetch_page(page: int) -> list:
-            if expression:
-                result = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page}")
-            else:
-                result = await self.c8y.get(self.resource_path, (*params, ("currentPage", page)))
-            return result[self._meta.collection_name]
+        _fetch = fetch_page or self._fetch_page
 
         # parallel page fetching only makes sense when not pinned to a single page
         use_workers = workers and workers > 1 and not page_number
@@ -708,9 +719,13 @@ class CumulocityResource(Generic[CO]):
         while True:
             # fetch one batch of pages — either `workers` pages in parallel or one sequentially
             if use_workers:
-                all_pages = await asyncio.gather(*[fetch_page(current_page + i) for i in range(workers)])
+                all_tasks = [
+                    _fetch(current_page + i, expression=expression, params=params)
+                    for i in range(workers)
+                ]
+                all_pages = await asyncio.gather(*all_tasks)
             else:
-                all_pages = [await fetch_page(current_page)]
+                all_pages = [await _fetch(current_page, expression=expression, params=params)]
 
             done = False
             for obj_jsons in all_pages:

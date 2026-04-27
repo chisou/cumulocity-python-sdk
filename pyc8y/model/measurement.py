@@ -18,7 +18,7 @@ from pyc8y.model.model_base import (
     map_params,
 )
 from pyc8y.model.model_util import to_datetime
-from pyc8y.types import MeasurementsMeta, AsValuesSpec
+from pyc8y.types import MeasurementMeta, AsValuesSpec
 
 
 class Units(StrEnum):
@@ -597,7 +597,7 @@ class Series(dict):
 
 
 class Measurement(CumulocityObject):
-    _meta = MeasurementsMeta
+    _meta = MeasurementMeta
 
     def __init__(
         self,
@@ -688,7 +688,7 @@ class Measurement(CumulocityObject):
 
 
 class Measurements(CumulocityResource[Measurement]):
-    _meta = MeasurementsMeta
+    _meta = MeasurementMeta
     _object_type = Measurement
 
     async def get(self, id: str) -> Measurement:

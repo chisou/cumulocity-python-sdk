@@ -11,7 +11,6 @@ from pyc8y.model.model_base import (
     datetime_property,
     id_property,
     CumulocityResource,
-    assert_c8y,
     map_params,
     time_property,
 )
@@ -485,7 +484,7 @@ class Alarms(CumulocityResource[Alarm]):
             if not expression
             else ()
         )
-        await self.c8y.delete(self._meta.resource_path, params=params)
+        await self.c8y.delete(self.resource_path, params=params)
 
     async def count(
         self,
@@ -543,7 +542,7 @@ class Alarms(CumulocityResource[Alarm]):
         """
         # the count endpoint returns a plain int, not JSON, but it still can be parsed by orjson
         if expression:
-            return await self.c8y.get(f"{self._meta.resource_path}/count?{expression}", accept="text/plain")
+            return await self.c8y.get(f"{self.resource_path}/count?{expression}", accept="text/plain")
         params = map_params(
             type=type,
             source=source,
@@ -566,7 +565,7 @@ class Alarms(CumulocityResource[Alarm]):
             with_source_additions=with_source_additions,
             **kwargs,
         )
-        return await self.c8y.get(f"{self._meta.resource_path}/count", params=params, accept="text/plain")
+        return await self.c8y.get(f"{self.resource_path}/count", params=params, accept="text/plain")
 
     async def get_count(
         self,
@@ -752,7 +751,7 @@ class Alarms(CumulocityResource[Alarm]):
         )
         alarm_json = alarm if isinstance(alarm, dict) else alarm.to_json(only_updated=True)
         await self.c8y.put(
-            self._meta.resource_path,
+            self.resource_path,
             params=params,
             json=alarm_json,
             content_type=self._meta.collection_mime_type,
