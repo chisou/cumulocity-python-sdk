@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Sequence
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:
@@ -60,9 +60,10 @@ def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
             )
             for path in paths
         )
-    return get_by_path(
-        data, paths[0] if isinstance(paths, tuple) else paths, paths[1] if isinstance(paths, tuple) else None
-    )
+    assert isinstance(paths, (tuple, str))
+    path = paths[0] if isinstance(paths, tuple) else paths
+    default = paths[1] if isinstance(paths, tuple) else None
+    return get_by_path(data, path, default)
 
 
 def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:

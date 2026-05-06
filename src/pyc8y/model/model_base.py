@@ -13,7 +13,7 @@ from typing import (
     Awaitable,
     Sequence,
     Protocol,
-    overload,
+    overload, Literal,
 )
 
 from pyc8y.rest import CumulocityRestClient, BatchError
@@ -649,6 +649,27 @@ class CumulocityResource(Generic[CO]):
             c8y=self.c8y,  # inject c8y instance
         )
 
+    @overload
+    async def _get_last(self, expression: str | None, params: dict | Sequence[tuple[str, Any]] | None = None ) -> CO | None: ...
+    @overload
+    async def _get_last(self,
+            as_values: str | tuple[str, Any] | None = None
+    ) -> Any | None: ...
+    @overload
+    async def _get_last(
+            self,
+            expression: str | None,
+            params: dict | Sequence[tuple[str, Any]] | None = None,
+            as_values: list | None = None,
+    ) -> list[Any] | None: ...
+    @overload
+    async def _get_last(
+        self,
+        expression: str | None,
+        params: dict | Sequence[tuple[str, Any]] | None = None,
+        as_values: AsValuesSpec | None = None,
+    ) -> CO | Any | tuple[Any] | None:
+        ...
     async def _get_last(
         self,
         expression: str | None,
@@ -660,7 +681,7 @@ class CumulocityResource(Generic[CO]):
                 f"{self.resource_path}?{expression}&currentPage=1&pageSize=1", accept=self._meta.object_mime_type
             )
         else:
-            result_json = await self.c8y.get(self.resource_path, params, accept=self._meta.collection_mime_type)
+            result_json = await self.c8y.get(self.resource_path, params=params, accept=self._meta.collection_mime_type)
         results = result_json[self._meta.collection_name]
         if not results:
             return None
@@ -674,7 +695,7 @@ class CumulocityResource(Generic[CO]):
         else:
             # params are not merged, but we can be sure that page size etc. are not part of params
             result_json = await self.c8y.get(
-                self.resource_path, (*params, ("pageSize", "1"), ("withTotalPages", "true"))
+                self.resource_path, params=(*params, ("pageSize", "1"), ("withTotalPages", "true"))
             )
         return result_json["statistics"]["totalPages"]
 
@@ -756,7 +777,7 @@ class CumulocityResource(Generic[CO]):
     async def _create_bulk(self, *objects: CO) -> None:
         objects = flatten(objects)  # not documented, but good to have
         bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
-        await self.c8y.post(self.resource_path, bulk_json, content_type=self.collection_mime_type)
+        await self.c8y.post(self.resource_path, json=bulk_json, content_type=self.collection_mime_type)
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
@@ -771,7 +792,7 @@ class CumulocityResource(Generic[CO]):
             ensure_ids(flatten(objects)),
             workers,
             lambda x: self.c8y.put(
-                self.build_object_path(x), model_json, content_type=self._meta.object_mime_type, accept=None
+                self.build_object_path(x), json=model_json, content_type=self._meta.object_mime_type, accept=None
             ),
         )
 

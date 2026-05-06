@@ -6,7 +6,6 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any, AsyncIterator, Sequence, TypeVar
 
-from c8y_api.model import JsonMatcher
 from pyc8y.rest import BatchError
 from pyc8y.base_util import encode_odata_query_value, sanitize_page_size, flatten
 from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
@@ -18,7 +17,7 @@ from pyc8y.model.model_base import (
     run_batched,
     ensure_ids,
 )
-from pyc8y.types import MimeType, InventoryMeta, AsValuesSpec
+from pyc8y.types import InventoryMeta, AsValuesSpec
 
 
 @dataclass

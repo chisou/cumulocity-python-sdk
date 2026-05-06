@@ -1,5 +1,12 @@
 # Note: these are the development requirements for use with pip
 # the libraries dependencies are defined in pyprojjupyterect.toml
+aiohttp
+orjson
+cachetools
+certifi
+
+ujson
+deprecated
 PyYAML
 pytest
 pytest-asyncio
