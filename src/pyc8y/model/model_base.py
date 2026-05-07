@@ -32,7 +32,7 @@ from pyc8y.model.model_util import (
 # trying to import various matchers that need external libraries
 try:
     from pyc8y.model.matcher import PydfMatcher as DefaultMatcher
-except ImportError:
+except ImportError as e:
     try:
         from pyc8y.model.matcher import JmesPathMatcher as DefaultMatcher
     except ImportError:

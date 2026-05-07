@@ -2,7 +2,7 @@
 
 import jmespath as jmespath_lib
 
-from c8y_api.model.matcher._matcher import JsonMatcher
+from pyc8y.model.matcher import JsonMatcher
 
 
 class JmesPathMatcher(JsonMatcher):

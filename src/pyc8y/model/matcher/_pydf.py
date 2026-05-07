@@ -2,7 +2,7 @@
 
 from pydictdisplayfilter.display_filters import DictDisplayFilter
 
-from c8y_api.model.matcher._matcher import JsonMatcher
+from pyc8y.model.matcher import JsonMatcher
 
 
 class PydfMatcher(JsonMatcher):

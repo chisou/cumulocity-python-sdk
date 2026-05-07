@@ -23,7 +23,7 @@ from ._matcher import (
 try:
     import pydictdisplayfilter as _pydf
     from ._pydf import PydfMatcher, pydf
-except ImportError:
+except ImportError as e:
     pass
 
 try:
