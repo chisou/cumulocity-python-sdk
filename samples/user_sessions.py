@@ -8,41 +8,44 @@ When writing a microservice for Cumulocity you always have two options to
 get access to Cumulocity:
 
   a) Use a technical user' context. This is injected into the microservice
-     via environment variables that the c8y_api automatically deals with.
+     via environment variables that pyc8y automatically deals with.
 
   b) Use the context of whatever user accesses the microservice. The
      credentials for this context must be extracted from the inbound request.
 
 The SimpleCumulocityApp and MultiTenantCumulocityApp classes can be used to
-get a user specific CumulocityApi instance using the get_user_instance
+get a user specific CumulocityClient instance using the get_user_instance
 function as illustrated below. This function will automatically extract the
 authorization information within the inbound request's headers and build a
-CumulocityApi instance based on that.
+CumulocityClient instance based on that.
 """
 
+import uvicorn
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Request
 
-from c8y_api.app import SimpleCumulocityApp
+from pyc8y.app import SimpleCumulocityApp
 
 load_dotenv()
-app = Flask(__name__)
+app = FastAPI()
 c8y = SimpleCumulocityApp()
 
 
-@app.route("/info")
-def info():
+@app.get("/info")
+async def info(request: Request):
     """Return user's username and devices they have access to."""
     # The user's credentials (to access Cumulocity and to access the
     # microservice) are part of the inbound request's headers. This is
     # resolved automatically when using the get_user_instance function.
-    user_c8y = c8y.get_user_instance(request.headers)
-    devices_json = [{'name': d.name,
-                     'id': d.id,
-                     'type': d.type} for d in user_c8y.device_inventory.get_all()]
-    info_json = {'username': user_c8y.username,
-                 'devices': devices_json}
-    return jsonify(info_json)
+    user_c8y = await c8y.get_user_instance(request.headers)
+    return {
+        'username': user_c8y.username,
+        'devices': [
+            {'name': d.name, 'id': d.id, 'type': d.type}
+            for d in await user_c8y.device_inventory.get_all()
+        ],
+    }
 
 
-app.run()
+if __name__ == "__main__":
+    uvicorn.run(app)

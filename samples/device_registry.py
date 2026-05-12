@@ -1,70 +1,88 @@
 # Copyright (c) 2025 Cumulocity GmbH
 # pylint: disable=broad-except
 
+import asyncio
 import logging
+
 import dotenv
 
-from c8y_api import CumulocityDeviceRegistry, CumulocityApi
-from c8y_api.model import Device, Event
+from pyc8y.auth import BasicAuth
+from pyc8y.client import CumulocityClient
+from pyc8y.model import Device, Event
+from pyc8y.registry import DeviceRegistryClient
 
 
 DEVICE_ID = 'BengalBonobo18'
 
-# load environment from a .env file
-env = dotenv.dotenv_values()
-C8Y_BASEURL = env['C8Y_BASEURL']
-C8Y_TENANT = env['C8Y_TENANT']
-C8Y_USER = env['C8Y_USER']
-C8Y_PASSWORD = env['C8Y_PASSWORD']
-C8Y_DEVICEBOOTSTRAP_TENANT = env['C8Y_DEVICEBOOTSTRAP_TENANT']
-C8Y_DEVICEBOOTSTRAP_USER = env['C8Y_DEVICEBOOTSTRAP_USER']
-C8Y_DEVICEBOOTSTRAP_PASSWORD = env['C8Y_DEVICEBOOTSTRAP_PASSWORD']
+
+async def main():
+    # load environment from a .env file
+    env = dotenv.dotenv_values()
+    c8y_baseurl = env['C8Y_BASEURL']
+    c8y_tenant = env['C8Y_TENANT']
+    c8y_user = env['C8Y_USER']
+    c8y_password = env['C8Y_PASSWORD']
+    bootstrap_tenant = env['C8Y_DEVICEBOOTSTRAP_TENANT']
+    bootstrap_user = env['C8Y_DEVICEBOOTSTRAP_USER']
+    bootstrap_password = env['C8Y_DEVICEBOOTSTRAP_PASSWORD']
+
+    logger = logging.getLogger('com.cumulocity.test.device_registry')
+    logging.basicConfig()
+    logger.setLevel('INFO')
+
+    # a regular Cumulocity connection to create/approve device requests and such
+    c8y = CumulocityClient(
+        base_url=c8y_baseurl,
+        tenant_id=c8y_tenant,
+        auth=BasicAuth(f"{c8y_tenant}/{c8y_user}", c8y_password),
+    )
+    # a special Cumulocity 'device registry' client to get device credentials
+    registry = DeviceRegistryClient(
+        base_url=c8y_baseurl,
+        tenant_id=bootstrap_tenant,
+        auth=BasicAuth(f"{bootstrap_tenant}/{bootstrap_user}", bootstrap_password),
+    )
+
+    async with c8y, registry:
+        # 1) create device request
+        await c8y.device_inventory.request(DEVICE_ID)
+        logger.info(f"Device '{DEVICE_ID}' requested. Approve in Cumulocity now.")
+
+        # 2) await device credentials (approval within Cumulocity)
+        device_c8y = None
+        try:
+            creds = await registry.await_credentials(DEVICE_ID, timeout='5h', pause='5s')
+            device_c8y = CumulocityClient(
+                base_url=c8y_baseurl,
+                tenant_id=creds.tenant_id,
+                auth=BasicAuth(f"{creds.tenant_id}/{creds.username}", creds.password),
+            )
+        except Exception as e:
+            logger.error("Got error", exc_info=e)
+            return
+
+        async with device_c8y:
+            # 3) Create a digital twin
+            device = await Device(c8y=device_c8y, name=DEVICE_ID, type='c8y_TestDevice',
+                                  c8y_RequiredAvailability={"responseInterval": 10}).create()
+            logger.info(f"Device created: '{device.name}', ID: {device.id}, Owner:{device.owner}")
+
+            # 4) send an event
+            await Event(c8y=device_c8y, type='c8y_TestEvent', time='now',
+                        source=device.id, text="Test event").create()
+
+            # 5) check device's availability status
+            try:
+                availability = await c8y.get(f'/inventory/managedObjects/{device.id}/availability')
+                logger.info(f"Device availability: {availability}")
+            except KeyError:
+                logger.error("Device availability not defined!")
+
+            # 6) cleanup device
+            await device.delete()
+            logger.info(f"Device '{DEVICE_ID}' deleted.")
+            await c8y.users.delete(device.owner)
+            logger.info(f"User '{device.owner}' deleted.")
 
 
-logger = logging.getLogger('com.cumulocity.test.device_registry')
-logging.basicConfig()
-logger.setLevel('INFO')
-
-# a regular Cumulocity connection to create/approve device requests and such
-c8y = CumulocityApi(base_url=C8Y_BASEURL,
-                    tenant_id=C8Y_TENANT,
-                    username=C8Y_USER,
-                    password=C8Y_PASSWORD)
-# a special Cumulocity 'device registry' connection to get device credentials
-registry = CumulocityDeviceRegistry(base_url=C8Y_BASEURL,
-                                    tenant_id=C8Y_DEVICEBOOTSTRAP_TENANT,
-                                    username=C8Y_DEVICEBOOTSTRAP_USER,
-                                    password=C8Y_DEVICEBOOTSTRAP_PASSWORD)
-
-# 1) create device request
-c8y.device_inventory.request(DEVICE_ID)
-logger.info(f"Device '{DEVICE_ID}' requested. Approve in Cumulocity now.")
-
-# 2) await device credentials (approval within Cumulocity)
-device_c8y = None
-try:
-    device_c8y = registry.await_connection(DEVICE_ID, timeout='5h', pause='5s')
-except Exception as e:
-    logger.error("Got error", exc_info=e)
-
-# 3) Create a digital twin
-device = Device(c8y=device_c8y, name=DEVICE_ID, type='c8y_TestDevice',
-                c8y_RequiredAvailability={"responseInterval": 10}).create()
-logger.info(f"Device created: '{device.name}', ID: {device.id}, Owner:{device.owner}")
-
-# 4) send an event
-event = Event(c8y=device_c8y, type='c8y_TestEvent', time='now',
-              source=device.id, text="Test event").create()
-
-# 5) check device's availability status
-try:
-    availability = c8y.get(f'/inventory/managedObjects/{device.id}/availability')
-    logger.info(f"Device availability: {availability}")
-except KeyError:
-    logger.error("Device availability not defined!")
-
-# 6) cleanup device
-device.delete()
-logger.info(f"Device '{DEVICE_ID}' deleted.")
-c8y.users.delete(device.owner)
-logger.info(f"User '{device.owner}' deleted.")
+asyncio.run(main())
