@@ -119,7 +119,7 @@ class BearerAuth(Auth):
         return cls(auth_value)
 
     def get_username(self) -> str:
-        return self.token  # TODO: read from JWT token
+        return JWT(self.token).username
 
     def get_tenant_id(self) -> str:
         try:
