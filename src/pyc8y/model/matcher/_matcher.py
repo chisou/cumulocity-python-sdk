@@ -12,12 +12,12 @@ class JsonMatcher(ABC):
     JSON Matchers are used to filter the results of a database query on
     client-side.
 
-    See also c8y_api._base.CumulocityResource._iterate
+    See also pyc8y.model._base.CumulocityResource._iterate
     """
 
     def __init__(self, expression: str, warn_on_error: bool = False):
         self.expression = expression
-        self.log = logging.getLogger("c8y_api.model.matcher")
+        self.log = logging.getLogger("pyc8y.model.matcher")
         self.warn_on_error = warn_on_error
 
     def __repr__(self):
