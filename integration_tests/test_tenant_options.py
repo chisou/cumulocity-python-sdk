@@ -81,7 +81,8 @@ async def test_get_all(live_c8y: CumulocityClient):
     for category, xs in by_category.items():
         options_mapped = await live_c8y.tenant_options.get_values(category)
         assert len(options_mapped) == len(by_category[category])
-        assert set(options_mapped.keys()) == {x.key for x in xs}
+        # the API behave inconsistently, hence we remove the credentials. prefix if present
+        assert {x.removeprefix("credentials.") for x in options_mapped.keys()} == {x.key for x in xs}
 
 
 async def test_set_value_and_update_values_and_delete(live_c8y: CumulocityClient):
