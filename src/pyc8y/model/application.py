@@ -8,7 +8,7 @@ from pyc8y.base_util import first
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import CumulocityObject, CumulocityResource, JsonObject, json_property, map_params, resolve_page_size
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationMeta, FileSpec
+from pyc8y.types import ApplicationMeta, FileSpec, MimeType
 
 
 class Application(CumulocityObject):
@@ -231,7 +231,7 @@ class Applications(CumulocityResource[Application]):
 
         See also: TenantOptions.get_values to read tenant options
         """
-        return await self.c8y.get("application/currentApplication/settings")
+        return await self.c8y.get("application/currentApplication/settings", accept=MimeType.TENANT_OPTION)
 
     async def get_current_subscriptions(self) -> list[ApplicationSubscription]:
         """Query the database for subscriptions of the current application.
@@ -241,7 +241,7 @@ class Applications(CumulocityResource[Application]):
         Returns:
             List of ApplicationSubscription instances.
         """
-        result = await self.c8y.get("application/currentApplication/subscriptions")
+        result = await self.c8y.get("application/currentApplication/subscriptions", accept=MimeType.APPLICATION_USER_COLLECTION)
         return [ApplicationSubscription(x) for x in result["users"]]
 
     def select(

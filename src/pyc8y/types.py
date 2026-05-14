@@ -19,6 +19,7 @@ class MimeType(StrEnum):
     ALARM_COLLECTION = "application/vnd.com.nsn.cumulocity.alarmcollection+json"
     APPLICATION = "application/vnd.com.nsn.cumulocity.application+json"
     APPLICATION_COLLECTION = "application/vnd.com.nsn.cumulocity.applicationcollection+json"
+    APPLICATION_USER_COLLECTION = "application / vnd.com.nsn.cumulocity.applicationusercollection+json"
     AUDIT_RECORD = "application/vnd.com.nsn.cumulocity.auditrecord+json"
     AUDIT_RECORD_COLLECTION = "application/vnd.com.nsn.cumulocity.auditrecordcollection+json"
     BULK_OPERATION = "application/vnd.com.nsn.cumulocity.bulkoperation+json"
