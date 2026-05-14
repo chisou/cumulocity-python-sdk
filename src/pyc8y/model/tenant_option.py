@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
-from typing import AsyncIterator, Any, Self
+from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -8,9 +8,10 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     map_params,
+    resolve_page_size,
     run_batched,
 )
-from pyc8y.types import TenantOptionMeta, AsValuesSpec
+from pyc8y.types import TenantOptionMeta
 
 
 def build_category_resource(category: str) -> str:
@@ -75,11 +76,16 @@ class TenantOption(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh TenantOption instance representing the updated option.
+            The updated TenantOption. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
         self._assert_c8y()
         if not self.category or not self.key:
@@ -90,11 +96,18 @@ class TenantOption(CumulocityObject):
             accept=self._meta.object_mime_type,
             content_type=self._meta.object_mime_type,
         )
-        return self._build(result_json, c8y=self.c8y)
+        if copy:
+            return self._build(result_json, c8y=self.c8y)
+        self._source_json = result_json
+        self._staged_json = {}
+        return self
 
-    async def reload(self, inplace: bool = False) -> Self:
+    async def reload(self, copy: bool = False) -> Self:
         """Reload this option from the database.
+
         Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
         """
 
     async def delete(self) -> None:
@@ -147,21 +160,28 @@ class TenantOptions(CumulocityResource[TenantOption]):
 
     def select(
         self,
+        expression: str | None = None,
         *,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
-    ) -> AsyncIterator[TenantOption | Any | tuple[Any]]:
+    ) -> AsyncIterator[TenantOption]:
         """Query the database for tenant options and iterate over the results.
 
         When `category` is provided, a single targeted request is made
         instead of using standard pagination.
 
         Args:
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             as_values: (str|tuple|list[str|tuple]):  Don't parse objects, but
                 directly extract the values at certain JSON paths as tuples;
@@ -173,8 +193,10 @@ class TenantOptions(CumulocityResource[TenantOption]):
             AsyncIterator of TenantOption objects or object values if
             as_values is specified,
         """
-        params = map_params(page_size=page_size)
+        page_size = resolve_page_size(page_size, limit)
+        params = map_params(page_size=page_size) if not expression else ()
         return self._iterate(
+            expression=expression,
             params=params,
             page_number=page_number,
             limit=limit,
@@ -184,17 +206,21 @@ class TenantOptions(CumulocityResource[TenantOption]):
 
     async def get_all(
         self,
+        expression: str | None = None,
         *,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
         as_map: bool = False,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
     ) -> list[TenantOption] | dict[str, str] | dict[str, dict[str, str]]:
         """Query the database for tenant options and return the results as list.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             limit (int):  Limit the number of results
             page_size (int):  Number of records read per request
             page_number (int):  Pull a specific page only
@@ -216,6 +242,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
         result = [
             x
             async for x in self.select(
+                expression=expression,
                 limit=limit,
                 page_size=page_size,
                 page_number=page_number,
@@ -293,18 +320,22 @@ class TenantOptions(CumulocityResource[TenantOption]):
         """
         await self._create(*options, workers=workers)
 
-    async def update(self, *options: TenantOption) -> None:
+    async def update(self, *options: TenantOption, workers: int | None = None) -> None:
         """Update options within the database.
 
         Args:
             *options (TenantOption):  Collection of TenantOption instances
+            workers (int):  Number of parallel workers
         """
-        for o in options:
-            await self.c8y.put(
+        await run_batched(
+            options,
+            workers,
+            lambda o: self.c8y.put(
                 self.build_object_path(o.category, o._key),
                 json=o.to_json(only_updated=True),
                 accept=None,
-            )
+            ),
+        )
 
     async def delete(
         self,

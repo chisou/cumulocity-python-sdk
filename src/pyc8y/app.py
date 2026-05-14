@@ -2,6 +2,7 @@
 
 import asyncio
 import getpass
+import ssl
 import time
 from abc import abstractmethod, ABC
 import logging
@@ -9,6 +10,8 @@ import os
 from typing import Callable, Mapping, Self
 from urllib.parse import urlparse
 
+import aiohttp
+import certifi
 from cachetools import TTLCache
 
 from pyc8y.auth import parse_auth, BearerAuth, BasicAuth, JWT
@@ -192,7 +195,7 @@ class _CumulocityAppBase(ABC):
     def _build_user_instance(self, auth: Auth) -> CumulocityClient:
         """This must be defined by the implementing classes."""
 
-    def get_user_instance(
+    async def get_user_instance(
         self, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None
     ) -> CumulocityClient:
         """Return a user-specific CumulocityApi instance.
@@ -222,7 +225,7 @@ class _CumulocityAppBase(ABC):
             self.user_instances[auth_info] = instance
             return instance
 
-    def clear_user_cache(self, username: str = None):
+    async def clear_user_cache(self, username: str = None):
         """Manually clean the user sessions cache.
 
         Args:
@@ -237,6 +240,23 @@ class _CumulocityAppBase(ABC):
                 if username == parse_auth(auth_header).get_username():
                     del item
                     log.info(f"User '{username}' cleared from cache.")
+
+    async def close(self):
+        """Release resources held by this app.
+
+        Closes any cached per-user client sessions. Subclasses extend this
+        to close their own additional resources (own session, tenant cache,
+        shared connector).
+        """
+        for inst in list(self.user_instances.values()):
+            await inst.close()
+        self.user_instances.clear()
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *args):
+        await self.close()
 
     @staticmethod
     def _get_auth_header(headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> str:
@@ -364,6 +384,11 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
             processing_mode=self.processing_mode,
         )
 
+    async def close(self):
+        """Close the app's own session and all cached per-user sessions."""
+        await _CumulocityAppBase.close(self)
+        await CumulocityRestClient.close(self)
+
 
 class MultiTenantCumulocityApp(_CumulocityAppBase):
     """Multi-tenant enabled Cumulocity application wrapper.
@@ -386,7 +411,13 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
     _log = logging.getLogger(__name__)
 
     def __init__(
-        self, application_key: str = None, processing_mode: str = None, cache_size: int = 100, cache_ttl: int = 3600
+        self,
+        application_key: str = None,
+        processing_mode: str = None,
+        cache_size: int = 100,
+        cache_ttl: int = 3600,
+        connection_limit: int = 100,
+        connection_limit_per_host: int = 0,
     ):
         """Create a new instance.
 
@@ -400,6 +431,12 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
                 instances (if tenant instances are created at all).
             cache_ttl (int|None): An maximum cache time for tenant
                 instances (if tenant instances are created at all).
+            connection_limit (int): Maximum number of simultaneous HTTP
+                connections in the shared pool across all tenant/user
+                clients.
+            connection_limit_per_host (int): Maximum simultaneous
+                connections to a single host; `0` means unlimited
+                (bounded only by `connection_limit`).
 
         Returns:
             A new MultiTenantCumulocityApp instance
@@ -409,12 +446,32 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         self.processing_mode = processing_mode
         self.cache_size = cache_size
         self.cache_ttl = cache_ttl
+        self._connection_limit = connection_limit
+        self._connection_limit_per_host = connection_limit_per_host
+        self._connector: aiohttp.BaseConnector | None = None
+        self._connector_lock = asyncio.Lock()
         self.bootstrap_instance = self._create_bootstrap_instance(
             application_key=self.application_key,
             processing_mode=self.processing_mode,
+            connector_factory=self._get_connector,
         )
         self._subscribed_auths = TTLCache(maxsize=cache_size, ttl=cache_ttl)
         self._tenant_instances = TTLCache(maxsize=cache_size, ttl=cache_ttl)
+
+    async def _get_connector(self) -> aiohttp.BaseConnector:
+        """Lazily create the shared TCPConnector. Must be called from an
+        async context (aiohttp connectors bind to the running loop).
+        """
+        if self._connector is None:
+            async with self._connector_lock:
+                if self._connector is None:
+                    ssl_context = ssl.create_default_context(cafile=certifi.where())
+                    self._connector = aiohttp.TCPConnector(
+                        ssl=ssl_context,
+                        limit=self._connection_limit,
+                        limit_per_host=self._connection_limit_per_host,
+                    )
+        return self._connector
 
     async def _get_tenant_auth(self, tenant_id: str) -> Auth:
         """Cached access to auth information of subscribed tenants."""
@@ -460,7 +517,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
     def create_listener(
             self,
             callback: Callable[[set[str]], None] = None,
-            max_concurrent: int = 5,
+            sequential: bool = False,
             polling_interval: float = 3600,
             startup_delay: float = 60,
     ) -> "SubscriptionListener":
@@ -470,8 +527,9 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             callback (Callable): an async callback function to be invoked
                 when the subscribers change; Use the `add_callback` function
                 to add callbacks for individually added/removed subscribers.
-            max_concurrent (int): Maximum number of concurrent callback
-                executions; Use `1` to serialize callback execution.
+            sequential (bool): If True, callbacks run one at a time (guarded
+                by an asyncio.Lock). Default False — callbacks run
+                concurrently as asyncio tasks.
             polling_interval (float): How often to poll for changes.
             startup_delay (float): How many seconds to wait after a
                 subscriber change before invoking the callbacks.
@@ -482,13 +540,18 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         return SubscriptionListener(
             app=self,
             callback=callback,
-            max_concurrent=max_concurrent,
+            sequential=sequential,
             polling_interval=polling_interval,
             startup_delay=startup_delay,
         )
 
     @classmethod
-    def _create_bootstrap_instance(cls, application_key: str = None, processing_mode: str = None) -> CumulocityClient:
+    def _create_bootstrap_instance(
+        cls,
+        application_key: str = None,
+        processing_mode: str = None,
+        connector_factory=None,
+    ) -> CumulocityClient:
         """Build the bootstrap instance from the environment."""
         base_url = cls._get_env("C8Y_BASEURL")
         tenant_id = cls._get_env("C8Y_BOOTSTRAP_TENANT")
@@ -501,6 +564,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             auth=BasicAuth(username, password),
             application_key=application_key,
             processing_mode=processing_mode,
+            connector_factory=connector_factory,
         )
 
     async def _create_tenant_instance(self, tenant_id: str) -> CumulocityClient:
@@ -512,6 +576,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             auth=auth,
             application_key=self.application_key,
             processing_mode=self.processing_mode,
+            connector_factory=self._get_connector,
         )
 
     def _build_user_instance(self, auth) -> CumulocityClient:
@@ -523,6 +588,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             auth=auth,
             application_key=self.application_key,
             processing_mode=self.processing_mode,
+            connector_factory=self._get_connector,
         )
 
     async def get_tenant_instance(
@@ -564,11 +630,15 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             self._tenant_instances[tenant_id] = instance
             return instance
 
-    async def __aenter__(self) -> Self:
-        return self
-
-    async def __aexit__(self, *args):
-        pass
+    async def close(self):
+        """Close all sessions and the shared connection pool."""
+        await super().close()  # user cache
+        for inst in list(self._tenant_instances.values()):
+            await inst.close()
+        self._tenant_instances.clear()
+        await self.bootstrap_instance.close()
+        if self._connector is not None:
+            await self._connector.close()
 
 
 class SubscriptionListener:
@@ -586,7 +656,7 @@ class SubscriptionListener:
         self,
         app: MultiTenantCumulocityApp,
         callback: Callable[[set[str]], None] = None,
-        max_concurrent: int = 5,
+        sequential: bool = False,
         polling_interval: float = 3600,
         startup_delay: float = 60,
     ):
@@ -598,8 +668,8 @@ class SubscriptionListener:
             callback (Callable): an async callback function to be invoked
                 when the subscribers change; Use the `add_callback` function
                 to add callbacks for individually added/removed subscribers.
-            max_concurrent (int): Maximum number of concurrent callback
-                executions; Use `1` to serialize callback execution.
+            sequential (bool): If True, callbacks run sequentially. Otherwise
+                (default) callbacks run concurrently as asyncio tasks.
             polling_interval (float): How often to poll for changes.
             startup_delay (float): How many seconds to wait after a
                 subscriber change before invoking the callbacks.
@@ -614,7 +684,7 @@ class SubscriptionListener:
         self.callbacks: list[Callable] = [callback] if callback else []
         self.callbacks_on_add: list[Callable] = []
         self.callbacks_on_remove: list[Callable] = []
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._lock = asyncio.Lock() if sequential else None
         self._listen_task: asyncio.Task | None = None
         self._callback_tasks: set[asyncio.Task] = set()
         self._stop_event = asyncio.Event()
@@ -665,8 +735,9 @@ class SubscriptionListener:
         self._stop_event.clear()
         self._log.debug("Listener started.")
 
-        async def limit(cr):
-            async with self._semaphore:
+        async def serialized(cr):
+            assert self._lock is not None
+            async with self._lock:
                 await cr
 
         async def invoke(fun, arg):
@@ -678,7 +749,8 @@ class SubscriptionListener:
 
             if self._log.isEnabledFor(logging.DEBUG):
                 self._log.debug(f"Invoking callback: {fun.__module__}.{fun.__name__}")
-            callback_task = asyncio.create_task(limit(fun(arg)))
+            coro = serialized(fun(arg)) if self._lock else fun(arg)
+            callback_task = asyncio.create_task(coro)
             self._callback_tasks.add(callback_task)
             callback_task.add_done_callback(on_done)
 

@@ -76,11 +76,11 @@ async def test_callback_tasks():
     added_mock.assert_called_once_with("t1")
 
 
-async def test_long_running_callback_tasks():
-    """Verify that long-running callbacks respect max_concurrent."""
+async def test_serialized_callbacks():
+    """Verify that serialize=True runs callbacks one at a time."""
     app = MagicMock(spec=MultiTenantCumulocityApp)
     app.get_subscribers = AsyncMock(return_value=["t1", "t2", "t3", "t4"])
-    listener = SubscriptionListener(app=app, polling_interval=0.1, startup_delay=0, max_concurrent=2)
+    listener = SubscriptionListener(app=app, polling_interval=0.1, startup_delay=0, sequential=True)
 
     async def added_fun(_):
         listener.stop()
@@ -92,8 +92,8 @@ async def test_long_running_callback_tasks():
     await listener.listen()
     t1 = time.monotonic()
 
-    # 4 callbacks with max_concurrent=2 → 2 groups of 2 → ~2 seconds
-    assert 2 < t1 - t0 < 3
+    # 4 callbacks, serialized, 1s each → ~4 seconds
+    assert 4 < t1 - t0 < 5
     assert not listener.get_callbacks()
 
 
@@ -190,10 +190,10 @@ async def test_listen_drains_callbacks():
 
 
 async def test_multiple_tasks_in_parallel():
-    """Verify that callbacks up to max_concurrent run in parallel."""
+    """Verify that callbacks run concurrently by default."""
     app = MagicMock(spec=MultiTenantCumulocityApp)
     app.get_subscribers = AsyncMock(return_value=["t1"])
-    listener = SubscriptionListener(app=app, max_concurrent=3, polling_interval=0.1, startup_delay=0)
+    listener = SubscriptionListener(app=app, polling_interval=0.1, startup_delay=0)
 
     callback_run_time = 1
 
@@ -210,25 +210,3 @@ async def test_multiple_tasks_in_parallel():
     t1 = time.monotonic()
 
     assert callback_run_time < t1 - t0 < callback_run_time + 0.5
-
-
-async def test_too_many_tasks():
-    """Verify that callbacks beyond max_concurrent are queued, not dropped."""
-    app = MagicMock(spec=MultiTenantCumulocityApp)
-    app.get_subscribers = AsyncMock(return_value=["t1"])
-    listener = SubscriptionListener(app=app, max_concurrent=3, polling_interval=0.1, startup_delay=0)
-
-    callback_run_time = 1
-
-    async def fun(_):
-        listener.stop()
-        await asyncio.sleep(callback_run_time)
-
-    for _ in range(4):
-        listener.add_callback(fun)
-
-    t0 = time.monotonic()
-    await listener.listen()
-    t1 = time.monotonic()
-
-    assert callback_run_time * 2 < t1 - t0 < callback_run_time * 2 + 0.5

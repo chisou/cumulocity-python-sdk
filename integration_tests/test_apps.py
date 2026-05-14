@@ -80,7 +80,7 @@ async def test_oai_secure_login():
     cookies = {'authorization': auth.token}
 
     # -> user scope instance can be obtained
-    c8y_user = c8y.get_user_instance(headers, cookies)
+    c8y_user = await c8y.get_user_instance(headers, cookies)
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == auth.token
 
@@ -95,18 +95,18 @@ async def test_get_user_instance_aiohttp_types(test_environment):
     token = sample_jwt()
 
     # Bearer token in Authorization header
-    c8y_user = c8y.get_user_instance(headers=CIMultiDict({'Authorization': f'Bearer {token}'}))
+    c8y_user = await c8y.get_user_instance(headers=CIMultiDict({'Authorization': f'Bearer {token}'}))
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # JWT in authorization cookie (aiohttp web.Request.cookies is a plain Mapping[str, str])
-    c8y_user = c8y.get_user_instance(cookies={'authorization': token})
+    c8y_user = await c8y.get_user_instance(cookies={'authorization': token})
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
     fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
-    c8y_user = c8y.get_user_instance(
+    c8y_user = await c8y.get_user_instance(
         headers=CIMultiDict({'Authorization': fake_basic}),
         cookies={'authorization': token},
     )
@@ -125,18 +125,18 @@ async def test_get_user_instance_fastapi_types(test_environment):
     token = sample_jwt()
 
     # Bearer token in Authorization header (Starlette normalises header names to lowercase)
-    c8y_user = c8y.get_user_instance(headers=StarletteHeaders(headers={'authorization': f'Bearer {token}'}))
+    c8y_user = await c8y.get_user_instance(headers=StarletteHeaders(headers={'authorization': f'Bearer {token}'}))
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # JWT in authorization cookie (FastAPI exposes cookies as plain dict[str, str])
-    c8y_user = c8y.get_user_instance(cookies={'authorization': token})
+    c8y_user = await c8y.get_user_instance(cookies={'authorization': token})
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
     fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
-    c8y_user = c8y.get_user_instance(
+    c8y_user = await c8y.get_user_instance(
         headers=StarletteHeaders(headers={'authorization': fake_basic}),
         cookies={'authorization': token},
     )
@@ -155,18 +155,18 @@ async def test_get_user_instance_quart_types(test_environment):
     token = sample_jwt()
 
     # Bearer token in Authorization header
-    c8y_user = c8y.get_user_instance(headers=WerkzeugHeaders([('Authorization', f'Bearer {token}')]))
+    c8y_user = await c8y.get_user_instance(headers=WerkzeugHeaders([('Authorization', f'Bearer {token}')]))
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # JWT in authorization cookie (Quart exposes cookies as ImmutableMultiDict[str, str])
-    c8y_user = c8y.get_user_instance(cookies={'authorization': token})
+    c8y_user = await c8y.get_user_instance(cookies={'authorization': token})
     assert isinstance(c8y_user.auth, BearerAuth)
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
     fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
-    c8y_user = c8y.get_user_instance(
+    c8y_user = await c8y.get_user_instance(
         headers=WerkzeugHeaders([('Authorization', fake_basic)]),
         cookies={'authorization': token},
     )
@@ -182,5 +182,5 @@ async def test_context_manager(test_environment):
     async with SimpleCumulocityApp() as c8y:
         assert c8y.username
 
-    with MultiTenantCumulocityApp() as c8y:
+    async with MultiTenantCumulocityApp() as c8y:
         assert c8y.bootstrap_instance.username

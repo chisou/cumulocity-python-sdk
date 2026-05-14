@@ -10,6 +10,9 @@ AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]]
 FileSpec = str | os.PathLike | BinaryIO
 """File-like object or a file path."""
 
+DEFAULT_PAGE_SIZE = 100
+"""Default page size used by paged queries when neither `page_size` nor `limit` constrain it."""
+
 
 class MimeType(StrEnum):
     ALARM = "application/vnd.com.nsn.cumulocity.alarm+json"

@@ -1,15 +1,15 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
 from dataclasses import dataclass
-from typing import Any, AsyncIterator, Self
+from typing import AsyncIterator, Self, Sequence
 
 import aiohttp
 
 from pyc8y.base_util import first
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, resolve_page_size
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationMeta, AsValuesSpec, FileSpec
+from pyc8y.types import ApplicationMeta, FileSpec
 
 
 class Application(CumulocityObject):
@@ -123,16 +123,20 @@ class Application(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Update the Application within the database.
 
         Note: This will only send changed fields to increase performance.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Application object representing the updated
-            state within the database (including the ID).
+            The updated Application. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._update()
+        return await self._update(copy)
 
     async def delete(self, **_) -> None:
         """Delete the Application within the database."""
@@ -260,7 +264,7 @@ class Applications(CumulocityResource[Application]):
 
     def select(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         name: str | None = None,
         type: str | None = None,  # noqa (type)
@@ -272,13 +276,13 @@ class Applications(CumulocityResource[Application]):
         has_versions: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 100,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Application | Any | tuple[Any]]:
+    ) -> AsyncIterator[Application]:
         """Query the database for applications and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -310,9 +314,11 @@ class Applications(CumulocityResource[Application]):
             exclude (str | JsonMatcher):  Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
                 Creates a PyDF (Python Display Filter) matcher by default for strings.
-            limit (int):  Limit the number of results to this number.
-            page_size (int):  Define the number of applications which are read
-                (and parsed in one chunk). This is a performance related setting.
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
             as_values (*str|tuple):  Don't parse objects, but directly extract
@@ -321,6 +327,7 @@ class Applications(CumulocityResource[Application]):
         Returns:
             AsyncIterator of Application objects
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
                 name=name,
@@ -350,7 +357,7 @@ class Applications(CumulocityResource[Application]):
 
     async def get_all(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         name: str | None = None,
         type: str | None = None,  # noqa (type)
@@ -362,13 +369,13 @@ class Applications(CumulocityResource[Application]):
         has_versions: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 100,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | list[str | tuple] = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Application | Any | tuple[Any]]:
+    ) -> list[Application]:
         """Query the database for applications and return the results as list.
 
         This function is a greedy version of the `select` function. All
@@ -411,11 +418,20 @@ class Applications(CumulocityResource[Application]):
         """
         await self._create(*applications, workers=workers)
 
-    async def delete(self, *applications: Application | str, workers: int | None = None) -> None:
+    async def update(self, *applications: Application, workers: int | None = None) -> None:
+        """Update application objects within the database.
+
+        Args:
+            *applications (Application):  Collection of Application instances
+            workers (int):  The number of parallel processes to use
+        """
+        await self._update(*applications, workers=workers)
+
+    async def delete(self, *applications: str | Application, workers: int | None = None) -> None:
         """Delete application objects within the database.
 
         Args:
-            *applications (Application|str):  Collection of Application instances or IDs
+            *applications (str|Application):  Collection of Application instances or IDs
             workers (int):  The number of parallel processes to use
         """
         await self._delete(*applications, workers=workers)

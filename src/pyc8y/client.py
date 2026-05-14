@@ -1,5 +1,9 @@
 # Copyright (c) 2026 Christoph Souris
 
+from typing import Awaitable, Callable
+
+import aiohttp
+
 from pyc8y.auth import Auth
 from pyc8y.model.alarm import Alarms
 from pyc8y.model.application import Applications
@@ -24,9 +28,18 @@ class CumulocityClient(CumulocityRestClient):
     """
 
     def __init__(
-        self, base_url: str, tenant_id: str, auth: Auth, application_key: str = None, processing_mode: str = None
+        self,
+        base_url: str,
+        tenant_id: str,
+        auth: Auth,
+        application_key: str = None,
+        processing_mode: str = None,
+        connector_factory: Callable[[], Awaitable[aiohttp.BaseConnector]] | None = None,
     ):
-        super().__init__(base_url, tenant_id, auth, application_key, processing_mode)
+        super().__init__(
+            base_url, tenant_id, auth, application_key, processing_mode,
+            connector_factory=connector_factory,
+        )
         self.alarms = Alarms(self)
         self.applications = Applications(self)
         self.audit_records = AuditRecords(self)

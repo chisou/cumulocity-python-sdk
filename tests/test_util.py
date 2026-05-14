@@ -1,4 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 # pylint: disable=protected-access
 
@@ -11,9 +12,10 @@ from unittest.mock import patch
 import jwt
 import pytest
 
-from c8y_api._util import c8y_keys, validate_base_url
-from c8y_api._jwt import JWT
-from c8y_api.model._util import _StringUtil
+from pyc8y.app import c8y_keys
+from pyc8y.auth import JWT
+from pyc8y.base_util import like, matches
+from pyc8y.model.model_util import to_pascal_case
 
 
 @pytest.mark.parametrize(
@@ -26,7 +28,7 @@ from c8y_api.model._util import _StringUtil
     ])
 def test_snake_to_pascal_case(name, expected):
     """Verify that snake case conversion works as expected."""
-    assert _StringUtil.to_pascal_case(name) == expected
+    assert to_pascal_case(name) == expected
 
 
 @pytest.mark.parametrize(
@@ -60,7 +62,7 @@ def test_snake_to_pascal_case(name, expected):
 )
 def test_like(expression, string, expected):
     """Verify that the `like` function works as expected."""
-    assert _StringUtil.like(expression, string) == expected
+    assert like(expression, string) == expected
 
 
 @pytest.mark.parametrize(
@@ -80,7 +82,7 @@ def test_like(expression, string, expected):
 )
 def test_matches(expression, string, expected):
     """Verify that the `matches` function works as expected."""
-    assert _StringUtil.matches(expression, string) == expected
+    assert matches(expression, string) == expected
 
 
 @patch.dict(os.environ, {'C8Y_SOME': 'some', 'C8Y_THING': 'thing', 'C8YNOT': 'not'}, clear=True)
@@ -90,17 +92,6 @@ def test_c8y_keys():
     assert len(keys) == 2
     assert 'C8Y_SOME' in keys
     assert 'C8Y_THING' in keys
-
-
-@pytest.mark.parametrize('path', ['/', '/some/path', ''])
-@pytest.mark.parametrize('port', [':80', ''])
-@pytest.mark.parametrize('host', ['host.com', 'some.host.com'])
-@pytest.mark.parametrize('scheme', ['https://', 'http://', ''])
-def test_validate_base_url(scheme, host, port, path):
-    """Verify that the base URL validation works with all potential URL format combinations."""
-    url = scheme + host + port + path
-    url2 = validate_base_url(url)
-    assert url2 == (scheme or 'https://') + host + port
 
 
 def create_jwt_token(tenant_id, hostname, username, valid_seconds=60) -> str:

@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
 
-from typing import AsyncIterator, Any, Self, Sequence
+from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.model.application import Application
 from pyc8y.model.model_base import (
@@ -10,9 +10,10 @@ from pyc8y.model.model_base import (
     json_property,
     datetime_property,
     map_params,
+    resolve_page_size,
 )
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import TenantMeta, AsValuesSpec
+from pyc8y.types import TenantMeta
 
 
 class Tenant(CumulocityObject):
@@ -81,25 +82,35 @@ class Tenant(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
-        Returns:
-            A fresh Tenant instance representing the updated tenant.
-        """
-        return await self._update()
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
-    async def reload(self, inplace: bool | None = False) -> Self:
+        Returns:
+            The updated Tenant. By default this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._update(copy)
+
+    async def reload(self, copy: bool = False) -> Self:
         """Reload changes from the database.
 
         Args:
-            inplace (bool): Whether the current object is updated in place.
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            A fresh Tenant instance representing the updated tenant or
-            updated Self reference if inplace is True.
+            The reloaded Tenant. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._reload(inplace=inplace)
+        return await self._reload(copy)
+
+    async def delete(self) -> None:
+        """Delete this tenant from the database."""
+        await self._delete()
 
 
 class Tenants(CumulocityResource[Tenant]):
@@ -141,13 +152,13 @@ class Tenants(CumulocityResource[Tenant]):
         parent: str | None = None,
         domain: str | None = None,
         company: str | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Tenant | Any]:
+    ) -> AsyncIterator[Tenant]:
         """Query the database for tenants and iterate over the results.
 
         Args:
@@ -156,14 +167,18 @@ class Tenants(CumulocityResource[Tenant]):
             parent (str):  ID of the parent tenant
             domain (str):  Tenant domain
             company (str):  Tenant's assigned company name
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
             AsyncIterator of Tenant instances
         """
+        page_size = resolve_page_size(page_size, limit)
         params = (
             map_params(
                 parent=parent,
@@ -191,10 +206,10 @@ class Tenants(CumulocityResource[Tenant]):
         parent: str | None = None,
         domain: str | None = None,
         company: str | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[Tenant]:
@@ -220,3 +235,30 @@ class Tenants(CumulocityResource[Tenant]):
                 **kwargs,
             )
         ]
+
+    async def create(self, *tenants: Tenant, workers: int | None = None) -> None:
+        """Create tenant objects within the database.
+
+        Args:
+            *tenants (Tenant):  Collection of Tenant instances
+            workers (int):  Number of parallel workers
+        """
+        await self._create(*tenants, workers=workers)
+
+    async def update(self, *tenants: Tenant, workers: int | None = None) -> None:
+        """Update tenant objects within the database.
+
+        Args:
+            *tenants (Tenant):  Collection of Tenant instances
+            workers (int):  Number of parallel workers
+        """
+        await self._update(*tenants, workers=workers)
+
+    async def delete(self, *tenants: str | Tenant, workers: int | None = None) -> None:
+        """Delete tenant objects from the database.
+
+        Args:
+            *tenants (str | Tenant):  Collection of Tenant instances or IDs
+            workers (int):  Number of parallel workers
+        """
+        await self._delete(*tenants, workers=workers)

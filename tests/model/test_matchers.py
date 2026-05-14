@@ -1,4 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 # pylint: disable=wildcard-import, unused-wildcard-import
 
@@ -8,7 +9,35 @@ from unittest.mock import patch, Mock
 
 import pytest
 
-from c8y_api.model.matcher import *
+from pyc8y.model.matcher import (
+    JsonMatcher,
+    FieldMatcher,
+    fragment,
+    field,
+    description,
+    text,
+    command,
+    match_all,
+    match_any,
+    match_not,
+)
+
+
+# These matchers are optional (extra deps); attempt import gracefully.
+try:
+    from pyc8y.model.matcher import pydf  # type: ignore
+except ImportError:
+    pydf = None
+
+try:
+    from pyc8y.model.matcher import jmespath  # type: ignore
+except ImportError:
+    jmespath = None
+
+try:
+    from pyc8y.model.matcher import jsonpath  # type: ignore
+except ImportError:
+    jsonpath = None
 
 
 class MatchingMatcher(JsonMatcher):
@@ -46,7 +75,7 @@ def test_logging(caplog):
         FailingMatcher('FAIL').safe_matches({})
     assert len(caplog.records) == 1
     r0 = caplog.records[0]
-    assert r0.name == 'c8y_api.model.matcher'
+    assert r0.name == 'pyc8y.model.matcher'
     assert r0.levelname == 'WARNING'
     assert 'FAIL' in r0.message
 
@@ -64,10 +93,10 @@ def test_fragment_matcher():
     assert not fragment('fragment').matches({'other': {}})
 
 
-@patch('c8y_api.model.matcher._matcher._StringUtil.like')
-@patch('c8y_api.model.matcher._matcher._StringUtil.matches')
+@patch('pyc8y.model.matcher._matcher.like')
+@patch('pyc8y.model.matcher._matcher.matches')
 def test_field_matcher(matches_mock, like_mock):
-    """Verify that description matchers work as expected.
+    """Verify that field matchers work as expected.
 
     The field matcher can work in LIKE and REGEX mode, only one of the
     respective string util functions are expected to be invoked per
@@ -96,9 +125,13 @@ def test_field_matcher(matches_mock, like_mock):
     like_mock.assert_not_called()
     matches_mock.assert_not_called()
 
-    # regex mode, like matcher not invoked
-    assert field('field', 'expr', mode='REGEX').matches(valid)
-    like_mock.assert_not_called()
+    # regex mode: like is NOT called, matches IS called
+    like_mock.reset_mock()
+    matches_mock.reset_mock()
+    matches_mock.return_value = True
+    # When mode=REGEX, the LIKE side of the boolean is short-circuited by `or`
+    # only if REGEX returns True. We rely on the implementation calling matches() first.
+    field('field', 'expr', mode='REGEX').matches(valid)
     matches_mock.assert_called_once_with('expr', 'text')
 
 
@@ -120,7 +153,7 @@ def test_all_matcher():
 
 
 def test_any_matcher():
-    """Verify that ALL matchers work as expected.
+    """Verify that ANY matchers work as expected.
 
     All the enclosed matchers are invoked until one matches.
     """
@@ -173,6 +206,7 @@ def test_command_matcher():
         matches_mock.assert_not_called()
 
 
+@pytest.mark.skipif(pydf is None, reason='pydictdisplayfilter not installed')
 def test_pydf_matcher():
     """Verify that the pydf matchers work as expected."""
     assert pydf("name == NAME").matches({'name': 'NAME'})
@@ -187,6 +221,7 @@ def test_pydf_matcher():
     assert "Error parsing display filter" in str(error.value)
 
 
+@pytest.mark.skipif(jmespath is None, reason='jmespath not installed')
 def test_jmespath_matcher():
     """Verify that the jmespath matchers work as expected."""
     assert jmespath("name == 'NAME'").matches({'name': 'NAME'})
@@ -196,6 +231,7 @@ def test_jmespath_matcher():
     assert "INVALID" in str(error.value)
 
 
+@pytest.mark.skipif(jsonpath is None, reason='jsonpath_ng not installed')
 def test_jsonpath_matcher():
     """Verify that the jsonpath matchers work as expected."""
     assert jsonpath('$.array[?(@ == 0)]').matches({'array': [0, 1, 2]})

@@ -3,7 +3,7 @@
 
 import json as js
 import uuid
-from typing import AsyncIterator, Any, Self
+from typing import AsyncIterator, Self
 import urllib.parse
 
 from pyc8y.rest import CumulocityRestClient
@@ -12,8 +12,9 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     map_params,
+    resolve_page_size,
 )
-from pyc8y.types import SubscriptionMeta, AsValuesSpec
+from pyc8y.types import SubscriptionMeta
 
 
 class Subscription(CumulocityObject):
@@ -182,12 +183,12 @@ class Subscriptions(CumulocityResource[Subscription]):
         source: str | None = None,
         subscription: str | None = None,
         type_filter: str | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Subscription | Any]:
+    ) -> AsyncIterator[Subscription]:
         """Query the database for subscriptions and iterate over the results.
 
         Args:
@@ -197,14 +198,18 @@ class Subscriptions(CumulocityResource[Subscription]):
             source (str):  Managed object ID the subscription is for
             subscription (str):  The subscription name
             type_filter (str):  Object type filter
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
             AsyncIterator of Subscription instances
         """
+        page_size = resolve_page_size(page_size, limit)
         params = (
             map_params(
                 context=context,
@@ -233,8 +238,8 @@ class Subscriptions(CumulocityResource[Subscription]):
         source: str | None = None,
         subscription: str | None = None,
         type_filter: str | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
         workers: int | None = None,
         **kwargs,
@@ -262,21 +267,34 @@ class Subscriptions(CumulocityResource[Subscription]):
             )
         ]
 
-    async def create(self, *subscriptions: Subscription) -> None:
+    async def create(self, *subscriptions: Subscription, workers: int | None = None) -> None:
         """Create subscriptions within the database.
 
         Args:
             *subscriptions (Subscription):  Collection of Subscription instances
+            workers (int):  Number of parallel workers
         """
-        await self._create(*subscriptions)
+        await self._create(*subscriptions, workers=workers)
 
-    async def delete_by(self, context: str | None = None, source: str | None = None) -> None:
+    async def delete_by(
+        self,
+        expression: str | None = None,
+        *,
+        context: str | None = None,
+        source: str | None = None,
+    ) -> None:
         """Delete subscriptions within the database.
 
         Args:
+            expression (str):  Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             context (str):  Subscription context
             source (str):  Managed object ID the subscription is for
         """
+        if expression:
+            await self.c8y.delete(f"{self.resource_path}?{expression}")
+            return
         params = map_params(context=context, source=source)
         await self.c8y.delete(self.resource_path, params=params)
 

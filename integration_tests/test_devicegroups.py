@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from pyc8y.client import CumulocityClient
@@ -15,16 +17,17 @@ async def test_CRUD(live_c8y: CumulocityClient, safe_create):
 
     name = create_random_name()
 
-    root = await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True}))
-    child1 = await safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True}))
-    child2 = await safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True}))
+    root, child1, child2 = asyncio.gather(
+        await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True})),
+        await safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True})),
+        await safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True})),
+    )
 
-    # assign groups via object methods
-    await root.assign_child_group(child1)
-    await root.assign_child_group(child2)
+    # assign children using batch method
+    await live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id, workers=2)
 
     # select all root groups — our root should be in there
-    assert f"Root-{name}" in [x.name for x in await live_c8y.group_inventory.get_all()]
+    assert f"Root-{name}" in [x.name for x in await live_c8y.group_inventory.get_all(page_size=100, workers=5)]
 
     # select by parent — both children should appear
     child_names = [x.name for x in await live_c8y.group_inventory.get_all(parent=root.id)]

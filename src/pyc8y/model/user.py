@@ -1,14 +1,14 @@
 import asyncio
-from typing import Self, Any, AsyncIterator, Sequence
+from typing import Self, AsyncIterator, Sequence
 
 
-from pyc8y.base_util import flatten, ensure_sequence
+from pyc8y.base_util import unwrap_args, ensure_sequence
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.auth import BasicAuth
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, \
-    CumulocityResource, JsonObject, references_property, map_params, run_batched, ensure_ids
-from pyc8y.types import UserMeta, CurrentUserMeta, UserGroupMeta, InventoryRoleMeta, AsValuesSpec
+    CumulocityResource, JsonObject, references_property, map_params, resolve_page_size, run_batched, ensure_ids
+from pyc8y.types import UserMeta, CurrentUserMeta, UserGroupMeta, InventoryRoleMeta
 
 
 class TfaSettings(JsonObject):
@@ -80,31 +80,32 @@ class UserGroup(CumulocityObject):
         """
         return await self._create()
 
-    async def reload(self, inplace: bool = False) -> Self:
+    async def reload(self, copy: bool = False) -> Self:
         """Reload this object's data from database.
 
         Args:
-            inplace (bool):  If `True`, this object's data will be reloaded;
-                otherwise a new instance is created from the reloaded data.
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            New instance built from latest data or `self` if inplace is True.
+            The reloaded GlobalRole. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._reload(inplace)
+        return await self._reload(copy)
 
 
-    async def update(self, inplace: bool = False) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
         Args:
-            inplace (bool):  If `True`, this object's data will be updated;
-                otherwise a new instance is created from the updated data.
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            A fresh instance representing the updated object within the
-            database or `self` if inplace is True.
+            The updated GlobalRole. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._update(inplace)
+        return await self._update(copy)
 
     async def delete(self):
         """Delete this object within the database."""
@@ -206,19 +207,23 @@ class UserGroups(CumulocityResource):
 
     def select(
             self,
+            expression: str | None = None,
             *,
-            username: str = None,
-            limit: int = None,
+            username: str | None = None,
+            limit: int | None = 5,
             include: str | JsonMatcher | None = None,
             exclude: str | JsonMatcher | None = None,
-            page_size: int = 10,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
-    ) -> AsyncIterator[UserGroup | Any | tuple[Any]]:
+    ) -> AsyncIterator[UserGroup]:
         """Iterate over user groups.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             username (str): Retrieve groups assigned to a specified user
                 If omitted, all available groups are returned
             include (str | JsonMatcher): Matcher/expression to filter the query
@@ -227,9 +232,11 @@ class UserGroups(CumulocityResource):
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
                 Creates a PyDF (Python Display Filter) matcher by default for strings.
-            limit (int): Limit the number of results to this number.
-            page_size (int): Maximum number of entries fetched per requests;
-                this is a performance setting
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
             as_values: (*str|tuple):  Don't parse objects, but directly extract
@@ -244,15 +251,17 @@ class UserGroups(CumulocityResource):
         See also:
             https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         async def fetch_page(page: int, **_) -> list:
             """Custom page fetcher for get by username."""
             result = await self.c8y.get(
                 f'/user/{self.c8y.tenant_id}/users/{username}/groups',
-                (('pageSize', page_size), ('currentPage', page)),
+                params=(('pageSize', page_size), ('currentPage', page)),
             )
             return [ref['group'] for ref in result['references']]
 
         return super()._iterate(
+            expression=expression,
             fetch_page=fetch_page if username else None,
             page_number=page_number,
             limit=limit,
@@ -264,16 +273,17 @@ class UserGroups(CumulocityResource):
 
     async def get_all(
             self,
+            expression: str | None = None,
             *,
-            username: str = None,
-            limit: int = None,
+            username: str | None = None,
+            limit: int | None = 5,
             include: str | JsonMatcher | None = None,
             exclude: str | JsonMatcher | None = None,
-            page_size: int = 100,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
-    ) -> list[UserGroup | Any | tuple[Any]]:
+    ) -> list[UserGroup]:
         """Query the database for user groups and return the results as a list.
 
         This function is a greedy version of the `select` function. All
@@ -285,6 +295,7 @@ class UserGroups(CumulocityResource):
             List of UserGroup objects
         """
         return [x async for x in self.select(
+            expression=expression,
             username=username,
             limit=limit,
             include=include,
@@ -295,22 +306,57 @@ class UserGroups(CumulocityResource):
             workers=workers,
         )]
 
-    async def get_count(self, *, username: str = None) -> int:
+    async def get_count(self, expression: str | None = None, *, username: str | None = None) -> int:
         """Calculate the number of user groups in the database.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             username (str): Count groups assigned to a specific user;
                 if omitted, the total number of groups is returned.
 
         Returns:
             Number of user groups
         """
+        if expression:
+            result = await self.c8y.get(
+                f"{self.resource_path}?{expression}&pageSize=1&withTotalPages=true"
+            )
+            return result['statistics']['totalPages']
         if username:
             path = f'/user/{self.c8y.tenant_id}/users/{username}/groups'
         else:
             path = f'/user/{self.c8y.tenant_id}/groups'
-        result = await self.c8y.get(path, (('pageSize', '1'), ('withTotalPages', 'true')))
+        result = await self.c8y.get(path, params=(('pageSize', '1'), ('withTotalPages', 'true')))
         return result['statistics']['totalPages']
+
+    async def create(self, *groups: UserGroup, workers: int | None = None) -> None:
+        """Create user groups within the database.
+
+        Args:
+            *groups (UserGroup): Collection of UserGroup instances
+            workers (int): Number of parallel requests
+        """
+        await self._create(*groups, workers=workers)
+
+    async def update(self, *groups: UserGroup, workers: int | None = None) -> None:
+        """Update user groups within the database.
+
+        Args:
+            *groups (UserGroup): Collection of UserGroup instances
+            workers (int): Number of parallel requests
+        """
+        await self._update(*groups, workers=workers)
+
+    async def delete(self, *groups: str | int | UserGroup, workers: int | None = None) -> None:
+        """Delete user groups from the database.
+
+        Args:
+            *groups (str | int | UserGroup): Group objects or IDs to delete
+            workers (int): Number of parallel requests
+        """
+        await self._delete(*groups, workers=workers)
 
     async def assign_users(self, group_id: int | str, *usernames: str, workers: int | None = None):
         """Assign users to a global role.
@@ -323,7 +369,7 @@ class UserGroups(CumulocityResource):
         path = f"{self.build_object_path(str(group_id))}/users"
         await run_batched(
             list(usernames), workers,
-            lambda u: self.c8y.post(path, {'user': {'self': f'/user/{self.c8y.tenant_id}/users/{u}'}}, accept=None),
+            lambda u: self.c8y.post(path, json={'user': {'self': f'/user/{self.c8y.tenant_id}/users/{u}'}}, accept=None),
         )
 
     async def unassign_users(self, group_id: int | str, *usernames: str, workers: int | None = None):
@@ -347,9 +393,9 @@ class UserGroups(CumulocityResource):
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
         await run_batched(
-            flatten(role_ids),
+            unwrap_args(role_ids),
             workers,
-            lambda r: self.c8y.post(path, {'role': {'self': f'user/roles/{r}'}}, accept=None)
+            lambda r: self.c8y.post(path, json={'role': {'self': f'user/roles/{r}'}}, accept=None)
         )
 
     async def unassign_roles(self, group_id: int | str, *role_ids: str, workers: int | None = None):
@@ -362,7 +408,7 @@ class UserGroups(CumulocityResource):
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
         await run_batched(
-            flatten(role_ids),
+            unwrap_args(role_ids),
             workers,
             lambda r: self.c8y.delete(f"{path}/{r}")
         )
@@ -422,18 +468,31 @@ class BaseUser(CumulocityObject):
     should_reset_password = json_property[bool]('shouldResetPassword')
     send_password_reset_email = json_property[bool]('sendPasswordResetEmail')
 
-    async def reload(self, inplace: bool = False) -> Self:
-        """Reload the User from the database."""
-        return await self._reload(inplace=inplace)
+    async def reload(self, copy: bool = False) -> Self:
+        """Reload the User from the database.
 
-    async def update(self) -> Self:
-        """Update the User within the database.
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            A fresh User object representing what the updated
-            state within the database (including the ID).
+            The reloaded User. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._update()
+        return await self._reload(copy)
+
+    async def update(self, copy: bool = False) -> Self:
+        """Update the User within the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The updated User. By default this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._update(copy)
 
     def _assert_key(self):
         # override as users use their username as key
@@ -534,21 +593,31 @@ class InventoryRole(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self, inplace: bool = False) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
-        Returns:
-            A fresh InventoryRole representing the updated object.
-        """
-        return await self._update(inplace)
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
-    async def reload(self, inplace: bool = False) -> Self:
+        Returns:
+            The updated InventoryRole. By default this is `self`; if
+            `copy=True`, a fresh instance.
+        """
+        return await self._update(copy)
+
+    async def reload(self, copy: bool = False) -> Self:
         """Reload this inventory role from the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            Updated InventoryRole or self if inplace is True.
+            The reloaded InventoryRole. By default this is `self`; if
+            `copy=True`, a fresh instance.
         """
-        return await self._reload(inplace)
+        return await self._reload(copy)
 
     async def delete(self) -> None:
         """Remove this inventory role from the database."""
@@ -592,18 +661,25 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
 
     def select(
         self,
+        expression: str | None = None,
         *,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
-    ) -> AsyncIterator[InventoryRole | Any | tuple[Any]]:
+    ) -> AsyncIterator[InventoryRole]:
         """Iterate over all defined inventory roles.
 
         Args:
-            limit (int): Limit the number of results
-            page_size (int): Number of records per request
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page only
             as_values: Extract values at JSON paths instead of parsing objects
             workers (int): Number of parallel page requests
@@ -611,8 +687,10 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         Returns:
             AsyncIterator of InventoryRole instances
         """
+        page_size = resolve_page_size(page_size, limit)
         return self._iterate(
-            params=map_params(page_size=page_size),
+            expression=expression,
+            params=map_params(page_size=page_size) if not expression else (),
             page_number=page_number,
             limit=limit,
             as_values=as_values,
@@ -621,13 +699,14 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
 
     async def get_all(
         self,
+        expression: str | None = None,
         *,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
-    ) -> list[InventoryRole | Any | tuple[Any]]:
+    ) -> list[InventoryRole]:
         """Query the database for inventory roles and return the results as a list.
 
         See `select` for a documentation of arguments.
@@ -636,6 +715,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
             List of InventoryRole instances
         """
         return [x async for x in self.select(
+            expression=expression,
             limit=limit,
             page_size=page_size,
             page_number=page_number,
@@ -661,11 +741,11 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         """
         await self._update(*roles, workers=workers)
 
-    async def delete(self, *roles: InventoryRole | int | str, workers: int | None = None) -> None:
+    async def delete(self, *roles: str | int | InventoryRole, workers: int | None = None) -> None:
         """Delete inventory roles from the database.
 
         Args:
-            *roles (InventoryRole|int|str): Role objects or IDs to delete
+            *roles (str|int|InventoryRole): Role objects or IDs to delete
             workers (int): Number of parallel requests
         """
         await self._delete(*roles, workers=workers)
@@ -912,23 +992,27 @@ class Users(CumulocityResource):
 
     def select(
             self,
+            expression: str | None = None,
             *,
-            username: str = None,
-            groups: int | UserGroup | list[int | UserGroup] = None,
-            owner: str = None,
-            only_devices: bool = None,
-            with_subusers_count: bool = None,
-            limit: int = None,
+            username: str | None = None,
+            groups: int | UserGroup | Sequence[int | UserGroup] | None = None,
+            owner: str | None = None,
+            only_devices: bool | None = None,
+            with_subusers_count: bool | None = None,
+            limit: int | None = 5,
             include: str | JsonMatcher | None = None,
             exclude: str | JsonMatcher | None = None,
-            page_size: int = 10,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
-    ) -> AsyncIterator[User | Any | tuple[Any]]:
+    ) -> AsyncIterator[User]:
         """Iterate over users.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             username (str): Filter by username or username prefix
             groups (int|str|UserGroup|Sequence): Filter by group membership; accepts
                 group IDs (int or str) or UserGroup instances;
@@ -936,10 +1020,13 @@ class Users(CumulocityResource):
             owner (str): Filter by owner username
             only_devices (bool): Only return device users (prefixed with `device_`)
             with_subusers_count (bool): Include `subusersCount` field in results
-            limit (int): Limit the number of results to this number
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
             include (str | JsonMatcher): Client-side inclusion filter
             exclude (str | JsonMatcher): Client-side exclusion filter
-            page_size (int): Number of entries fetched per request
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page only
             as_values: Extract values at JSON paths instead of parsing objects
             workers (int): Number of parallel page requests
@@ -953,23 +1040,34 @@ class Users(CumulocityResource):
         # for some reason, the groups param accepts multiple group ID, comma separated
         groups_param = ','.join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
 
-        params = map_params(
-            username=username,
-            groups=groups_param,
-            owner=owner,
-            only_devices=only_devices,
-            with_subusers_count=with_subusers_count,
-            page_size=page_size,
+        page_size = resolve_page_size(page_size, limit, include, exclude)
+        params = (
+            map_params(
+                username=username,
+                groups=groups_param,
+                owner=owner,
+                only_devices=only_devices,
+                with_subusers_count=with_subusers_count,
+                page_size=page_size,
+            )
+            if not expression
+            else ()
         )
 
         async def fetch_page(page: int, **_) -> list:
-            result = await self.c8y.get(
-                f'/user/{self.c8y.tenant_id}/users',
-                (*params, ('currentPage', page)),
-            )
+            if expression:
+                result = await self.c8y.get(
+                    f'/user/{self.c8y.tenant_id}/users?{expression}&currentPage={page}',
+                )
+            else:
+                result = await self.c8y.get(
+                    f'/user/{self.c8y.tenant_id}/users',
+                    params=(*params, ('currentPage', page)),
+                )
             return result['users']
 
         return super()._iterate(
+            expression=expression,
             fetch_page=fetch_page,
             page_number=page_number,
             limit=limit,
@@ -981,20 +1079,21 @@ class Users(CumulocityResource):
 
     async def get_all(
             self,
+            expression: str | None = None,
             *,
-            username: str = None,
-            groups: int | str | UserGroup | list[int | str | UserGroup] = None,
-            owner: str = None,
-            only_devices: bool = None,
-            with_subusers_count: bool = None,
-            limit: int = None,
+            username: str | None = None,
+            groups: str | int | UserGroup | Sequence[str | int | UserGroup] | None = None,
+            owner: str | None = None,
+            only_devices: bool | None = None,
+            with_subusers_count: bool | None = None,
+            limit: int | None = 5,
             include: str | JsonMatcher | None = None,
             exclude: str | JsonMatcher | None = None,
-            page_size: int = 1000,
-            page_number: int = None,
-            as_values: AsValuesSpec | None = None,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
-    ) -> list[User | Any | tuple[Any]]:
+    ) -> list[User]:
         """Query the database for users and return the results as a list.
 
         This function is a greedy version of the `select` function. All
@@ -1022,6 +1121,7 @@ class Users(CumulocityResource):
             if groups is not None else None
         )
         return [x async for x in self.select(
+            expression=expression,
             username=username,
             groups=group_ids,
             owner=owner,
@@ -1036,14 +1136,79 @@ class Users(CumulocityResource):
             workers=workers,
         )]
 
-    async def delete(self, *users: User | str, workers: int | None = None) -> None:
+    async def get_count(
+            self,
+            expression: str | None = None,
+            *,
+            username: str | None = None,
+            groups: str | int | UserGroup | Sequence[str | int | UserGroup] | None = None,
+            owner: str | None = None,
+            only_devices: bool | None = None,
+    ) -> int:
+        """Calculate the number of users in the database.
+
+        Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
+            username (str): Filter by username or username prefix
+            groups (int|str|UserGroup|Sequence): Filter by group membership
+            owner (str): Filter by owner username
+            only_devices (bool): Only count device users (prefixed with `device_`)
+
+        Returns:
+            Number of users
+        """
+        path = f'/user/{self.c8y.tenant_id}/users'
+        if expression:
+            result = await self.c8y.get(f"{path}?{expression}&pageSize=1&withTotalPages=true")
+            return result['statistics']['totalPages']
+        groups_param = ','.join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
+        params = map_params(
+            username=username,
+            groups=groups_param,
+            owner=owner,
+            only_devices=only_devices,
+            page_size=1,
+        )
+        result = await self.c8y.get(path, (*params, ('withTotalPages', 'true')))
+        return result['statistics']['totalPages']
+
+    async def create(self, *users: User, workers: int | None = None) -> None:
+        """Create users within the database.
+
+        Args:
+            *users (User): Collection of User instances
+            workers (int): Number of parallel requests
+        """
+        path = f"user/{self.c8y.tenant_id}/users"
+        await run_batched(
+            unwrap_args(users),
+            workers,
+            lambda u: self.c8y.post(path, json=u.to_json(), accept=None),
+        )
+
+    async def update(self, *users: User, workers: int | None = None) -> None:
+        """Update users within the database.
+
+        Args:
+            *users (User): Collection of User instances
+            workers (int): Number of parallel requests
+        """
+        await run_batched(
+            unwrap_args(users),
+            workers,
+            lambda u: self.c8y.put(self.build_object_path(u.username), json=u.to_json(only_updated=True), accept=None),
+        )
+
+    async def delete(self, *users: str | User, workers: int | None = None) -> None:
         """Delete users from the database.
 
         Args:
-            *users (User | str): User objects or usernames to delete
+            *users (str | User): User objects or usernames to delete
             workers (int): Number of parallel requests
         """
-        usernames = [u.username if isinstance(u, User) else u for u in flatten(users)]
+        usernames = [u.username if isinstance(u, User) else u for u in unwrap_args(users)]
         await run_batched(
             usernames,
             workers,

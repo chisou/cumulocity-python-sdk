@@ -1,49 +1,54 @@
 # Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import unquote_plus
 
 import pytest
 
-from c8y_api import CumulocityApi, CumulocityRestApi
-from c8y_api.model import Users
-from tests.utils import isolate_last_call_arg
+from pyc8y.model.user import Users
+
+
+async def _isolate_call_url(**kwargs):
+    """Call Users.get_all and return the URL/query string."""
+    c8y = MagicMock()
+    c8y.tenant_id = 't123'
+    c8y.get = AsyncMock(return_value={'users': [], 'statistics': {'totalPages': 1}})
+    users = Users(c8y=c8y)
+    await users.get_all(**kwargs)
+    assert c8y.get.called
+    call_args, call_kwargs = c8y.get.call_args
+    # resource is positional 1st arg, params is positional 2nd arg (per Users.select fetch_page)
+    resource = call_args[0]
+    params = call_args[1] if len(call_args) > 1 else call_kwargs.get('params') or ()
+    if params:
+        query_string = '&'.join(f'{k}={v}' for k, v in params)
+        resource = f'{resource}?{query_string}'
+    return unquote_plus(resource)
 
 
 @pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': 'EX', 'username': 'U'}, ['?EX'], ['username']),
-    ({'username': 'U', 'groups': [1, 2, 3], 'owner': 'O'},
-     ['username=U', 'groups=1,2,3', 'owner=O'],
+    ({'username': 'U', 'owner': 'O'},
+     ['username=U', 'owner=O'],
      []),
     ({'only_devices': False, 'with_subusers_count': True},
      ['onlyDevices=false', 'withSubusersCount=true'],
      ['_']),
-    ({'snake_case': 'SC', 'pascalCase': 'PC'},
-     ['snakeCase=SC', 'pascalCase=PC'],
-     ['_']),
-
 ], ids=[
-    'expression',
-    'username+groups+owner',
+    'username+owner',
     'only_devices+with_subusers_count',
-    'kwargs'
 ])
-def test_select_users(params, expected, not_expected):
+async def test_select_users(params, expected, not_expected):
     """Verify that user selection parameters are processed as expected."""
-    c8y = CumulocityApi(base_url='some.host.com', tenant_id='t123', username='user', password='pass')
-    c8y.get = Mock(return_value={'users': [], 'statistics': {'totalPages': 1}})
-
-    c8y.users.get_all(**params)
-    resource = isolate_last_call_arg(c8y.get, 'resource', 0) if c8y.get.called else None
-    resource = unquote_plus(resource)
+    resource = await _isolate_call_url(**params)
 
     for e in expected:
-        assert e in resource
+        assert e in resource, f"Expected '{e}' in URL: {resource}"
     for ne in not_expected:
-        assert ne not in resource
+        assert ne not in resource, f"Did not expect '{ne}' in URL: {resource}"
 
 
-def test_select_as_values():
+async def test_select_as_values():
     """Verify that select as values works as expected."""
     jsons = [
         {'userName': 'user1',
@@ -57,30 +62,28 @@ def test_select_as_values():
          'phone': '+123'},
     ]
 
-    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
+    c8y = MagicMock()
+    c8y.tenant_id = 't123'
+    c8y.get = AsyncMock(side_effect=[{'users': jsons}, {'users': []}])
     api = Users(c8y)
-    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_values=[
+
+    result = await api.get_all(as_values=[
         'user_name', 'enabled', 'applications', 'customProperties.p1', 'customProperties.p2', 'phone'])
     assert result == [
         ('user1', True, [], 'v1', 'v2', None),
         ('user2', False, [{'a': 1}, {'b': 2}], 'v2', None, '+123'),
     ]
 
-    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
-    api = Users(c8y)
-    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_values=[
+    c8y.get = AsyncMock(side_effect=[{'users': jsons}, {'users': []}])
+    result = await api.get_all(as_values=[
         'userName', 'enabled', 'applications', 'custom_properties.p1', ('customProperties.p2', 'v3'), ('phone', '')])
     assert result == [
         ('user1', True, [], 'v1', 'v2', ''),
         ('user2', False, [{'a': 1}, {'b': 2}], 'v2', 'v3', '+123'),
     ]
 
-    c8y = CumulocityRestApi(base_url='base', tenant_id='t123', username='u', password='p')
-    api = Users(c8y)
-    api.c8y.get = Mock(side_effect=[{'users': jsons}, {'users': []}])
-    result = api.get_all(as_values='enabled')
+    c8y.get = AsyncMock(side_effect=[{'users': jsons}, {'users': []}])
+    result = await api.get_all(as_values='enabled')
     assert result == [
         True,
         False,

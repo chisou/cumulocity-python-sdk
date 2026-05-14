@@ -1,4 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 # pylint: disable=redefined-outer-name
 
@@ -7,11 +8,11 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
-from c8y_api.model import Alarm
+from pyc8y.model.alarm import Alarm
 from tests.utils import isolate_last_call_arg
 
 
@@ -34,55 +35,55 @@ def test_parsing():
     path = os.path.dirname(__file__) + '/alarm.json'
     with open(path, encoding='utf-8', mode='rt') as f:
         alarm_json = json.load(f)
-    event = Alarm.from_json(alarm_json)
+    alarm = Alarm.from_json(alarm_json)
 
-    assert event.id == alarm_json['id']
-    assert event.type == alarm_json['type']
-    assert event.text == alarm_json['text']
-    assert event.source == alarm_json['source']['id']
-    assert event.time == alarm_json['time']
-    assert event.creation_time == alarm_json['creationTime']
+    assert alarm.id == alarm_json['id']
+    assert alarm.type == alarm_json['type']
+    assert alarm.text == alarm_json['text']
+    assert alarm.source == alarm_json['source']['id']
+    assert alarm.time == alarm_json['time']
+    assert alarm.creation_time == alarm_json['creationTime']
 
-    assert isinstance(event.datetime, datetime)
-    assert isinstance(event.creation_datetime, datetime)
+    assert isinstance(alarm.creation_datetime, datetime)
 
-    assert event.custom_attribute == 'value'
-    assert event.custom_fragment.test.string == 'string'
-    assert event.custom_fragment.test.false is False
+    assert alarm['custom_attribute'] == 'value'
+    assert alarm['custom_fragment.test.string'] == 'string'
+    assert alarm['custom_fragment.test.false'] is False
 
 
 def test_default_values():
-    """Verify that the full JSON is enriched with creation defaults."""
+    """Verify that the JSON does not contain undefined fields."""
     # 1) create a minimal Alarm instance
     alarm = Alarm(type='type', source='123', text='text', severity='MAJOR')
 
     # -> status is not set
     assert not alarm.status
-    # -> time is not set
-    assert not alarm.time
 
-    alarm_json = alarm.to_full_json()
+    alarm_json = alarm.to_json()
 
     # -> status should not be defaulted
     assert 'status' not in alarm_json
     # -> time should not be set in the full JSON
     assert 'time' not in alarm_json
 
-    # 2) invoking the create function
-    alarm.c8y = Mock()
-    alarm.c8y.post = Mock()
-    alarm.from_json = Mock()  # mocking this as the post result will be crap
-    alarm.create()
+
+async def test_create_post_payload():
+    """Verify that a create() POST request only sends defined fields."""
+    alarm = Alarm(type='type', source='123', text='text', severity='MAJOR')
+    alarm.c8y = AsyncMock()
+    alarm.c8y.post = AsyncMock(return_value={})
+
+    await alarm.create()
     # -> posted JSON should not contain a time as it is not set in the object
-    assert 'time' not in isolate_last_call_arg(alarm.c8y.post, 'json', 1)
+    posted_json = isolate_last_call_arg(alarm.c8y.post, 'json', 1)
+    assert 'time' not in posted_json
 
 
 def test_formatting(sample_alarm: Alarm):
     """Verify that JSON formatting works."""
-    sample_alarm.id = 'id'
-    alarm_json = sample_alarm.to_full_json()
+    alarm_json = sample_alarm.to_json()
 
-    assert 'id' not in alarm_json
+    # creation/server-side managed fields should not be present (they were not set)
     assert 'creationTime' not in alarm_json
     assert 'firstOccurrenceTime' not in alarm_json
 
@@ -93,9 +94,9 @@ def test_formatting(sample_alarm: Alarm):
     assert alarm_json['severity'] == sample_alarm.severity
     assert alarm_json['status'] == sample_alarm.status
 
-    assert alarm_json['simple_string'] == sample_alarm.simple_string
-    assert alarm_json['simple_int'] == sample_alarm.simple_int
-    assert alarm_json['simple_float'] == sample_alarm.simple_float
+    assert alarm_json['simple_string'] == sample_alarm['simple_string']
+    assert alarm_json['simple_int'] == sample_alarm['simple_int']
+    assert alarm_json['simple_float'] == sample_alarm['simple_float']
     assert alarm_json['simple_true'] is True
     assert alarm_json['simple_false'] is False
     assert alarm_json['complex_1']['level0'] == 'value'
@@ -108,8 +109,8 @@ def test_formatting(sample_alarm: Alarm):
 
 
 def test_now_datetime():
-    """Verify that by default the current datetime will be applied."""
-    alarm = Alarm(None, 'type', time='now', source='12345')
+    """Verify that 'now' is materialized to a timestring."""
+    alarm = Alarm(type='type', time='now', source='12345')
 
     assert alarm.time
-    assert 'time' in alarm.to_full_json()
+    assert 'time' in alarm.to_json()

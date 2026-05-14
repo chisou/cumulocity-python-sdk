@@ -50,21 +50,25 @@ async def sample_device(live_c8y: CumulocityClient, device_registry: DeviceRegis
 
     # 2) continuously try to accept the request in the background;
     # it can be accepted once there was some communication
-    async def await_communication_and_accept():
+    async def await_communication_and_accept(num_retries=100):
         # pylint: disable=bare-except
-        for _ in range(100):
+        for _ in range(num_retries):
             try:
                 await live_c8y.device_inventory.accept(device_id)
                 break
-            except:
+            except KeyError:
                 logger.info("Unable to accept device request. Waiting for device communication.")
                 await asyncio.sleep(0.5)
 
-    asyncio.create_task(await_communication_and_accept())
+    async with asyncio.TaskGroup() as tg:
+        # start accept task
+        tg.create_task(await_communication_and_accept())
 
-    # 3) wait for the request acceptance and retrieve device-specific credentials
-    logger.info(f"Requesting credentials for device '{device_id}'.")
-    credentials = await device_registry.await_credentials(device_id)
+        # 3) wait for the request acceptance and retrieve device-specific credentials
+        logger.info(f"Requesting credentials for device '{device_id}'.")
+        credentials_task = tg.create_task(device_registry.await_credentials(device_id))
+
+    credentials= credentials_task.result()
     logger.info("Credentials request accepted.")
 
     device_c8y = CumulocityClient(

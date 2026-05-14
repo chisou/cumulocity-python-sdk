@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Any, Self
+from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -10,9 +10,10 @@ from pyc8y.model.model_base import (
     id_property,
     time_property,
     map_params,
+    resolve_page_size,
 )
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.types import EventMeta, AsValuesSpec, FileSpec
+from pyc8y.types import EventMeta, FileSpec
 
 
 class Event(CumulocityObject):
@@ -28,11 +29,11 @@ class Event(CumulocityObject):
 
     def __init__(
         self,
-        c8y: CumulocityRestClient = None,
-        type: str = None,  # noqa (type)
-        time: str | datetime = None,
-        source: str = None,
-        text: str = None,
+        c8y: CumulocityRestClient | None = None,
+        type: str | None = None,  # noqa (type)
+        time: str | datetime | None = None,
+        source: str | None = None,
+        text: str | None = None,
         **kwargs,
     ):
         super().__init__(c8y, **kwargs)
@@ -72,7 +73,7 @@ class Event(CumulocityObject):
         """
         return self.has("c8y_IsBinary")
 
-    async def create_attachment(self, file: FileSpec, content_type: str = None) -> dict:
+    async def create_attachment(self, file: FileSpec, content_type: str | None = None) -> dict:
         """Create the binary attachment.
 
         Args:
@@ -87,7 +88,7 @@ class Event(CumulocityObject):
         self._assert_key()
         return await self.c8y.post_file(self.attachment_path, file=file, content_type=content_type)
 
-    async def update_attachment(self, file: FileSpec, content_type: str = None) -> dict:
+    async def update_attachment(self, file: FileSpec, content_type: str | None = None) -> dict:
         """Update the binary attachment.
 
         Args:
@@ -126,29 +127,35 @@ class Event(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to this event to the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Event instance representing the updated state.
+            The updated Event. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._update()
+        return await self._update(copy)
 
     async def delete(self, **_) -> None:
         """Delete this event from the database."""
         await self._delete()
 
-    async def reload(self, inplace: bool = False) -> Self:
+    async def reload(self, copy: bool = False) -> Self:
         """Reload this event's data from the database.
 
         Args:
-            inplace (bool):  If `True`, this object's data will be reloaded;
-                otherwise a new instance is created from the reloaded data.
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            New instance built from latest data or `self` if inplace is True.
+            The reloaded Event. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._reload(inplace)
+        return await self._reload(copy)
 
     async def apply_to(self, other_id: str) -> Self:
         """Apply changes made to this event to another event in the database.
@@ -198,7 +205,7 @@ class Events(CumulocityResource[Event]):
 
     def select(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,  # noqa (type)
         source: str | None = None,
@@ -209,8 +216,8 @@ class Events(CumulocityResource[Event]):
         after: str | datetime | None = None,
         date_from: str | datetime | None = None,
         date_to: str | datetime | None = None,
-        min_age: timedelta | None = None,
-        max_age: timedelta | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
         created_before: str | datetime | None = None,
         created_after: str | datetime | None = None,
         created_from: str | datetime | None = None,
@@ -221,17 +228,17 @@ class Events(CumulocityResource[Event]):
         last_updated_to: str | datetime | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
-        reverse: bool = False,
-        revert: bool = False,
+        reverse: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Event | Any | tuple[Any]]:
+    ) -> AsyncIterator[Event]:
         """Query the database for events and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -273,10 +280,13 @@ class Events(CumulocityResource[Event]):
             reverse (bool): Invert the order of results, starting with the
                 most recent one.
             revert (bool): Same as `reverse`.
-            limit (int): Limit the number of results to this number.
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
             include (str|JsonMatcher): Client-side inclusion filter.
             exclude (str|JsonMatcher): Client-side exclusion filter.
-            page_size (int): Number of events read per request.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page only.
             as_values: Extract values at JSON paths as tuples.
             workers (int): Number of parallel page-fetch workers.
@@ -284,6 +294,7 @@ class Events(CumulocityResource[Event]):
         Returns:
             AsyncIterator of Event objects
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
                 type=type,
@@ -328,7 +339,7 @@ class Events(CumulocityResource[Event]):
 
     async def get_all(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,  # noqa (type)
         source: str | None = None,
@@ -339,8 +350,8 @@ class Events(CumulocityResource[Event]):
         after: str | datetime | None = None,
         date_from: str | datetime | None = None,
         date_to: str | datetime | None = None,
-        min_age: timedelta | None = None,
-        max_age: timedelta | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
         created_before: str | datetime | None = None,
         created_after: str | datetime | None = None,
         created_from: str | datetime | None = None,
@@ -351,17 +362,17 @@ class Events(CumulocityResource[Event]):
         last_updated_to: str | datetime | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
-        reverse: bool = False,
-        revert: bool = False,
+        reverse: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Event | Any | tuple[Any]]:
+    ) -> list[Event]:
         """Query the database for events and return the results as list.
 
         This function is a greedy version of the `select` function. All
@@ -412,7 +423,7 @@ class Events(CumulocityResource[Event]):
 
     async def get_count(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,  # noqa (type)
         source: str | None = None,
@@ -423,8 +434,8 @@ class Events(CumulocityResource[Event]):
         after: str | datetime | None = None,
         date_from: str | datetime | None = None,
         date_to: str | datetime | None = None,
-        min_age: timedelta | None = None,
-        max_age: timedelta | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
         created_before: str | datetime | None = None,
         created_after: str | datetime | None = None,
         created_from: str | datetime | None = None,
@@ -472,7 +483,7 @@ class Events(CumulocityResource[Event]):
 
     async def get_last(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,  # noqa (type)
         source: str | None = None,
@@ -481,7 +492,7 @@ class Events(CumulocityResource[Event]):
         fragment_value: str | None = None,
         before: str | datetime | None = None,
         date_to: str | datetime | None = None,
-        min_age: timedelta | None = None,
+        min_age: str | timedelta | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
         **kwargs,
@@ -546,11 +557,11 @@ class Events(CumulocityResource[Event]):
         """
         await self._update(*events, workers=workers)
 
-    async def delete(self, *events: Event | str, workers: int | None = None) -> None:
+    async def delete(self, *events: str | Event, workers: int | None = None) -> None:
         """Delete event objects from the database.
 
         Args:
-            *events (Event | str):  Collection of Event instances or IDs
+            *events (str | Event):  Collection of Event instances or IDs
             workers (int):  Number of parallel workers
         """
         await self._delete(*events, workers=workers)
@@ -567,7 +578,7 @@ class Events(CumulocityResource[Event]):
 
     async def delete_by(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,  # noqa (type)
         source: str | None = None,
@@ -576,8 +587,8 @@ class Events(CumulocityResource[Event]):
         after: str | datetime | None = None,
         date_from: str | datetime | None = None,
         date_to: str | datetime | None = None,
-        min_age: timedelta | None = None,
-        max_age: timedelta | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
         **kwargs,
     ) -> None:
         """Query the database and delete matching events.
@@ -596,25 +607,24 @@ class Events(CumulocityResource[Event]):
             min_age (timedelta): Minimum age for selected events.
             max_age (timedelta): Maximum age for selected events.
         """
-        params = (
-            map_params(
-                type=type,
-                source=source,
-                fragment=fragment,
-                before=before,
-                after=after,
-                date_from=date_from,
-                date_to=date_to,
-                min_age=min_age,
-                max_age=max_age,
-                **kwargs,
-            )
-            if not expression
-            else ()
+        if expression:
+            await self.c8y.delete(f"{self.resource_path}?{expression}")
+            return
+        params = map_params(
+            type=type,
+            source=source,
+            fragment=fragment,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            **kwargs,
         )
         await self.c8y.delete(self.resource_path, params=params)
 
-    async def create_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:
+    async def create_attachment(self, event_id: str, file: FileSpec, content_type: str | None = None) -> dict:
         """Add a binary attachment to an event.
 
         Args:
@@ -627,7 +637,7 @@ class Events(CumulocityResource[Event]):
         """
         return await self.c8y.post_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
 
-    async def update_attachment(self, event_id: str, file: FileSpec, content_type: str = None) -> dict:
+    async def update_attachment(self, event_id: str, file: FileSpec, content_type: str | None = None) -> dict:
         """Update a binary attachment of an event.
 
         Args:

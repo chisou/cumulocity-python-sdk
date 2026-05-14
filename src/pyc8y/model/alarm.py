@@ -1,7 +1,7 @@
 import warnings
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncGenerator, TypedDict, Unpack, Any, AsyncIterator, Sequence, Self
+from typing import AsyncGenerator, TypedDict, Unpack, AsyncIterator, Sequence, Self
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
@@ -12,9 +12,10 @@ from pyc8y.model.model_base import (
     id_property,
     CumulocityResource,
     map_params,
+    resolve_page_size,
     time_property,
 )
-from pyc8y.types import AlarmMeta, AsValuesSpec
+from pyc8y.types import AlarmMeta
 
 
 class Severity(StrEnum):
@@ -83,8 +84,18 @@ class Alarm(CumulocityObject):
     async def create(self):
         return await self._create()
 
-    async def update(self):
-        return await self._update()
+    async def update(self, copy: bool = False) -> Self:
+        """Update the object within the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The updated Alarm. By default this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._update(copy)
 
     async def delete(self, **_) -> None:
         """Delete this object within the database.
@@ -131,7 +142,7 @@ class Alarms(CumulocityResource[Alarm]):
 
     def select(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,
         source: str | None = None,
@@ -157,17 +168,17 @@ class Alarms(CumulocityResource[Alarm]):
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
         with_source_additions: bool | None = None,
-        reverse: bool = False,
-        revert: bool = False,
+        reverse: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 100,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Alarm | Any | tuple[Any]]:
+    ) -> AsyncIterator[Alarm]:
         """Query the database for alarms and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -201,7 +212,7 @@ class Alarms(CumulocityResource[Alarm]):
             created_after (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms changed at a time after this date are returned.
             created_from (str|datetime): Same as `created_after`
-            created_to(str|datetime): Same as `created_before`
+            created_to (str|datetime): Same as `created_before`
             updated_before (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms changed at a time before this date are returned.
             updated_after (str|datetime):  Datetime object or ISO date/time string.
@@ -214,20 +225,22 @@ class Alarms(CumulocityResource[Alarm]):
                 assets should be included. Requires `source`.
             with_source_devices (bool): Whether also alarms for related source
                 devices should be included. Requires `source`
-            with_source_additions (bool): Whether also alarms for related source0
+            with_source_additions (bool): Whether also alarms for related source
                 additions should be included. Requires `source`.
             reverse (bool):  Invert the order of results, starting with the
                 most recent one
             revert(bool):  Same as`reverse`
-            limit (int): Limit the number of results to this number.
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
             include (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The inclusion is applied first.
                 Creates a PyDF (Python Display Filter) matcher by default for strings.
             exclude (str | JsonMatcher): Matcher/expression to filter the query
                 results (on client side). The exclusion is applied second.
                 Creates a PyDF (Python Display Filter) matcher by default for strings.
-            page_size (int): Define the number of alarms which are read (and
-                parsed in one chunk). This is a performance related setting.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
             as_values: (str|tuple|list[str|tuple]):  Don't parse objects, but
@@ -241,6 +254,7 @@ class Alarms(CumulocityResource[Alarm]):
         See also:
             https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
                 type=type,
@@ -291,41 +305,41 @@ class Alarms(CumulocityResource[Alarm]):
 
     async def get_all(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
-        type: str = None,
-        source: str = None,
-        status: str = None,
-        resolved: str = None,
-        severity: str = None,
-        fragment: str = None,
-        with_source_assets: bool = None,
-        with_source_devices: bool = None,
-        before: str | datetime = None,
-        after: str | datetime = None,
-        date_from: str | datetime = None,
-        date_to: str | datetime = None,
-        created_before: str | datetime = None,
-        created_after: str | datetime = None,
-        created_from: str | datetime = None,
-        created_to: str | datetime = None,
-        updated_before: str | datetime = None,
-        updated_after: str | datetime = None,
-        last_updated_from: str | datetime = None,
-        last_updated_to: str | datetime = None,
-        min_age: str | timedelta = None,
-        max_age: str | timedelta = None,
-        reverse: bool = False,
-        revert: bool = False,
+        type: str | None = None,
+        source: str | None = None,
+        status: str | None = None,
+        resolved: str | None = None,
+        severity: str | None = None,
+        fragment: str | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int = None,
-        page_size: int = 100,
-        page_number: int = None,
-        as_values: str | tuple | list[str | tuple] = None,
+        limit: int | None = 5,
+        page_size: int | None = None,
+        page_number: int | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Alarm | Any | tuple[Any]]:
+    ) -> list[Alarm]:
         """Query the database for alarms and return the results as list.
 
         This function is a greedy version of the select function. All
@@ -377,32 +391,32 @@ class Alarms(CumulocityResource[Alarm]):
 
     async def delete_by(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
-        type: str = None,
-        source: str = None,
-        fragment: str = None,
-        status: str = None,
-        severity: str = None,
-        resolved: str = None,
-        before: str | datetime = None,
-        after: str | datetime = None,
-        date_from: str | datetime = None,
-        date_to: str | datetime = None,
-        min_age: timedelta = None,
-        max_age: timedelta = None,
-        created_before: str | datetime = None,
-        created_after: str | datetime = None,
-        created_from: str | datetime = None,
-        created_to: str | datetime = None,
-        updated_before: str | datetime = None,
-        updated_after: str | datetime = None,
-        last_updated_from: str | datetime = None,
-        last_updated_to: str | datetime = None,
-        with_source_children: bool = None,
-        with_source_assets: bool = None,
-        with_source_devices: bool = None,
-        with_source_additions: bool = None,
+        type: str | None = None,
+        source: str | None = None,
+        fragment: str | None = None,
+        status: str | None = None,
+        severity: str | None = None,
+        resolved: str | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        updated_before: str | datetime | None = None,
+        updated_after: str | datetime | None = None,
+        last_updated_from: str | datetime | None = None,
+        last_updated_to: str | datetime | None = None,
+        with_source_children: bool | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        with_source_additions: bool | None = None,
         **kwargs,
     ):
         """Query the database and delete matching alarms.
@@ -434,7 +448,7 @@ class Alarms(CumulocityResource[Alarm]):
             created_after (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms changed at a time after this date are returned.
             created_from (str|datetime): Same as `created_after`
-            created_to(str|datetime): Same as `created_before`
+            created_to (str|datetime): Same as `created_before`
             updated_before (str|datetime):  Datetime object or ISO date/time string.
                 Only alarms changed at a time before this date are returned.
             updated_after (str|datetime):  Datetime object or ISO date/time string.
@@ -450,45 +464,44 @@ class Alarms(CumulocityResource[Alarm]):
             with_source_additions (bool): Whether also alarms for related source
                 additions should be included. Requires `source`
         """
-        params = (
-            map_params(
-                type=type,
-                source=source,
-                status=status,
-                resolved=resolved,
-                severity=severity,
-                fragment=fragment,
-                fragment_type=fragment,
-                # time
-                before=before,
-                after=after,
-                date_from=date_from,
-                date_to=date_to,
-                min_age=min_age,
-                max_age=max_age,
-                created_before=created_before,
-                created_after=created_after,
-                created_from=created_from,
-                created_to=created_to,
-                updated_before=updated_before,
-                updated_after=updated_after,
-                last_updated_from=last_updated_from,
-                last_updated_to=last_updated_to,
-                # modifiers
-                with_source_children=with_source_children,
-                with_source_devices=with_source_devices,
-                with_source_assets=with_source_assets,
-                with_source_additions=with_source_additions,
-                **kwargs,
-            )
-            if not expression
-            else ()
+        if expression:
+            await self.c8y.delete(f"{self.resource_path}?{expression}")
+            return
+        params = map_params(
+            type=type,
+            source=source,
+            status=status,
+            resolved=resolved,
+            severity=severity,
+            fragment=fragment,
+            fragment_type=fragment,
+            # time
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            created_before=created_before,
+            created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
+            updated_before=updated_before,
+            updated_after=updated_after,
+            last_updated_from=last_updated_from,
+            last_updated_to=last_updated_to,
+            # modifiers
+            with_source_children=with_source_children,
+            with_source_devices=with_source_devices,
+            with_source_assets=with_source_assets,
+            with_source_additions=with_source_additions,
+            **kwargs,
         )
         await self.c8y.delete(self.resource_path, params=params)
 
     async def count(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,
         source: str | None = None,
@@ -502,10 +515,10 @@ class Alarms(CumulocityResource[Alarm]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        with_source_children: bool = None,
-        with_source_assets: bool = None,
-        with_source_devices: bool = None,
-        with_source_additions: bool = None,
+        with_source_children: bool | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        with_source_additions: bool | None = None,
         **kwargs,
     ) -> int:
         """Count the number of certain alarms.
@@ -569,7 +582,7 @@ class Alarms(CumulocityResource[Alarm]):
 
     async def get_count(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,
         source: str | None = None,
@@ -583,10 +596,10 @@ class Alarms(CumulocityResource[Alarm]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        with_source_children: bool = None,
-        with_source_assets: bool = None,
-        with_source_devices: bool = None,
-        with_source_additions: bool = None,
+        with_source_children: bool | None = None,
+        with_source_assets: bool | None = None,
+        with_source_devices: bool | None = None,
+        with_source_additions: bool | None = None,
         **kwargs,
     ) -> int:
         """Count the number of certain alarms.
@@ -625,7 +638,7 @@ class Alarms(CumulocityResource[Alarm]):
             **kwargs,
         )
 
-    async def create(self, *alarms, workers: int | None = None):
+    async def create(self, *alarms: Alarm, workers: int | None = None) -> None:
         """Create alarm objects within the database.
 
         Args:
@@ -634,7 +647,7 @@ class Alarms(CumulocityResource[Alarm]):
         """
         await self._create(*alarms, workers=workers)
 
-    async def update(self, *alarms, workers: int | None = None):
+    async def update(self, *alarms: Alarm, workers: int | None = None) -> None:
         """Write changes to the database.
 
         Args:
@@ -642,6 +655,15 @@ class Alarms(CumulocityResource[Alarm]):
             workers (int): The number of parallel processes to use
         """
         await self._update(*alarms, workers=workers)
+
+    async def delete(self, *alarms: str | Alarm, workers: int | None = None) -> None:
+        """Delete alarm objects from the database.
+
+        Args:
+            *alarms (str | Alarm): Collection of Alarm instances or IDs
+            workers (int): The number of parallel processes to use
+        """
+        await self._delete(*alarms, workers=workers)
 
     async def apply_to(self, alarm: Alarm | dict, *alarm_ids: str, workers: int | None = None):
         """Apply changes made to a single instance to other objects in the database.
@@ -656,25 +678,25 @@ class Alarms(CumulocityResource[Alarm]):
 
     async def apply_by(
         self,
-        alarm: Alarm | dict,
-        expression: str = None,
+        alarm: dict | Alarm,
+        expression: str | None = None,
         *,
-        type: str = None,
-        source: str = None,
-        fragment: str = None,
-        status: str = None,
-        severity: str = None,
-        resolved: str = None,
-        date_from: str | datetime = None,
-        date_to: str | datetime = None,
-        before: str | datetime = None,
-        after: str | datetime = None,
-        created_before: str | datetime = None,
-        created_after: str | datetime = None,
-        created_from: str | datetime = None,
-        created_to: str | datetime = None,
-        min_age: timedelta = None,
-        max_age: timedelta = None,
+        type: str | None = None,
+        source: str | None = None,
+        fragment: str | None = None,
+        status: str | None = None,
+        severity: str | None = None,
+        resolved: str | None = None,
+        date_from: str | datetime | None = None,
+        date_to: str | datetime | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        created_before: str | datetime | None = None,
+        created_after: str | datetime | None = None,
+        created_from: str | datetime | None = None,
+        created_to: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
         with_source_children: bool | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
@@ -705,7 +727,7 @@ class Alarms(CumulocityResource[Alarm]):
             date_from (str|datetime): Same as `after`
             date_to (str|datetime): Same as `before`
             created_from (str|datetime): Same as `created_after`
-            created_to(str|datetime): Same as `created_before`
+            created_to (str|datetime): Same as `created_before`
             min_age (timedelta):  Matches only alarms of at least this age
             max_age (timedelta):  Matches only alarms with at most this age
             with_source_children (bool): Whether also alarms for related source
@@ -714,42 +736,46 @@ class Alarms(CumulocityResource[Alarm]):
                 assets should be included. Requires `source`.
             with_source_devices (bool): Whether also alarms for related source
                 devices should be included. Requires `source`
-            with_source_additions (bool): Whether also alarms for related source0
+            with_source_additions (bool): Whether also alarms for related source
                 additions should be included. Requires `source`.
 
         See also: https://cumulocity.com/api/#operation/putAlarmCollectionResource
         """
-        params = (
-            map_params(
-                type=type,
-                source=source,
-                status=status,
-                resolved=resolved,
-                severity=severity,
-                fragment=fragment,
-                fragment_type=fragment,
-                # time
-                before=before,
-                after=after,
-                date_from=date_from,
-                date_to=date_to,
-                min_age=min_age,
-                max_age=max_age,
-                created_before=created_before,
-                created_after=created_after,
-                created_from=created_from,
-                created_to=created_to,
-                # modifiers
-                with_source_children=with_source_children,
-                with_source_devices=with_source_devices,
-                with_source_assets=with_source_assets,
-                with_source_additions=with_source_additions,
-                **kwargs,
-            )
-            if not expression
-            else ()
-        )
         alarm_json = alarm if isinstance(alarm, dict) else alarm.to_json(only_updated=True)
+        if expression:
+            await self.c8y.put(
+                f"{self.resource_path}?{expression}",
+                json=alarm_json,
+                content_type=self._meta.collection_mime_type,
+                accept=None,
+            )
+            return
+        params = map_params(
+            type=type,
+            source=source,
+            status=status,
+            resolved=resolved,
+            severity=severity,
+            fragment=fragment,
+            fragment_type=fragment,
+            # time
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            created_before=created_before,
+            created_after=created_after,
+            created_from=created_from,
+            created_to=created_to,
+            # modifiers
+            with_source_children=with_source_children,
+            with_source_devices=with_source_devices,
+            with_source_assets=with_source_assets,
+            with_source_additions=with_source_additions,
+            **kwargs,
+        )
         await self.c8y.put(
             self.resource_path,
             params=params,

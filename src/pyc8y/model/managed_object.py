@@ -156,18 +156,18 @@ class ManagedObject(CumulocityObject):
     parent_assets = references_property("assetParents")
     parent_additions = references_property("additionParents")
 
-    async def reload(self, inplace: bool = False) -> Self:
+    async def reload(self, copy: bool = False) -> Self:
         """Reload this object's data from database.
 
         Args:
-            inplace (bool):  If `True`, this object's data will be reloaded;
-                otherwise a new instance is created from the reloaded data.
-
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            New instance built from latest data or `self` if inplace is True.
+            The reloaded ManagedObject. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._reload(inplace)
+        return await self._reload(copy)
 
     async def create(self) -> Self:
         """Create a new representation of this object within the database.
@@ -184,20 +184,20 @@ class ManagedObject(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self, inplace: bool = True) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
         Args:
-            inplace (bool):  If `True`, this object's data will be updated;
-                otherwise a new instance is created from the updated data.
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
         Returns:
-            A fresh ManagedObject instance representing the updated
-            object within the database or `self` if inplace is True.
+            The updated ManagedObject. By default this is `self`; if `copy=True`,
+            a fresh instance.
 
         See also function Inventory.update which doesn't parse the result.
         """
-        return await self._update(inplace)
+        return await self._update(copy)
 
     async def apply_to(self, other_id: str) -> Self:
         """Apply the details of this object to another object in the database.
@@ -495,7 +495,7 @@ class DeviceGroup(ManagedObject):
             DeviceGroup instance
         """
         super().__init__(c8y=c8y, type=self.ROOT_TYPE if root else self.CHILD_TYPE, name=name, owner=owner, **kwargs)
-        self._staged_json["c8Y_IsDeviceGroup"] = {}
+        self._staged_json["c8y_IsDeviceGroup"] = {}
 
     async def create_child(self, name: str, owner: str = None, **kwargs) -> Self:
         """Create and assign a child group.
@@ -532,15 +532,19 @@ class DeviceGroup(ManagedObject):
         """
         return await self._create()
 
-    async def update(self, **_) -> Self:
+    async def update(self, copy: bool = False, **_) -> Self:
         """Write changed to the database.
 
         Note: Removing child groups is currently not supported.
 
-        :returns:  A fresh DeviceGroup instance representing the updated
-            object within the database.
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        :returns:  The updated DeviceGroup. By default this is `self`; if
+            `copy=True`, a fresh instance.
         """
-        return await self._update()
+        return await self._update(copy)
 
     async def delete(self, **_) -> None:
         """Delete this device group.

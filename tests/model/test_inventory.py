@@ -6,8 +6,7 @@ from unittest.mock import Mock
 import pytest
 from urllib import parse
 
-# from c8y_api import CumulocityRestApi, CumulocityApi
-from pyc8y.model.inventory import Inventory #, DeviceGroupInventory, DeviceInventory, Binaries
+from pyc8y.model.inventory import Inventory  # noqa: F401
 from pyc8y.base_util import encode_odata_query_value
 
 from tests.utils import isolate_last_call_arg, assert_all_in, assert_all_not_in

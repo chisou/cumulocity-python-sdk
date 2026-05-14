@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
-from typing import AsyncIterator, Any, Self
+from typing import AsyncIterator, Self, Sequence
 
 import orjson
 
@@ -10,8 +10,10 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     map_params,
+    resolve_page_size,
+    run_batched,
 )
-from pyc8y.types import BinaryMeta, AsValuesSpec, FileSpec
+from pyc8y.types import BinaryMeta, FileSpec
 
 
 class Binary(ManagedObject):
@@ -66,11 +68,16 @@ class Binary(ManagedObject):
         )
         return Binary.from_json(result_json, c8y=self.c8y)
 
-    async def update(self, inplace: bool = True) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Update the binary attachment.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Binary instance representing the updated object.
+            The updated Binary. By default this is `self`; if `copy=True`,
+            a fresh instance.
 
         Raises:
             FileNotFoundError:  if the file attribute refers to an invalid path
@@ -82,10 +89,10 @@ class Binary(ManagedObject):
             file=self.file,
             content_type=self.get("content_type"),
         )
-        if inplace:
-            self._source_json = result_json
-            return self
-        return self._build(result_json, c8y=self.c8y)
+        if copy:
+            return self._build(result_json, c8y=self.c8y)
+        self._source_json = result_json
+        return self
 
     async def read_file(self) -> bytes:
         """Read the content of the binary attachment.
@@ -141,31 +148,33 @@ class Binaries(CumulocityResource[Binary]):
         )
         return Binary.from_json(result_json, c8y=self.c8y)
 
-    async def create(self, *binaries: Binary) -> int:
+    async def create(self, *binaries: Binary, workers: int | None = None) -> int:
         """Create binaries, i.e. upload files.
 
         Each of the binaries must have a `file` attribute set.
 
         Args:
             *binaries (Binary):  Binaries to upload
+            workers (int):  Number of parallel workers
 
         Returns:
-            The number of successfully created binaries
+            The number of created binaries
 
         Raises:
             FileNotFoundError:  if one of the file attributes refers to an invalid path
         """
-        n = 0
-        for b in binaries:
-            await self.c8y.post_file(
+        await run_batched(
+            binaries,
+            workers,
+            lambda b: self.c8y.post_file(
                 self.resource_path,
                 file=b.file,
                 filename=b.name,
                 form_data={"object": orjson.dumps(b.to_json()).decode("utf8")},
                 content_type=b.get("content_type"),
-            )
-            n += 1
-        return n
+            ),
+        )
+        return len(binaries)
 
     async def update(self, id: str, file: FileSpec, type: str | None = None) -> None:  # noqa (type,id)
         """Update a binary attachment.
@@ -182,8 +191,9 @@ class Binaries(CumulocityResource[Binary]):
 
     def select(
         self,
+        expression: str | None = None,
         *,
-        ids: list[str] | None = None,
+        ids: Sequence[str] | None = None,
         type: str | None = None,  # noqa (type)
         owner: str | None = None,
         child_device: str | None = None,
@@ -191,16 +201,19 @@ class Binaries(CumulocityResource[Binary]):
         child_addition: str | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Binary | Any | tuple[Any]]:
+    ) -> AsyncIterator[Binary]:
         """Query the database for binaries and iterate over the results.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             ids (list):  Specific object IDs to select
             type (str):  Object type filter
             owner (str):  Username of the object owner
@@ -209,8 +222,11 @@ class Binaries(CumulocityResource[Binary]):
             child_addition (str):  Object ID of a child addition
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             as_values:  Extract values at JSON paths as tuples
             workers (int):  Number of parallel page-fetch workers
@@ -218,17 +234,23 @@ class Binaries(CumulocityResource[Binary]):
         Returns:
             AsyncIterator of Binary instances
         """
-        params = map_params(
-            type=type,
-            owner=owner,
-            page_size=page_size,
-            ids=ids,
-            childDeviceId=child_device,
-            childAssetId=child_asset,
-            childAddition=child_addition,
-            **kwargs,
+        page_size = resolve_page_size(page_size, limit, include, exclude)
+        params = (
+            map_params(
+                type=type,
+                owner=owner,
+                page_size=page_size,
+                ids=ids,
+                childDeviceId=child_device,
+                childAssetId=child_asset,
+                childAddition=child_addition,
+                **kwargs,
+            )
+            if not expression
+            else ()
         )
         return self._iterate(
+            expression=expression,
             params=params,
             page_number=page_number,
             limit=limit,
@@ -240,8 +262,9 @@ class Binaries(CumulocityResource[Binary]):
 
     async def get_all(
         self,
+        expression: str | None = None,
         *,
-        ids: list[str] | None = None,
+        ids: Sequence[str] | None = None,
         type: str | None = None,  # noqa (type)
         owner: str | None = None,
         child_device: str | None = None,
@@ -249,13 +272,13 @@ class Binaries(CumulocityResource[Binary]):
         child_addition: str | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Binary | Any | tuple[Any]]:
+    ) -> list[Binary]:
         """Query the database for binary objects and return the results as list.
 
         See `select` for a documentation of arguments.
@@ -266,6 +289,7 @@ class Binaries(CumulocityResource[Binary]):
         return [
             x
             async for x in self.select(
+                expression=expression,
                 ids=ids,
                 type=type,
                 owner=owner,
@@ -285,8 +309,9 @@ class Binaries(CumulocityResource[Binary]):
 
     async def get_count(
         self,
+        expression: str | None = None,
         *,
-        ids: list[str] | None = None,
+        ids: Sequence[str] | None = None,
         type: str | None = None,  # noqa (type)
         owner: str | None = None,
         child_device: str | None = None,
@@ -296,17 +321,26 @@ class Binaries(CumulocityResource[Binary]):
     ) -> int:
         """Calculate the number of potential results of a database query.
 
+        Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
+
         Returns:
             Number of potential results
         """
-        params = map_params(
-            type=type,
-            owner=owner,
-            page_size=1,
-            ids=ids,
-            childDeviceId=child_device,
-            childAssetId=child_asset,
-            childAddition=child_addition,
-            **kwargs,
+        params = (
+            map_params(
+                type=type,
+                owner=owner,
+                page_size=1,
+                ids=ids,
+                childDeviceId=child_device,
+                childAssetId=child_asset,
+                childAddition=child_addition,
+                **kwargs,
+            )
+            if not expression
+            else ()
         )
-        return await self._get_count(expression=None, params=params)
+        return await self._get_count(expression=expression, params=params)

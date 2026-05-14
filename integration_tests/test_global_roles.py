@@ -36,7 +36,7 @@ async def test_crud(live_c8y: CumulocityClient):
 
 async def test_select(live_c8y: CumulocityClient, safe_create):
     """Verify that selection works as expected."""
-    all_roles = await live_c8y.user_groups.get_all()
+    all_roles = await live_c8y.user_groups.get_all(page_size=100)
 
     username = create_random_name()
     email = f"{username}@c8y.com"
@@ -47,7 +47,7 @@ async def test_select(live_c8y: CumulocityClient, safe_create):
 
     # verify assigned roles are a subset of what we assigned
     selected_ids = {r.id for r in selected_roles}
-    for role in await live_c8y.user_groups.get_all(username=username):
+    for role in await live_c8y.user_groups.get_all(username=username, page_size=100):
         assert role.id in selected_ids
 
     # client-side filter on all roles

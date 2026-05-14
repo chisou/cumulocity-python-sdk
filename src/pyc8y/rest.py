@@ -6,7 +6,7 @@ import ssl
 from collections import Counter
 from enum import StrEnum
 from pathlib import Path
-from typing import BinaryIO, Self, Sequence, Any, Mapping
+from typing import Awaitable, BinaryIO, Callable, Self, Sequence, Any, Mapping
 
 import aiohttp
 import certifi
@@ -91,13 +91,20 @@ class BatchError(Exception):
 class CumulocityRestClient(object):
 
     def __init__(
-        self, base_url: str, tenant_id: str, auth: Auth, application_key: str = None, processing_mode: str = None
+        self,
+        base_url: str,
+        tenant_id: str,
+        auth: Auth,
+        application_key: str = None,
+        processing_mode: str = None,
+        connector_factory: "Callable[[], Awaitable[aiohttp.BaseConnector]] | None" = None,
     ):
         self.base_url = base_url.rstrip("/") + "/"
         self.tenant_id = tenant_id
         self.auth = auth
         self.application_key = application_key
         self.processing_mode = processing_mode
+        self._connector_factory = connector_factory
         self._session = None
 
     async def __aenter__(self) -> Self:
@@ -110,9 +117,6 @@ class CumulocityRestClient(object):
     @property
     async def session(self) -> aiohttp.ClientSession:
         if not self._session:
-            # ensure certifi-based SSL verification
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            # initialize default session parameters
             headers = {
                 "Authorization": self.auth.build_auth_header(),
             }
@@ -120,14 +124,23 @@ class CumulocityRestClient(object):
                 headers["X-Cumulocity-Application-Key"] = self.application_key
             if self.processing_mode:
                 headers["X-Cumulocity-Processing-Mode"] = self.processing_mode
-            # create session
-            self._session = aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(ssl=ssl_context),
-                base_url=self.base_url,
-                headers=headers,
-                skip_auto_headers=frozenset({"Accept"}),
-            )
-            return self._session
+            if self._connector_factory is not None:
+                connector = await self._connector_factory()
+                self._session = aiohttp.ClientSession(
+                    connector=connector,
+                    connector_owner=False,
+                    base_url=self.base_url,
+                    headers=headers,
+                    skip_auto_headers=frozenset({"Accept"}),
+                )
+            else:
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+                self._session = aiohttp.ClientSession(
+                    connector=aiohttp.TCPConnector(ssl=ssl_context),
+                    base_url=self.base_url,
+                    headers=headers,
+                    skip_auto_headers=frozenset({"Accept"}),
+                )
         return self._session
 
     @property
@@ -267,7 +280,7 @@ class CumulocityRestClient(object):
             method=method,
             url=resource,
             params=params,
-            data=orjson.dumps(json) if json else None,
+            data=orjson.dumps(json) if json is not None else None,
             headers=additional_headers,
         ) as r:
             if logger.isEnabledFor(logging.ERROR):
@@ -310,23 +323,23 @@ class CumulocityRestClient(object):
         self,
         resource: str,
         *,
-        json: dict,
-        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = (),
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
+        json: dict = None,
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
-        return await self.request("POST", resource, params or (), json, accept=accept, content_type=content_type)
+        return await self.request("POST", resource, params or (), json or {}, accept=accept, content_type=content_type)
 
     async def put(
         self,
         resource: str,
         *,
-        json: dict,
         params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
+        json: dict = None,
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
-        return await self.request("PUT", resource, params or (), json, accept=accept, content_type=content_type)
+        return await self.request("PUT", resource, params or (), json or {}, accept=accept, content_type=content_type)
 
     async def post_file(
         self,
@@ -474,8 +487,8 @@ class CumulocityRestClient(object):
                 raise ValueError(f"Unable to perform GET request. Status: {r.status}, Response:\n {await r.text()}")
             return await r.read()
 
-    async def delete(self, resource: str, params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None) -> dict:
-        return await self.request("DELETE", resource, params or ())
+    async def delete(self, resource: str, params: Mapping[str, Any] | Sequence[tuple[str, Any]] = ()) -> dict:
+        return await self.request("DELETE", resource, params)
 
     async def close(self):
         if self._session and not self._session.closed:

@@ -3,7 +3,7 @@
 import dataclasses
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncIterator, Any, ClassVar, Self, Sequence
+from typing import AsyncIterator, ClassVar, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
@@ -15,8 +15,9 @@ from pyc8y.model.model_base import (
     id_property,
     time_property,
     map_params,
+    resolve_page_size,
 )
-from pyc8y.types import AuditRecordMeta, AsValuesSpec
+from pyc8y.types import AuditRecordMeta
 
 
 @dataclasses.dataclass
@@ -194,16 +195,16 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool = False,
+        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[AuditRecord | Any | tuple[Any]]:
+    ) -> AsyncIterator[AuditRecord]:
         """Query the database for audit records and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -225,8 +226,11 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             reverse (bool):  Invert the order of results
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             as_values:  Extract values at JSON paths as tuples
             workers (int):  Number of parallel page-fetch workers
@@ -234,6 +238,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         Returns:
             AsyncIterator of AuditRecord objects
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
                 type=type,
@@ -278,16 +283,16 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool = False,
+        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[AuditRecord | Any | tuple[Any]]:
+    ) -> list[AuditRecord]:
         """Query the database for audit records and return the results as list.
 
         See `select` for a documentation of arguments.

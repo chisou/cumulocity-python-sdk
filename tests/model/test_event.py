@@ -1,4 +1,5 @@
 # Copyright (c) 2025 Cumulocity GmbH
+# Copyright (c) 2026 Christoph Souris
 
 # pylint: disable=redefined-outer-name
 
@@ -10,7 +11,7 @@ from datetime import datetime
 
 import pytest
 
-from c8y_api.model import Event
+from pyc8y.model.event import Event
 
 
 @pytest.fixture(scope='function')
@@ -43,17 +44,16 @@ def test_parsing():
     assert isinstance(event.datetime, datetime)
     assert isinstance(event.creation_datetime, datetime)
 
-    assert event.custom_attribute == 'value'
-    assert event.custom_fragment.test.string == 'string'
-    assert event.custom_fragment.test.false is False
+    assert event['custom_attribute'] == 'value'
+    assert event['custom_fragment.test.string'] == 'string'
+    assert event['custom_fragment.test.false'] is False
 
 
 def test_formatting(sample_event: Event):
     """Verify that JSON formatting works."""
-    sample_event.id = 'id'
-    event_json = sample_event.to_full_json()
+    event_json = sample_event.to_json()
 
-    assert 'id' not in event_json
+    # creation/server-side fields are not present in the JSON for a created object
     assert 'creationTime' not in event_json
 
     assert event_json['type'] == sample_event.type
@@ -61,9 +61,9 @@ def test_formatting(sample_event: Event):
     assert event_json['text'] == sample_event.text
     assert event_json['time'] == sample_event.time
 
-    assert event_json['simple_string'] == sample_event.simple_string
-    assert event_json['simple_int'] == sample_event.simple_int
-    assert event_json['simple_float'] == sample_event.simple_float
+    assert event_json['simple_string'] == sample_event['simple_string']
+    assert event_json['simple_int'] == sample_event['simple_int']
+    assert event_json['simple_float'] == sample_event['simple_float']
     assert event_json['simple_true'] is True
     assert event_json['simple_false'] is False
     assert event_json['complex_1']['level0'] == 'value'
@@ -75,43 +75,9 @@ def test_formatting(sample_event: Event):
     assert set(event_json.keys()) == expected_keys
 
 
-def test_updating(sample_event: Event):
-    """Verify that updating results in proper diff JSON."""
-
-    # 1) after no update
-    assert not sample_event.get_updates()
-    event_json = sample_event.to_diff_json()
-    assert event_json == {}
-
-    # 2) readonly properties are not recorded
-    sample_event.id = 'id'
-    sample_event.type = 'new type'
-    sample_event.time = '2001-12-31'
-    sample_event.creation_time = '2001-12-31'
-    sample_event.source = 'new source'
-    assert not sample_event.get_updates()
-    assert sample_event.to_diff_json() == {}
-
-    # 3) updatable properties are recorded
-    sample_event.text = 'new text'
-    expected_updates = {'text'}
-    # -> len is the same, we cannot test the keys as they are internal
-    assert len(sample_event.get_updates()) == len(expected_updates)
-    assert set(sample_event.to_diff_json().keys()) == expected_updates
-
-    # 4) updated fragments are recorded
-    # Note: simple fragments can only be updated using [] notation
-    sample_event['simple_float'] = 543.21
-    sample_event['simple_false'] = False
-    sample_event.complex_2.level0.level1 = 'new value'
-    expected_updates.update({'simple_float', 'simple_false', 'complex_2'})
-    assert len(sample_event.get_updates()) == len(expected_updates)
-    assert set(sample_event.to_diff_json().keys()) == expected_updates
-
-
 def test_now_datetime():
-    """Verify that by default the current datetime will be applied."""
-    event = Event(None, type='type', time='now')
+    """Verify that 'now' is materialized to a timestring."""
+    event = Event(type='type', time='now')
 
     assert event.time
-    assert 'time' in event.to_full_json()
+    assert 'time' in event.to_json()

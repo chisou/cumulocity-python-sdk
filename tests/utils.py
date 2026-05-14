@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import jwt
 
-from c8y_api.model._base import CumulocityObject
+from pyc8y.model.model_base import CumulocityObject
 
 
 def assert_in_any(string, strings):

@@ -16,9 +16,10 @@ from pyc8y.model.model_base import (
     time_property,
     datetime_property,
     map_params,
+    resolve_page_size,
 )
 from pyc8y.model.model_util import to_datetime
-from pyc8y.types import MeasurementMeta, AsValuesSpec
+from pyc8y.types import MeasurementMeta
 
 
 class Units(StrEnum):
@@ -454,9 +455,9 @@ class Series(dict):
 
     def to_dataframe(
         self,
-        series: str | Sequence[str] = None,
+        series: str | Sequence[str] | None = None,
         value: str | Sequence[str] | None = None,
-        timestamps: bool | str = None,
+        timestamps: bool | str | None = None,
     ):
         """Build a Pandas DataFrame from this Series object.
 
@@ -544,9 +545,9 @@ class Series(dict):
 
     def to_series(
         self,
-        series: str = None,
+        series: str | None = None,
         value: str = 'min',
-        timestamps: bool | str = None,
+        timestamps: bool | str | None = None,
     ):
         """Build a Pandas Series from a single Cumulocity series.
 
@@ -605,7 +606,7 @@ class Measurement(CumulocityObject):
         *,
         type: str | None = None,
         source: str | None = None,
-        time: str | datetime = None,
+        time: str | datetime | None = None,
         series: SeriesValue | Iterable[SeriesValue] | None = None,
         **kwargs,
     ):
@@ -697,7 +698,7 @@ class Measurements(CumulocityResource[Measurement]):
 
     async def get_all(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,
         source: str | None = None,
@@ -711,13 +712,13 @@ class Measurements(CumulocityResource[Measurement]):
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
         reverse: bool | None = None,
-        limit: int = None,
-        page_size: int = 1000,
-        page_number: int = None,
-        as_values: AsValuesSpec | None = None,
+        limit: int | None = 5,
+        page_size: int | None = None,
+        page_number: int | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Measurement | Any | tuple[Any]]:
+    ) -> list[Measurement]:
         """Query the database for measurements and return the results
         as list.
 
@@ -755,7 +756,7 @@ class Measurements(CumulocityResource[Measurement]):
 
     async def get_count(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
         type: str | None = None,
         source: str | None = None,
@@ -800,17 +801,17 @@ class Measurements(CumulocityResource[Measurement]):
 
     async def get_last(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
-        type: str = None,
-        source: str = None,
-        value_fragment_type: str = None,
-        value_fragment_series: str = None,
-        series: str = None,
-        date_to: str | datetime = None,
-        before: str | datetime = None,
-        min_age: timedelta = None,
-        as_values: AsValuesSpec | None = None,
+        type: str | None = None,
+        source: str | None = None,
+        value_fragment_type: str | None = None,
+        value_fragment_series: str | None = None,
+        series: str | None = None,
+        date_to: str | datetime | None = None,
+        before: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         **kwargs,
     ) -> Measurement | None:
         """Query the database and return the last matching measurement.
@@ -884,13 +885,13 @@ class Measurements(CumulocityResource[Measurement]):
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
         reverse: bool | None = None,
-        limit: int | None = None,
-        page_size: int | None = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Measurement | Any | tuple[Any]]:
+    ) -> AsyncIterator[Measurement]:
         """Query the database for measurements and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -926,10 +927,11 @@ class Measurements(CumulocityResource[Measurement]):
                 at most this age are returned.
             reverse (bool):  Invert the order of results, starting with the
                 most recent one.
-            limit (int):  Limit the number of results to this number.
-            page_size (int):  Define the number of measurements which are
-                read (and parsed in one chunk). This is a performance
-                related setting.
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
             as_values: (*str|tuple):  Don't parse objects, but directly extract
@@ -941,6 +943,7 @@ class Measurements(CumulocityResource[Measurement]):
             Async iterator for matching Measurement objects or values/value
                 tuples if the `as_values` parameter is defined.
         """
+        page_size = resolve_page_size(page_size, limit)
         params = ()
         if not expression:
             series_type, series_value = self._collate_series_params(
@@ -974,18 +977,18 @@ class Measurements(CumulocityResource[Measurement]):
 
     async def get_series(
         self,
-        expression: str = None,
+        expression: str | None = None,
         *,
-        source: str = None,
-        aggregation: str = None,
-        aggregation_function: str | Sequence[str] = None,
-        aggregation_interval: str = None,
-        series: str | Sequence[str] = None,
-        before: str | datetime = None,
-        after: str | datetime = None,
-        min_age: timedelta = None,
-        max_age: timedelta = None,
-        reverse: bool = None,
+        source: str | None = None,
+        aggregation: str | None = None,
+        aggregation_function: str | Sequence[str] | None = None,
+        aggregation_interval: str | None = None,
+        series: str | Sequence[str] | None = None,
+        before: str | datetime | None = None,
+        after: str | datetime | None = None,
+        min_age: str | timedelta | None = None,
+        max_age: str | timedelta | None = None,
+        reverse: bool | None = None,
         **kwargs,
     ) -> Series:
         """Query the database for a list of series and their values.
@@ -1168,7 +1171,7 @@ class Measurements(CumulocityResource[Measurement]):
                 at most this age are returned.
         """
         if expression:
-            await self.c8y.delete(f"{self.resource_path}/?{expression}")
+            await self.c8y.delete(f"{self.resource_path}?{expression}")
         else:
             series_type, series_value = self._collate_series_params(
                 series=series,

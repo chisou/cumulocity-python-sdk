@@ -2,9 +2,9 @@
 
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncIterator, Any, Self
+from typing import AsyncIterator, Self, Sequence
 
-from pyc8y.base_util import flatten
+from pyc8y.base_util import unwrap_args
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.inventory import Device
 from pyc8y.model.matcher import JsonMatcher
@@ -15,10 +15,11 @@ from pyc8y.model.model_base import (
     datetime_property,
     time_property,
     map_params,
+    resolve_page_size,
     run_batched,
     ensure_ids,
 )
-from pyc8y.types import OperationMeta, BulkOperationMeta, AsValuesSpec
+from pyc8y.types import OperationMeta, BulkOperationMeta
 
 
 class OperationStatus(StrEnum):
@@ -69,13 +70,18 @@ class Operation(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Update the Operation within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Operation object representing the updated state.
+            The updated Operation. By default this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._update()
+        return await self._update(copy)
 
     async def send_to(self, *devices: str | Device, workers: int | None = None) -> None:
         """Send the Operation to devices within the database.
@@ -88,7 +94,7 @@ class Operation(CumulocityObject):
         skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
         operation_json = {k: v for k, v in self.to_json(only_updated=False).items() if k not in skip_keys}
         await run_batched(
-            ensure_ids(flatten(devices)),
+            ensure_ids(unwrap_args(devices)),
             workers,
             lambda x: self.c8y.post(self.resource_path, operation_json | {"deviceId": x}, accept=None),
         )
@@ -132,16 +138,16 @@ class Operations(CumulocityResource[Operation]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool = False,
+        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[Operation | Any | tuple[Any]]:
+    ) -> AsyncIterator[Operation]:
         """Query the database for operations and iterate over the results.
 
         This function is implemented in a lazy fashion - results will only be
@@ -164,8 +170,11 @@ class Operations(CumulocityResource[Operation]):
             reverse (bool):  Invert the order of results
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             as_values:  Extract values at JSON paths as tuples
             workers (int):  Number of parallel page-fetch workers
@@ -173,6 +182,7 @@ class Operations(CumulocityResource[Operation]):
         Returns:
             AsyncIterator of Operation objects
         """
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
                 fragment=fragment,
@@ -219,16 +229,16 @@ class Operations(CumulocityResource[Operation]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool = False,
+        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[Operation | Any | tuple[Any]]:
+    ) -> list[Operation]:
         """Query the database for operations and return the results as list.
 
         See `select` for a documentation of arguments.
@@ -275,7 +285,7 @@ class Operations(CumulocityResource[Operation]):
         date_to: str | datetime | None = None,
         before: str | datetime | None = None,
         min_age: str | timedelta | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple | Sequence[str | tuple] | None = None,
         **kwargs,
     ) -> Operation | None:
         """Query the database and return the last matching operation.
@@ -396,6 +406,24 @@ class Operations(CumulocityResource[Operation]):
             )
             await self.c8y.delete(self.resource_path, params=params)
 
+    async def create(self, *operations: Operation, workers: int | None = None) -> None:
+        """Create operation objects within the database.
+
+        Args:
+            *operations (Operation):  Collection of Operation instances
+            workers (int):  Number of parallel workers
+        """
+        await self._create(*operations, workers=workers)
+
+    async def update(self, *operations: Operation, workers: int | None = None) -> None:
+        """Update operation objects within the database.
+
+        Args:
+            *operations (Operation):  Collection of Operation instances
+            workers (int):  Number of parallel workers
+        """
+        await self._update(*operations, workers=workers)
+
 
 class BulkStatus(StrEnum):
     """Bulk Operation statuses."""
@@ -467,17 +495,31 @@ class BulkOperation(CumulocityObject):
         """
         return await self._create()
 
-    async def update(self) -> Self:
+    async def update(self, copy: bool = False) -> Self:
         """Update the BulkOperation within the database.
 
-        Returns:
-            A fresh BulkOperation object representing the updated state.
-        """
-        return await self._update()
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
 
-    async def reload(self) -> Self:
-        """Reload the BulkOperation from the database."""
-        return await self._reload()
+        Returns:
+            The updated BulkOperation. By default this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._update(copy)
+
+    async def reload(self, copy: bool = False) -> Self:
+        """Reload the BulkOperation from the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The reloaded BulkOperation. By default this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._reload(copy)
 
 
 class BulkOperations(CumulocityResource[BulkOperation]):
@@ -505,30 +547,39 @@ class BulkOperations(CumulocityResource[BulkOperation]):
 
     def select(
         self,
+        expression: str | None = None,
         *,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> AsyncIterator[BulkOperation | Any | tuple[Any]]:
+    ) -> AsyncIterator[BulkOperation]:
         """Query the database for bulk operations and iterate over the results.
 
         Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
-            limit (int):  Limit the number of results
-            page_size (int):  Number of records read per request
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
             page_number (int):  Pull a specific page only
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
             AsyncIterator of BulkOperation objects
         """
-        params = map_params(page_size=page_size, **kwargs)
+        page_size = resolve_page_size(page_size, limit, include, exclude)
+        params = map_params(page_size=page_size, **kwargs) if not expression else ()
         return self._iterate(
+            expression=expression,
             params=params,
             page_number=page_number,
             limit=limit,
@@ -539,15 +590,16 @@ class BulkOperations(CumulocityResource[BulkOperation]):
 
     async def get_all(
         self,
+        expression: str | None = None,
         *,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        limit: int | None = None,
-        page_size: int = 1000,
+        limit: int | None = 5,
+        page_size: int | None = None,
         page_number: int | None = None,
         workers: int | None = None,
         **kwargs,
-    ) -> list[BulkOperation | Any | tuple[Any]]:
+    ) -> list[BulkOperation]:
         """Query the database for bulk operations and return the results as list.
 
         See `select` for a documentation of arguments.
@@ -558,6 +610,7 @@ class BulkOperations(CumulocityResource[BulkOperation]):
         return [
             x
             async for x in self.select(
+                expression=expression,
                 include=include,
                 exclude=exclude,
                 limit=limit,
@@ -568,11 +621,34 @@ class BulkOperations(CumulocityResource[BulkOperation]):
             )
         ]
 
-    async def get_count(self, **kwargs) -> int:
+    async def get_count(self, expression: str | None = None, **kwargs) -> int:
         """Calculate the number of potential results of a database query.
+
+        Args:
+            expression (str): Arbitrary filter expression which will be passed
+                to Cumulocity without change; all other filters are ignored
+                if this is provided
 
         Returns:
             Number of potential results
         """
-        params = map_params(page_size=1, **kwargs)
-        return await self._get_count(expression=None, params=params)
+        params = map_params(page_size=1, **kwargs) if not expression else ()
+        return await self._get_count(expression=expression, params=params)
+
+    async def create(self, *operations: BulkOperation, workers: int | None = None) -> None:
+        """Create bulk operation objects within the database.
+
+        Args:
+            *operations (BulkOperation):  Collection of BulkOperation instances
+            workers (int):  Number of parallel workers
+        """
+        await self._create(*operations, workers=workers)
+
+    async def update(self, *operations: BulkOperation, workers: int | None = None) -> None:
+        """Update bulk operation objects within the database.
+
+        Args:
+            *operations (BulkOperation):  Collection of BulkOperation instances
+            workers (int):  Number of parallel workers
+        """
+        await self._update(*operations, workers=workers)

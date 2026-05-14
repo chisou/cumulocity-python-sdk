@@ -5,7 +5,6 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 
-from pyc8y.base_util import flatten
 from pyc8y.client import CumulocityClient
 from pyc8y.model.binary import Binary
 from pyc8y.model.matcher import field
