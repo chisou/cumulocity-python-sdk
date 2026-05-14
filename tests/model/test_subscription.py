@@ -7,7 +7,7 @@ from pyc8y.model.notification2 import Subscription
 from tests.model.conftest import load_sample_file
 
 
-@pytest.mark.parametrize('sample_json', load_sample_file("subscriptions.json"))
+@pytest.mark.parametrize('sample_json', load_sample_file("subscriptions.json")["subscriptions"])
 def test_parsing(sample_json):
     """Verify that parsing a Subscription from JSON works as expected."""
     sub = Subscription.from_json(sample_json)
