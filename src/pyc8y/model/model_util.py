@@ -1,7 +1,109 @@
 # Copyright (c) 2026 Christoph Souris
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Sequence
+
+
+def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
+    """Ensure a proper datetime object."""
+
+    def param_name():
+        return f" ({name})" if name else ""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if not value.tzinfo:
+            raise ValueError(f"A specified datetime{param_name()} needs to be timezone aware.")
+        return value
+    try:
+        datetime_value = to_datetime(value)
+        if datetime_value.tzinfo is None:
+            datetime_value = datetime_value.replace(tzinfo=timezone.utc)
+        return datetime_value
+    except ValueError:
+        raise ValueError(f"Unable to convert to datetime{param_name()}.")
+
+
+# TODO: Bit unelegant that it might return None, no? Small if around for each invocation?
+def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedelta | None:
+    def param_name():
+        return f" ({name})" if name else ""
+
+    if value is None:
+        return None
+    if isinstance(value, timedelta):
+        return value
+
+    if ":" in value:
+        try:
+            parts = value.split(":")
+            hours = int(parts[0])
+            minutes = int(parts[1])
+            seconds = int(parts[2]) if len(parts) > 2 else 0
+            return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+        except ValueError as e:
+            raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
+
+    # find first non-digit
+    parts = re.split(r"([dDhHmMsS])", value)
+    if len(parts) < 3 or not parts[0].isdigit():
+        raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
+
+    amount = int(parts[0])
+    unit = parts[1].lower()
+
+    if unit == "d":
+        return timedelta(days=amount)
+    if unit == "h":
+        return timedelta(hours=amount)
+    if unit == "m":
+        return timedelta(minutes=amount)
+    if unit == "s":
+        return timedelta(seconds=amount)
+
+    raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
+
+
+def coerce_timestring(value: str | datetime | None, name: str = None) -> str | None:
+    """Ensure that a given timestring reflects a proper, timezone aware date/time.
+    A static string 'now' will be converted to the current datetime in UTC."""
+
+    def param_name():
+        return f" ({name})" if name else ""
+
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if not value.tzinfo:
+            raise ValueError(f"A specified datetime{param_name()} needs to be timezone aware.")
+        return to_timestring(value)
+    if value == "now":
+        return now_timestring()
+    try:
+        value = to_datetime(value)
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return to_timestring(value)
+    except ValueError as e:
+        raise ValueError(f"Invalid datetime{param_name()} ({e}).")
+
+
+def expand_dotted(kwargs):
+    if not kwargs:
+        return kwargs
+
+    result = {}
+    for key, value in kwargs.items():
+        parts = key.split(".")
+        current = result
+
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+
+        current[parts[-1]] = value
+
+    return result
 
 
 def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:

@@ -1,7 +1,5 @@
 import asyncio
 from copy import deepcopy
-from datetime import datetime, timezone, timedelta
-import re
 from typing import (
     Any,
     Generic,
@@ -17,16 +15,18 @@ from typing import (
 )
 
 from pyc8y.rest import CumulocityRestClient, BatchError
-from pyc8y.base_util import flatten, is_sequence
+from pyc8y.base_util import ensure_sequence, unwrap_args, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
     as_record,
+    expand_dotted,
     get_by_path,
     to_datetime,
     to_pascal_case,
     now_datetime,
     to_timestring,
     now_timestring,
+    coerce_timestring,
 )
 
 # trying to import various matchers that need external libraries
@@ -41,111 +41,12 @@ except ImportError as e:
         except ImportError:
             DefaultMatcher = None
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec
+from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec, DEFAULT_PAGE_SIZE
 
 CO = TypeVar("CO", bound="CumulocityObject")
 T = TypeVar("T")
 
 
-def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
-    """Ensure a proper datetime object."""
-
-    def param_name():
-        return f" ({name})" if name else ""
-
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        if not value.tzinfo:
-            raise ValueError(f"A specified datetime{param_name()} needs to be timezone aware.")
-        return value
-    try:
-        value = to_datetime(value)
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value
-    except ValueError:
-        raise ValueError(f"Unable to convert to datetime{param_name()}.")
-
-# TODO: Bit unelegant that it might return None, no? Small if around for each invocation?
-def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedelta | None:
-    def param_name():
-        return f" ({name})" if name else ""
-
-    if value is None:
-        return None
-    if isinstance(value, timedelta):
-        return value
-
-    if ":" in value:
-        try:
-            parts = value.split(":")
-            hours = int(parts[0])
-            minutes = int(parts[1])
-            seconds = int(parts[2]) if len(parts) > 2 else 0
-            return timedelta(hours=hours, minutes=minutes, seconds=seconds)
-        except ValueError as e:
-            raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
-
-    # find first non-digit
-    parts = re.split(r"([dDhHmMsS])", value)
-    if len(parts) < 3 or not parts[0].isdigit():
-        raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
-
-    amount = int(parts[0])
-    unit = parts[1].lower()
-
-    if unit == "d":
-        return timedelta(days=amount)
-    if unit == "h":
-        return timedelta(hours=amount)
-    if unit == "m":
-        return timedelta(minutes=amount)
-    if unit == "s":
-        return timedelta(seconds=amount)
-
-    raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
-
-
-def coerce_timestring(value: str | datetime | None, name: str = None) -> str | None:
-    """Ensure that a given timestring reflects a proper, timezone aware date/time.
-    A static string 'now' will be converted to the current datetime in UTC."""
-
-    def param_name():
-        return f" ({name})" if name else ""
-
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        if not value.tzinfo:
-            raise ValueError(f"A specified datetime{param_name()} needs to be timezone aware.")
-        return to_timestring(value)
-    if value == "now":
-        return now_timestring()
-    try:
-        value = to_datetime(value)
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return to_timestring(value)
-    except ValueError as e:
-        raise ValueError(f"Invalid datetime{param_name()} ({e}).")
-
-
-def expand_dotted(kwargs):
-    if not kwargs:
-        return kwargs
-
-    result = {}
-    for key, value in kwargs.items():
-        parts = key.split(".")
-        current = result
-
-        for part in parts[:-1]:
-            current = current.setdefault(part, {})
-
-        current[parts[-1]] = value
-
-    return result
 
 
 class json_property(Generic[T]):
@@ -287,12 +188,8 @@ def map_params(
     if (not source) and any([with_source_devices, with_source_assets]):
         raise ValueError("Can only include source assets/devices if 'source' parameter is provided.")
 
-    series = series if is_sequence(series) else (series,) if series else ()
-    aggregation_function = (
-        aggregation_function
-        if is_sequence(aggregation_function)
-        else (aggregation_function,) if aggregation_function else ()
-    )
+    series = ensure_sequence(series)
+    aggregation_function = ensure_sequence(aggregation_function)
     params = (
         ("name", name),  # TODO, check if OData encoding works as expected
         ("fragmentType", fragment),
@@ -312,7 +209,7 @@ def map_params(
     return [(to_pascal_case(k), str(v)) for k, v in params if v is not None]
 
 
-def encode(value: Any | None) -> Sequence | str | None:
+def encode(value: Any | Sequence | None) -> Sequence | str | None:
     if value is None:
         return None
     if is_sequence(value):
@@ -322,7 +219,7 @@ def encode(value: Any | None) -> Sequence | str | None:
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, str):
-        return value  # encode?
+        return value  # TODO:   encode?
     raise ValueError(f"Unexpected value type '{type(value)}'. No idea how to encode.")
 
 
@@ -348,8 +245,8 @@ class CumulocityObject:
 
     def __init__(self, c8y: CumulocityRestClient | None = None, **kwargs):
         self.c8y = c8y
-        self._source_json: dict | None = {}
-        self._staged_json: dict | None = expand_dotted(kwargs)
+        self._source_json: dict = {}
+        self._staged_json: dict = expand_dotted(kwargs)
 
     @property
     def _json(self) -> dict:
@@ -498,9 +395,7 @@ class CumulocityObject:
         self._set(path, value, fail=False)
 
     def __iadd__(self, other) -> Self:
-        if not is_sequence(other):
-            other = (other,)
-        for i in other:
+        for i in ensure_sequence(other):
             self._staged_json[i.name] = i.items
         return self
 
@@ -527,7 +422,7 @@ class CumulocityObject:
             c8y=self.c8y,
         )
 
-    async def _update(self, inplace: bool = False) -> Self:  # TODO: shouldn't this best update itself?
+    async def _update(self, copy: bool = False) -> Self:
         """Update the object within the database.
 
         Note: This will only send changed fields to increase performance.
@@ -535,7 +430,6 @@ class CumulocityObject:
         Returns:
             A fresh object representing the updated state within the database.
         """
-        # TODO: to update itself - it would need to update the ._json variable?
         self._assert_c8y()
         self._assert_key()
         object_json = await self.c8y.put(
@@ -544,10 +438,10 @@ class CumulocityObject:
             accept=self._meta.object_mime_type,
             content_type=self._meta.object_mime_type,
         )
-        if inplace:
-            self._source_json = object_json
-            return self
-        return self._build(object_json, c8y=self.c8y)
+        if copy:
+            return self._build(object_json, c8y=self.c8y)
+        self._source_json = object_json
+        return self
 
     async def _apply_to(self, other_id: str) -> Self:
         """Apply changes made to this object to another object in the database.
@@ -575,17 +469,17 @@ class CumulocityObject:
         self._assert_key()
         await self.c8y.delete(self.object_path, params=params)
 
-    async def _reload(self, inplace: bool = False) -> Self:
+    async def _reload(self, copy: bool = False) -> Self:
         self._assert_c8y()
         self._assert_key()
         object_json = await self.c8y.get(
             self.object_path,
             accept=self._meta.object_mime_type,
         )
-        if inplace:
-            self._source_json = object_json
-            return self
-        return self._build(object_json, c8y=self.c8y)
+        if copy:
+            return self._build(object_json, c8y=self.c8y)
+        self._source_json = object_json
+        return self
 
     async def delete(self, **_) -> None:  # allow override with parameters
         """Delete the object within the database."""
@@ -668,14 +562,14 @@ class CumulocityResource(Generic[CO]):
         expression: str | None,
         params: dict | Sequence[tuple[str, Any]] | None = None,
         as_values: AsValuesSpec | None = None,
-    ) -> CO | Any | tuple[Any] | None:
+    ) -> CO | None:
         ...
     async def _get_last(
         self,
         expression: str | None,
         params: dict | Sequence[tuple[str, Any]] | None = None,
         as_values: AsValuesSpec | None = None,
-    ) -> CO | Any | tuple[Any] | None:
+    ) -> CO | None:
         if expression:
             result_json = await self.c8y.get(
                 f"{self.resource_path}?{expression}&currentPage=1&pageSize=1", accept=self._meta.object_mime_type
@@ -718,7 +612,7 @@ class CumulocityResource(Generic[CO]):
         as_values: AsValuesSpec | None = None,
         workers: int | None = None,
         fetch_page: PageFetcher | None = None,
-    ) -> AsyncIterator[CO | Any | tuple[CO]]:
+    ) -> AsyncIterator[CO]:
         # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
         num_results = 0
@@ -771,17 +665,17 @@ class CumulocityResource(Generic[CO]):
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            flatten(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+            unwrap_args(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
         )
 
     async def _create_bulk(self, *objects: CO) -> None:
-        objects = flatten(objects)  # not documented, but good to have
+        objects = unwrap_args(objects)  # not documented, but good to have
         bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
         await self.c8y.post(self.resource_path, json=bulk_json, content_type=self.collection_mime_type)
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            flatten(objects),
+            unwrap_args(objects),
             workers,
             lambda x: self.c8y.put(self.build_object_path(x.id), json=x.to_json(only_updated=True), accept=None),
         )
@@ -789,7 +683,7 @@ class CumulocityResource(Generic[CO]):
     async def _apply_to(self, model: dict | CO, *objects: str | CO, workers: int | None = None) -> None:
         model_json = model if isinstance(model, dict) else model.to_json(only_updated=True)
         await run_batched(
-            ensure_ids(flatten(objects)),
+            ensure_ids(unwrap_args(objects)),
             workers,
             lambda x: self.c8y.put(
                 self.build_object_path(x), json=model_json, content_type=self._meta.object_mime_type, accept=None
@@ -799,10 +693,29 @@ class CumulocityResource(Generic[CO]):
     # this one should be ok for all implementations, hence we define it here
     async def _delete(self, *objects: str | CO, workers: int | None = None) -> None:
         await run_batched(
-            ensure_ids(flatten(objects)),
+            ensure_ids(unwrap_args(objects)),
             workers,
             lambda x: self.c8y.delete(self.build_object_path(x)),
         )
+
+
+def resolve_page_size(
+    page_size: int | None,
+    limit: int | None,
+    include: object = None,
+    exclude: object = None,
+) -> int:
+    """Resolve the effective page size for a paged query.
+
+    If the caller passed an explicit `page_size`, use it as-is. Otherwise:
+    - When `limit` is set AND no client-side filter (`include`/`exclude`) is in
+      play, match `page_size` to `limit` so we page once and return.
+    - Otherwise use `DEFAULT_PAGE_SIZE`.
+    """
+    if page_size is not None:
+        return page_size
+    has_filter = include is not None or exclude is not None
+    return limit if (limit is not None and not has_filter) else DEFAULT_PAGE_SIZE
 
 
 def ensure_ids(objects):

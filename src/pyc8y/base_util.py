@@ -9,23 +9,33 @@ def is_sequence(obj: Any) -> bool:
     return isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray))
 
 
-def ensure_sequence(obj: Any | Sequence[Any]) -> Sequence[Any]:
-    """Determine if an object is a sequence, i.e. list or tuple."""
+def ensure_sequence(obj: Any | Sequence[Any] | None) -> Sequence[Any]:
+    """Ensure a sequence: pass sequences through, wrap scalars in a 1-tuple,
+    and map None to an empty tuple."""
+    if obj is None:
+        return ()
     return obj if is_sequence(obj) else (obj,)
 
 
-def flatten(items: Sequence[Any] | Sequence[Sequence[Any]]) -> tuple[Any, ...]:
-    """Ensure a flat list.
+def unwrap_args(args: Sequence[Any]) -> tuple[Any, ...]:
+    """Unwrap a *args-style argument tuple, flattening one level of sequences.
 
-    Args:
-        items (Sequence): A sequence or 1-element sequence of sequence.
+    Supports the stdlib min/max calling convention: callers may pass items
+    either as individual positional arguments or collected in sequences, and
+    the two forms can be mixed.
 
-    Returns:
-        Tuple of the sequence items.
+    Examples:
+        unwrap_args(("a", "b"))         -> ("a", "b")
+        unwrap_args((["a", "b"],))      -> ("a", "b")
+        unwrap_args((["a", "b"], "c"))  -> ("a", "b", "c")
     """
-    if len(items) == 1 and is_sequence(items[0]):
-        return tuple(items[0])
-    return tuple(items)  # always tuple for consistency
+    result: list = []
+    for item in args:
+        if is_sequence(item):
+            result.extend(item)
+        else:
+            result.append(item)
+    return tuple(result)
 
 
 def first(*values: Any) -> Any | None:
@@ -73,19 +83,6 @@ def matches(expression: str, string: str):
         return re.search(expression, string) is not None
     except re.error:
         return False
-
-
-def sanitize_page_size(limit: int, page_size: int) -> int:
-    """Harmonize/sanitize page_size for a database query.
-
-    The page size should never exceed the given limit of a query. Hence,
-    this function sets the page size to the limit if undefined or too large.
-    A smaller page size passes as this can be a performance consideration.
-
-    Returns:
-        Updated page size.
-    """
-    return min(limit or 1001, page_size or 1001, 1000)
 
 
 def encode_odata_query_value(value):
