@@ -58,7 +58,7 @@ async def test_crud_2(live_c8y: CumulocityClient):
         await live_c8y.inventory_roles.create(role)
 
         # find just-created role
-        all_roles = await live_c8y.inventory_roles.get_all()
+        all_roles = await live_c8y.inventory_roles.get_all(limit=None)
         created = next(r for r in all_roles if r.name == role.name)
 
         # update via API
@@ -77,7 +77,7 @@ async def test_crud_2(live_c8y: CumulocityClient):
     finally:
         if role:
             try:
-                all_roles = await live_c8y.inventory_roles.get_all()
+                all_roles = await live_c8y.inventory_roles.get_all(limit=None)
                 leftover = next((r for r in all_roles if r.name == role.name), None)
                 if leftover:
                     await live_c8y.inventory_roles.delete(leftover.id)
@@ -87,11 +87,11 @@ async def test_crud_2(live_c8y: CumulocityClient):
 
 async def test_select(live_c8y: CumulocityClient):
     """Verify that selection and filtering work as expected."""
-    all_roles = await live_c8y.inventory_roles.get_all()
+    all_roles = await live_c8y.inventory_roles.get_all(limit=None)
     assert all_roles
 
     # client-side include filter
-    with_desc = await live_c8y.inventory_roles.get_all(include='description != null')
+    with_desc = await live_c8y.inventory_roles.get_all(limit=None, include='description != null')
     without_desc = [r for r in all_roles if not r.description]
     assert {r.id for r in with_desc} == {r.id for r in all_roles} - {r.id for r in without_desc}
 

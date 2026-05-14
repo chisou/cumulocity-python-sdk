@@ -559,22 +559,25 @@ class Inventory(CumulocityResource[MO]):
         if ids:
             return {"ids": ids, **kwargs}
 
-        # collate fragments
-        multi_fragments = ensure_sequence(fragments or fragment) or []
-        single_fragment = fragment or multi_fragments[0] if len(multi_fragments) == 1 else None
+        # collate fragments; for device-only mode, ensure c8y_IsDevice is part of the filter
+        multi_fragments = ensure_sequence(fragments or fragment)
+        if only_devices:
+            multi_fragments = ("c8y_IsDevice", *multi_fragments)
+        single_fragment = multi_fragments[0] if len(multi_fragments) == 1 else None
 
-        # we only need to use a query for certain filters
-        use_query = parent or filters or order_by or name or single_fragment
+        # we only need a query for filters that can't be expressed as direct
+        # query parameters (a single fragment can, multiple fragments cannot)
+        use_query = parent or filters or order_by or name or len(multi_fragments) > 1
         if not use_query:
             return {k: v for k, v in dict(
-                type=type, owner=owner, text=text, fragment=fragment, **kwargs
-            ) if v is not None}
+                type=type, owner=owner, text=text, fragment=single_fragment, **kwargs
+            ).items() if v is not None}
 
         # if any of the given filter is 'special' we have to convert to a query
         query_filters = list(filters) if filters else []
 
-        if fragments:
-            query_filters.extend([f"has({x})" for x in fragments])
+        if multi_fragments:
+            query_filters.extend([f"has({x})" for x in multi_fragments])
         if parent:
             query_filters.append(f"bygroupid({parent})")
         if name:

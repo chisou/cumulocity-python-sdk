@@ -19,6 +19,8 @@ from pyc8y.base_util import ensure_sequence, unwrap_args, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
     as_record,
+    coerce_timedelta,
+    coerce_timestring,
     expand_dotted,
     get_by_path,
     to_datetime,
@@ -26,7 +28,6 @@ from pyc8y.model.model_util import (
     now_datetime,
     to_timestring,
     now_timestring,
-    coerce_timestring,
 )
 
 # trying to import various matchers that need external libraries

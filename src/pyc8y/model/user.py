@@ -529,7 +529,7 @@ class Permission(JsonObject):
             super().__init__(data)
         else:
             super().__init__()
-            self.level = level
+            self.permission = level
             self.scope = scope
             self.type = type
 
@@ -664,6 +664,8 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         expression: str | None = None,
         *,
         limit: int | None = 5,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
         page_size: int | None = None,
         page_number: int | None = None,
         as_values: str | tuple | Sequence[str | tuple] | None = None,
@@ -677,6 +679,8 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
                 if this is provided
             limit (int | None):  Maximum number of results. Default is 5 to support
                 quick Jupyter-style exploration; pass `None` to fetch all matching.
+            include (str | JsonMatcher): Client-side inclusion filter.
+            exclude (str | JsonMatcher): Client-side exclusion filter.
             page_size (int | None):  Number of records read per request. If None
                 (default), inferred from `limit` and whether client-side filters are
                 set.
@@ -687,12 +691,14 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         Returns:
             AsyncIterator of InventoryRole instances
         """
-        page_size = resolve_page_size(page_size, limit)
+        page_size = resolve_page_size(page_size, limit, include, exclude)
         return self._iterate(
             expression=expression,
             params=map_params(page_size=page_size) if not expression else (),
             page_number=page_number,
             limit=limit,
+            include=include,
+            exclude=exclude,
             as_values=as_values,
             workers=workers,
         )
@@ -702,6 +708,8 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         expression: str | None = None,
         *,
         limit: int | None = 5,
+        include: str | JsonMatcher | None = None,
+        exclude: str | JsonMatcher | None = None,
         page_size: int | None = None,
         page_number: int | None = None,
         as_values: str | tuple | Sequence[str | tuple] | None = None,
@@ -717,6 +725,8 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         return [x async for x in self.select(
             expression=expression,
             limit=limit,
+            include=include,
+            exclude=exclude,
             page_size=page_size,
             page_number=page_number,
             as_values=as_values,

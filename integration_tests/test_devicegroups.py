@@ -17,17 +17,17 @@ async def test_CRUD(live_c8y: CumulocityClient, safe_create):
 
     name = create_random_name()
 
-    root, child1, child2 = asyncio.gather(
-        await safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True})),
-        await safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True})),
-        await safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True})),
+    root, child1, child2 = await asyncio.gather(
+        safe_create(DeviceGroup(live_c8y, root=True, name=f"Root-{name}", custom_fragment={"test": True})),
+        safe_create(DeviceGroup(live_c8y, name=f"Child1-{name}", custom_fragment={"test": True})),
+        safe_create(DeviceGroup(live_c8y, name=f"Child2-{name}", custom_fragment={"test": True})),
     )
 
     # assign children using batch method
     await live_c8y.group_inventory.assign_children(root.id, child1.id, child2.id, workers=2)
 
     # select all root groups — our root should be in there
-    assert f"Root-{name}" in [x.name for x in await live_c8y.group_inventory.get_all(page_size=100, workers=5)]
+    assert f"Root-{name}" in [x.name for x in await live_c8y.group_inventory.get_all(limit=None, page_size=100, workers=5)]
 
     # select by parent — both children should appear
     child_names = [x.name for x in await live_c8y.group_inventory.get_all(parent=root.id)]
@@ -38,7 +38,7 @@ async def test_CRUD(live_c8y: CumulocityClient, safe_create):
     # update child2
     child2["another_fragment"] = {"data": 12345}
     child2 = await child2.update()
-    assert (await live_c8y.group_inventory.get(child2.id)).another_fragment.data == 12345
+    assert (await live_c8y.group_inventory.get(child2.id))["another_fragment.data"] == 12345
 
     # unassign child groups
     await root.unassign_child_group(child1.id)

@@ -116,12 +116,13 @@ async def test_filtering(live_c8y: CumulocityClient, safe_create):
 
     # using filter parameter (JSONPath)
     filtered_1 = await live_c8y.inventory.get_all(
+        limit=None,
         type='c8y_TestObject',
         fragment='array',
         include=jsonpath('$.array[?(@ == 0)]'))
     # using Python means
     filtered_2 = [
-            mo async for mo in live_c8y.inventory.select(type='c8y_TestObject', fragment='array')
+            mo async for mo in live_c8y.inventory.select(limit=None, type='c8y_TestObject', fragment='array')
             if 0 in mo.get("array", ())
     ]
     # -> no difference

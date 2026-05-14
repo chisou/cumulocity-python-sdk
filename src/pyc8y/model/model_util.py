@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
+import re
 from datetime import datetime, timezone, timedelta
 from typing import Any, Sequence
 

@@ -24,7 +24,7 @@ async def test_crud(live_c8y: CumulocityClient):
 
         # 3) verify reread from database
         assert (await live_c8y.tenant_options.get(option.category, option.key)).value == 'test value'
-        assert (await live_c8y.tenant_options.get_all(as_map=True))[category]['my_key'] == 'test value'
+        assert (await live_c8y.tenant_options.get_all(limit=None, as_map=True))[category]['my_key'] == 'test value'
         assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
 
         # 2) update the option
@@ -74,7 +74,7 @@ async def test_crud_2(live_c8y: CumulocityClient):
 
 async def test_get_all(live_c8y: CumulocityClient):
     """Verify that selecting tenant options works as expected."""
-    all_options = await live_c8y.tenant_options.get_all()
+    all_options = await live_c8y.tenant_options.get_all(limit=None)
 
     categories = {x.category for x in all_options}
     by_category = {c: [x for x in all_options if x.category == c] for c in categories}

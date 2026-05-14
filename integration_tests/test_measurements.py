@@ -93,14 +93,14 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     assert len(same_source_ms) == len(created_ms) + len(type_ms) + len(series_ms)
 
     # select by type
-    same_type_ms = await live_c8y.measurements.get_all(type=name)
+    same_type_ms = await live_c8y.measurements.get_all(limit=None, type=name)
     assert len({x.source for x in same_type_ms}) == 2
     assert len({x.type for x in same_type_ms}) == 1
     assert len({x.get_series()[0] for x in same_type_ms}) == 2
     assert len(same_type_ms) == len(created_ms) + len(source_ms) + len(series_ms)
 
     # select by series
-    same_series_ms = await live_c8y.measurements.get_all(value_fragment_type=name)
+    same_series_ms = await live_c8y.measurements.get_all(limit=None, value_fragment_type=name)
     assert len({x.source for x in same_series_ms}) == 2
     assert len({x.type for x in same_series_ms}) == 2
     assert len({x.get_series()[0] for x in same_series_ms}) == 1
@@ -121,10 +121,10 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     assert not await live_c8y.measurements.get_last(source=device_id, type=name)
 
     # -> there should still be similar measurements at a different device
-    other_source_ms = await live_c8y.measurements.get_all(type=name, value_fragment_type=name)
+    other_source_ms = await live_c8y.measurements.get_all(limit=None, type=name, value_fragment_type=name)
     assert len(other_source_ms) == len(source_ms)
     # -> there should still be differently typed measurements for the same source
-    other_type_ms = await live_c8y.measurements.get_all(source=device_id, type=other_name)
+    other_type_ms = await live_c8y.measurements.get_all(limit=None, source=device_id, type=other_name)
     assert len(other_type_ms) == len(type_ms)
 
     # Delete by type (don't care about the source)
@@ -141,7 +141,7 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     assert not await live_c8y.measurements.get_last(type=name)
 
     # -> we should still see some with the other type
-    other_type_ms = await live_c8y.measurements.get_all(type=other_name, before=now_truncated)
+    other_type_ms = await live_c8y.measurements.get_all(limit=None, type=other_name, before=now_truncated)
     assert len(other_type_ms) == len(type_ms)
 
     # Delete remaining measurements
@@ -169,7 +169,7 @@ async def test_single_page_select(live_c8y: CumulocityClient, measurement_factor
     device_id = created_ms[0].source
 
     # select all measurements using different page sizes
-    selected_ids = [m.id async for m in live_c8y.measurements.select(source=device_id, page_size=10, page_number=2)]
+    selected_ids = [m.id async for m in live_c8y.measurements.select(limit=None, source=device_id, page_size=10, page_number=2)]
 
     # -> all created measurements should be in the selection
     assert len(selected_ids) == 10

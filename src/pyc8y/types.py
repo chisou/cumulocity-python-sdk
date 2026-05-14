@@ -28,6 +28,8 @@ class MimeType(StrEnum):
     EVENT_COLLECTION = "application/vnd.com.nsn.cumulocity.eventcollection+json"
     EXTERNAL_ID = ("application/vnd.com.nsn.cumulocity.externalid+json",)
     GLOBAL_ROLE = "application/vnd.com.nsn.cumulocity.group+json"
+    INVENTORY_ROLE = "application/vnd.com.nsn.cumulocity.inventoryrole+json"
+    INVENTORY_ROLE_COLLECTION = "application/vnd.com.nsn.cumulocity.inventoryrolecollection+json"
     MANAGED_OBJECT = "application/vnd.com.nsn.cumulocity.managedobject+json"
     MANAGED_OBJECT_COLLECTION = "application/vnd.com.nsn.cumulocity.managedobjectcollection+json"
     MEASUREMENT = "application/vnd.com.nsn.cumulocity.measurement+json"
@@ -152,8 +154,8 @@ class TenantMeta(ResourceMeta):
 
 
 class InventoryRoleMeta(ResourceMeta):
-    object_mime_type = None
-    collection_mime_type = None
+    object_mime_type = MimeType.INVENTORY_ROLE
+    collection_mime_type = MimeType.INVENTORY_ROLE_COLLECTION
     resource_path = "user/inventoryroles"
     collection_name = "roles"
 
