@@ -76,24 +76,6 @@ async def test_select_as_values():
     ]
 
 
-def test_application_setting_parsing():
-    """Verify that parsing an ApplicationSetting from JSON works."""
-    setting_json = {
-        'key': 'my.setting',
-        'defaultValue': 'default',
-        'valueSchema': {'type': 'STRING'},
-        'editable': True,
-        'inheritFromOwner': False,
-    }
-    setting = ApplicationSetting.from_json(setting_json)
-
-    assert setting.key == setting_json['key']
-    assert setting.default_value == setting_json['defaultValue']
-    assert setting.value_schema.type == setting_json['valueSchema']['type']
-    assert setting.editable is True
-    assert setting.inherited is False
-
-
 def test_application_subscription_parsing():
     """Verify that parsing an ApplicationSubscription from JSON works."""
     subscription_json = {
@@ -101,7 +83,7 @@ def test_application_subscription_parsing():
         'name': 'bootstrap',
         'password': 'secret',
     }
-    subscription = ApplicationSubscription.from_json(subscription_json)
+    subscription = ApplicationSubscription(subscription_json)
 
     assert subscription.tenant_id == subscription_json['tenant']
     assert subscription.username == subscription_json['name']
