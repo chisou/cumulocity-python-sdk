@@ -1,13 +1,12 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-from dataclasses import dataclass
 from typing import AsyncIterator, Self, Sequence
 
 import aiohttp
 
 from pyc8y.base_util import first
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, json_property, map_params, resolve_page_size
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, JsonObject, json_property, map_params, resolve_page_size
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.types import ApplicationMeta, FileSpec
 
@@ -164,8 +163,7 @@ class Application(CumulocityObject):
         )
 
 
-@dataclass
-class ApplicationSubscription(object):
+class ApplicationSubscription(JsonObject):
     """Represent current application subscriptions within Cumulocity.
 
     Instances of this class are returned by functions of the `Applications`
@@ -174,25 +172,9 @@ class ApplicationSubscription(object):
     See also: https://cumulocity.com/api/core/#tag/Current-application
     """
 
-    # TODO: Check if attribute documentation works as expected
-
-    tenant_id: str
-    """Subscription's tenant ID"""
-
-    username: str
-    """Subscription's username for authentication"""
-
-    password: str
-    """Subscription's password for authentication"""
-
-    @classmethod
-    def from_json(cls, json: dict) -> Self:
-        """Create an ApplicationSubscription instance from Cumulocity JSON format."""
-        return ApplicationSubscription(
-            tenant_id=json["tenant"],
-            username=json["name"],
-            password=json["password"],
-        )
+    tenant_id = json_property[str]("tenant", read_only=True)
+    username = json_property[str]("name", read_only=True)
+    password = json_property[str]("password", read_only=True)
 
 
 class Applications(CumulocityResource[Application]):
@@ -260,7 +242,7 @@ class Applications(CumulocityResource[Application]):
             List of ApplicationSubscription instances.
         """
         result = await self.c8y.get("application/currentApplication/subscriptions")
-        return [ApplicationSubscription.from_json(x) for x in result["users"]]
+        return [ApplicationSubscription(x) for x in result["users"]]
 
     def select(
         self,
