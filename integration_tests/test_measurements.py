@@ -49,7 +49,7 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
             m[series] = {'series': Value(random.randint(1000, 9999), '#')}
             m['marker'] = {'id': f'{device.id}_{type}_{series}_{i}'}
             m = await m.create()
-            logging.info(f'Created measurement #{m.id}: {m.to_json()}')
+            logging.info(f'Created measurement #{m.id}: {m.json}')
             ms.append(m)
         return ms
 

@@ -741,7 +741,7 @@ class Alarms(CumulocityResource[Alarm]):
 
         See also: https://cumulocity.com/api/#operation/putAlarmCollectionResource
         """
-        alarm_json = alarm if isinstance(alarm, dict) else alarm.to_json(only_updated=True)
+        alarm_json = alarm if isinstance(alarm, dict) else alarm._staged_json
         if expression:
             await self.c8y.put(
                 f"{self.resource_path}?{expression}",

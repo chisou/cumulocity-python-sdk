@@ -673,7 +673,7 @@ class Measurement(CumulocityObject):
         """
         return [
             f"{name0}.{name1}"
-            for name0, value0 in self._json.items()
+            for name0, value0 in self.json.items()
             if isinstance(value0, dict)
             for name1, value1 in value0.items()
             if isinstance(value1, dict) and "value" in value1

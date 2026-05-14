@@ -63,7 +63,7 @@ class Binary(ManagedObject):
             self.resource_path,
             file=self.file,
             filename=self.name,
-            form_data={"object": orjson.dumps(self.to_json()).decode("utf8")},
+            form_data={"object": orjson.dumps(self.json).decode("utf8")},
             content_type=self.get("content_type"),
         )
         return Binary.from_json(result_json, c8y=self.c8y)
@@ -170,7 +170,7 @@ class Binaries(CumulocityResource[Binary]):
                 self.resource_path,
                 file=b.file,
                 filename=b.name,
-                form_data={"object": orjson.dumps(b.to_json()).decode("utf8")},
+                form_data={"object": orjson.dumps(b.json).decode("utf8")},
                 content_type=b.get("content_type"),
             ),
         )

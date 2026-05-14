@@ -37,7 +37,7 @@ def sample_json() -> dict:
 
 def test_formatting(function_device: Device):
     """Verify that JSON formatting works."""
-    object_json = function_device.to_json()
+    object_json = function_device.json
 
     assert object_json['name'] == function_device.name
     assert object_json['type'] == function_device.type

@@ -51,7 +51,7 @@ def test_parsing():
 
 def test_formatting(sample_event: Event):
     """Verify that JSON formatting works."""
-    event_json = sample_event.to_json()
+    event_json = sample_event.json
 
     # creation/server-side fields are not present in the JSON for a created object
     assert 'creationTime' not in event_json
@@ -80,4 +80,4 @@ def test_now_datetime():
     event = Event(type='type', time='now')
 
     assert event.time
-    assert 'time' in event.to_json()
+    assert 'time' in event.json

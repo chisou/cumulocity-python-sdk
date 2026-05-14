@@ -92,7 +92,7 @@ class Operation(CumulocityObject):
         """
         self._assert_c8y()
         skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
-        operation_json = {k: v for k, v in self.to_json(only_updated=False).items() if k not in skip_keys}
+        operation_json = {k: v for k, v in self.json.items() if k not in skip_keys}
         await run_batched(
             ensure_ids(unwrap_args(devices)),
             workers,

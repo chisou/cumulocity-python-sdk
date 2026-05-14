@@ -48,7 +48,7 @@ def test_formatting():
         note='custom note',
     )
 
-    op_json = op.to_json()
+    op_json = op.json
 
     assert op_json['groupId'] == op.group_id
     assert op_json['failedParentId'] == op.failed_parent_id

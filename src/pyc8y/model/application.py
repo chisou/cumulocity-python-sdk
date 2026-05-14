@@ -110,7 +110,7 @@ class Application(CumulocityObject):
     def owner(self) -> str | None:
         """Tenant ID of the application owner (read-only)."""
         try:
-            return self._json["owner"]["tenant"]["id"]
+            return self.json["owner"]["tenant"]["id"]
         except (KeyError, TypeError):
             return None
 

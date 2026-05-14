@@ -66,7 +66,7 @@ def test_formatting():
         contact_phone='contact phone',
     )
 
-    tenant_json = tenant.to_json()
+    tenant_json = tenant.json
 
     assert 'id' not in tenant_json
     assert 'parent' not in tenant_json

@@ -30,7 +30,7 @@ def test_formatting(encrypted):
     key = "some_key"
     value = "some_value"
     opt = TenantOption(category=category, key=key, value=value, encrypted=encrypted)
-    opt_json = opt.to_json()
+    opt_json = opt.json
 
     assert opt_json['category'] == category
     assert opt_json['value'] == value

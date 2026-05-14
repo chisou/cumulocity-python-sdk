@@ -4,6 +4,10 @@
 
 * Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood.
 
+* All model objects are now fully based on and compatible to the actual JSON data. The pure JSON representation is 
+  available via the commonly available `json` property. Key fields (like `id`, or `creation_date` are still promoted
+  as class attributes, all other fragments can be read using the universal `get` function and `[]` operator.
+
 * Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, ...) and bulk operations
   (`create`, `update`, `apply_to`, `delete`, ...) to automatically perform the activities unordered and in parallel.
 
@@ -22,13 +26,14 @@
   with auxiliary functionality in a single, sound SDK design. The project name was changed to _Cumulocity Python SDK_
   accordingly. The PyPI entry was changed to `pyc8y`.
 
-* Dot notation to custom attributes and fragments has been removed to reduce complexity and increase transparency.  
-  Custom fields and fragments can now be addressed using the index operator `[]` or the `get` function. Both support
-  dot/path notation within. The `get` functions allows the definition of a proper default value whereas the `[]` index
-  operator will raise a `KeyError` if any part of the specified path is not available.
+* The somewhat magic _dot notation_ access (`object.fragment.field`) has been removed to reduce complexity and increase
+  transparency. Custom fields and fragments can only be addressed using the index operator `[]` or the `get` function.
+  Both support  dot/path notation within (`object.get("fragment.field")` or `object["fragment.field"]`). The `get`
+  functions allows the definition of a proper default value whereas the `[]` index  operator will raise a `KeyError`
+  if any part of the specified path is not available.
 
 * Immutable lists. In any object read from Cumulocity lists/arrays are _considered_ immutable. To extend a list it 
-  needs to be overwritten. This is in conformance with Cumulocity's data model in which a attribute cannot be altered
+  needs to be overwritten. This is in conformance with Cumulocity's data model in which an attribute cannot be altered
   but only overwritten with the new value resp. structure.
 
 * The module now being exclusively async, the `AsyncListener` and `AsyncQueueListener` have been renamed to `Listener`

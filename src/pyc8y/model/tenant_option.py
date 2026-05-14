@@ -332,7 +332,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
             workers,
             lambda o: self.c8y.put(
                 self.build_object_path(o.category, o._key),
-                json=o.to_json(only_updated=True),
+                json=o._staged_json,
                 accept=None,
             ),
         )

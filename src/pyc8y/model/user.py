@@ -65,7 +65,7 @@ class UserGroup(CumulocityObject):
         return self._build(
             json=await self.c8y.post(
                 f'/user/{self.c8y.tenant_id}/groups',
-                json=self.to_json(),
+                json=self.json,
                 accept=self._meta.object_mime_type,
             ),
             c8y=self.c8y,
@@ -579,7 +579,7 @@ class InventoryRole(CumulocityObject):
 
     @property
     def permissions(self) -> list[Permission]:
-        return [Permission.from_json(p) for p in self._json.get("permissions", [])]
+        return [Permission.from_json(p) for p in self.json.get("permissions", [])]
 
     @permissions.setter
     def permissions(self, value: list[Permission]):
@@ -636,7 +636,7 @@ class InventoryRoleAssignment(CumulocityObject):
 
     @property
     def roles(self) -> list[InventoryRole]:
-        return [InventoryRole.from_json(r) for r in self._json.get("roles", [])]
+        return [InventoryRole.from_json(r) for r in self.json.get("roles", [])]
 
 
 class InventoryRoles(CumulocityResource[InventoryRole]):
@@ -829,7 +829,7 @@ class User(BaseUser):
         return self._build(
             json=await self.c8y.post(
                 f'/user/{self.c8y.tenant_id}/users',
-                json=self.to_json(),
+                json=self.json,
                 accept=self._meta.object_mime_type,
             ),
             c8y=self.c8y,
@@ -1195,7 +1195,7 @@ class Users(CumulocityResource):
         await run_batched(
             unwrap_args(users),
             workers,
-            lambda u: self.c8y.post(path, json=u.to_json(), accept=None),
+            lambda u: self.c8y.post(path, json=u.json, accept=None),
         )
 
     async def update(self, *users: User, workers: int | None = None) -> None:
@@ -1208,7 +1208,7 @@ class Users(CumulocityResource):
         await run_batched(
             unwrap_args(users),
             workers,
-            lambda u: self.c8y.put(self.build_object_path(u.username), json=u.to_json(only_updated=True), accept=None),
+            lambda u: self.c8y.put(self.build_object_path(u.username), json=u._staged_json, accept=None),
         )
 
     async def delete(self, *users: str | User, workers: int | None = None) -> None:

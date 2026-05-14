@@ -49,8 +49,8 @@ def test_set(mode, path, value):
     elif mode == "item":
         obj[path] = value
 
-    new_json = obj.to_json()
-    updated_json = obj.to_json(only_updated=True)
+    new_json = obj.json
+    updated_json = obj._staged_json
 
     # -> new value is set in JSON
     assert get_by_path(new_json, path) == value
@@ -256,7 +256,7 @@ def test_object_parsing():
     assert parsed_obj['c8y_simple'] == obj_json['c8y_simple']
     assert parsed_obj['c8y_complex.field'] == obj_json['c8y_complex']['field']
     # -> no update should be recorded
-    assert not parsed_obj.to_json(only_updated=True)
+    assert not parsed_obj._staged_json
 
 
 def test_object_instantiation_and_formatting():

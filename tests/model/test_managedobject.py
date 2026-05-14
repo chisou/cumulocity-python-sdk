@@ -66,7 +66,7 @@ def sample_object() -> ManagedObject:
 
 def test_formatting(sample_object: ManagedObject):
     """Verify that JSON formatting works."""
-    object_json = sample_object.to_json()
+    object_json = sample_object.json
 
     assert object_json['name'] == sample_object.name
     assert object_json['type'] == sample_object.type

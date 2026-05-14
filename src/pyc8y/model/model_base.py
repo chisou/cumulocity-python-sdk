@@ -69,7 +69,7 @@ class json_property(Generic[T]):
     def __get__(self, obj, objtype=None):
         if obj is None:
             return self
-        return obj._json.get(self._key)
+        return obj.json.get(self._key)
 
     def __set__(self, obj: Any, value: T) -> None:
         if self._read_only:
@@ -80,7 +80,7 @@ class json_property(Generic[T]):
 
 def id_property(key: str, read_only=False) -> property:
     def getter(self):
-        return self._json[key]["id"]
+        return self.json[key]["id"]
 
     def setter(self, value):  # todo: not sure we ever need a setter for ID
         if value is not None:
@@ -91,7 +91,7 @@ def id_property(key: str, read_only=False) -> property:
 
 def tag_property(key: str, read_only=False) -> property:
     def getter(self):
-        return key in self._json
+        return key in self.json
 
     def setter(self, value):
         self._staged_json[key] = {}
@@ -101,7 +101,7 @@ def tag_property(key: str, read_only=False) -> property:
 
 def time_property(key: str, read_only=False) -> property:
     def getter(self):
-        return self._json[key]
+        return self.json[key]
 
     def setter(self, value):
         if value is not None:
@@ -112,14 +112,14 @@ def time_property(key: str, read_only=False) -> property:
 
 def datetime_property(key: str) -> property:
     def getter(self):
-        return to_datetime(self._json[key])
+        return to_datetime(self.json[key])
 
     return property(getter)
 
 
 def references_property(collection: str, item: str) -> property:
     def getter(self):
-        return {r[item]["id"] for r in self._json.get(collection, {}).get("references", [])}
+        return {r[item]["id"] for r in self.json.get(collection, {}).get("references", [])}
 
     return property(getter)
 
@@ -231,7 +231,7 @@ class JsonObject(dict):
     attributes which enables use of the property helpers.
     """
     @property
-    def _json(self) -> dict:
+    def json(self) -> dict:
         return self
 
     @property
@@ -250,7 +250,8 @@ class CumulocityObject:
         self._staged_json: dict = expand_dotted(kwargs)
 
     @property
-    def _json(self) -> dict:
+    def json(self) -> dict:
+        """Current JSON view: server-state merged with staged values."""
         if not self._staged_json:
             return self._source_json
         if not self._source_json:
@@ -301,11 +302,8 @@ class CumulocityObject:
     def from_json(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         return cls._build(json, c8y=c8y)
 
-    def to_json(self, only_updated=False) -> dict:
-        return self._staged_json if only_updated else self._json
-
     def __contains__(self, path) -> bool:
-        current = self._json
+        current = self.json
         for key in path.split("."):
             if not isinstance(current, Mapping):
                 return False
@@ -321,10 +319,10 @@ class CumulocityObject:
         return path in self
 
     def __getitem__(self, path) -> Any:
-        return get_by_path(self._json, path, fail=True)
+        return get_by_path(self.json, path, fail=True)
 
     def get(self, path, default: Any = None) -> Any:
-        return get_by_path(self._json, path, default=default)
+        return get_by_path(self.json, path, default=default)
 
     # def __getattr__(self, name: str):
     #     """ Get the value of a custom fragment.
@@ -401,10 +399,10 @@ class CumulocityObject:
         return self
 
     def as_tuple(self, *paths: str | tuple[str, Any]) -> tuple:
-        return as_tuple(self._json, *paths)
+        return as_tuple(self.json, *paths)
 
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
-        return as_record(self._json, mapping)
+        return as_record(self.json, mapping)
 
     async def _create(self) -> Self:
         """Create the object within the database.
@@ -417,7 +415,7 @@ class CumulocityObject:
         return self._build(
             json=await self.c8y.post(
                 self.resource_path,
-                json=self.to_json(),
+                json=self.json,
                 accept=self._meta.object_mime_type,
             ),
             c8y=self.c8y,
@@ -435,7 +433,7 @@ class CumulocityObject:
         self._assert_key()
         object_json = await self.c8y.put(
             self.object_path,
-            json=self.to_json(True),
+            json=self._staged_json,
             accept=self._meta.object_mime_type,
             content_type=self._meta.object_mime_type,
         )
@@ -458,7 +456,7 @@ class CumulocityObject:
         return self._build(
             json=await self.c8y.put(
                 self._meta.build_object_path(other_id),
-                json=self.to_json(only_updated=True),
+                json=self._staged_json,
                 accept=self._meta.object_mime_type,
                 content_type=self._meta.object_mime_type,
             ),
@@ -666,23 +664,23 @@ class CumulocityResource(Generic[CO]):
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            unwrap_args(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.to_json(), accept=None)
+            unwrap_args(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.json, accept=None)
         )
 
     async def _create_bulk(self, *objects: CO) -> None:
         objects = unwrap_args(objects)  # not documented, but good to have
-        bulk_json = {self._meta.collection_name: [o.to_json() for o in objects]}
+        bulk_json = {self._meta.collection_name: [o.json for o in objects]}
         await self.c8y.post(self.resource_path, json=bulk_json, content_type=self.collection_mime_type)
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
             unwrap_args(objects),
             workers,
-            lambda x: self.c8y.put(self.build_object_path(x.id), json=x.to_json(only_updated=True), accept=None),
+            lambda x: self.c8y.put(self.build_object_path(x.id), json=x._staged_json, accept=None),
         )
 
     async def _apply_to(self, model: dict | CO, *objects: str | CO, workers: int | None = None) -> None:
-        model_json = model if isinstance(model, dict) else model.to_json(only_updated=True)
+        model_json = model if isinstance(model, dict) else model._staged_json
         await run_batched(
             ensure_ids(unwrap_args(objects)),
             workers,

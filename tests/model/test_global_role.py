@@ -41,7 +41,7 @@ def test_parsing():
 def test_formatting():
     """Verify that rendering a global role as JSON works as expected."""
     role = UserGroup(name='My Role', description='A description')
-    role_json = role.to_json()
+    role_json = role.json
     assert 'id' not in role_json
     # we only expect
     expected_keys = {'name', 'description'}

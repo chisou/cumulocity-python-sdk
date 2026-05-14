@@ -1,15 +1,15 @@
 # Copyright (c) 2026 Christoph Souris
 
-import dataclasses
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncIterator, ClassVar, Self, Sequence
+from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    JsonObject,
     json_property,
     datetime_property,
     id_property,
@@ -20,35 +20,31 @@ from pyc8y.model.model_base import (
 from pyc8y.types import AuditRecordMeta
 
 
-@dataclasses.dataclass
-class Change:
+class Change(JsonObject):
     """Change details fragment within an audit log."""
 
-    attribute: str = None
-    new_value: str = None
-    previous_value: str = None
-    type: str = None  # noqa (type)
+    attribute = json_property[str]("attribute")
+    new_value = json_property[str]("newValue")
+    previous_value = json_property[str]("previousValue")
+    type = json_property[str]("type")
 
-    @classmethod
-    def from_json(cls, json: dict) -> Self:
-        return cls(
-            attribute=json.get("attribute"),
-            new_value=json.get("newValue"),
-            previous_value=json.get("previousValue"),
-            type=json.get("type"),
-        )
-
-    def to_json(self) -> dict:
-        result = {}
-        if self.attribute is not None:
-            result["attribute"] = self.attribute
-        if self.new_value is not None:
-            result["newValue"] = self.new_value
-        if self.previous_value is not None:
-            result["previousValue"] = self.previous_value
-        if self.type is not None:
-            result["type"] = self.type
-        return result
+    def __init__(
+        self,
+        data: dict | None = None,
+        *,
+        attribute: str | None = None,
+        new_value: str | None = None,
+        previous_value: str | None = None,
+        type: str | None = None,  # noqa (type)
+    ):
+        if data is not None:
+            super().__init__(data)
+        else:
+            super().__init__()
+            self.attribute = attribute
+            self.new_value = new_value
+            self.previous_value = previous_value
+            self.type = type
 
 
 class Severity(StrEnum):
@@ -96,7 +92,6 @@ class AuditRecord(CumulocityObject):
     """
 
     _meta = AuditRecordMeta
-    _change_type: ClassVar[type[Change]] = Change
 
     def __init__(
         self,
@@ -139,15 +134,15 @@ class AuditRecord(CumulocityObject):
     @property
     def changes(self) -> tuple[Change, ...] | None:
         """Return the changes recorded in this audit record."""
-        raw: list | None = self._json.get("changes")
+        raw: list | None = self.json.get("changes")
         if raw is None:
             return None
-        return tuple(self._change_type.from_json(x) for x in raw)
+        return tuple(Change(x) for x in raw)
 
     @changes.setter
     def changes(self, value: Sequence[Change] | None):
         if value is not None:
-            self._staged_json["changes"] = [c.to_json() for c in value]
+            self._staged_json["changes"] = list(value)
 
     async def create(self) -> Self:
         """Create the AuditRecord within the database.

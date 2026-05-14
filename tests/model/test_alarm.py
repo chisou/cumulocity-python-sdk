@@ -59,7 +59,7 @@ def test_default_values():
     # -> status is not set
     assert not alarm.status
 
-    alarm_json = alarm.to_json()
+    alarm_json = alarm.json
 
     # -> status should not be defaulted
     assert 'status' not in alarm_json
@@ -81,7 +81,7 @@ async def test_create_post_payload():
 
 def test_formatting(sample_alarm: Alarm):
     """Verify that JSON formatting works."""
-    alarm_json = sample_alarm.to_json()
+    alarm_json = sample_alarm.json
 
     # creation/server-side managed fields should not be present (they were not set)
     assert 'creationTime' not in alarm_json
@@ -113,4 +113,4 @@ def test_now_datetime():
     alarm = Alarm(type='type', time='now', source='12345')
 
     assert alarm.time
-    assert 'time' in alarm.to_json()
+    assert 'time' in alarm.json

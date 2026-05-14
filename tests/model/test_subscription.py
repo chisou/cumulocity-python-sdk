@@ -32,7 +32,7 @@ def test_formatting():
     """Verify that to_json formatting works as expected."""
     sub = Subscription(name='name', source_id='source_id', context=Subscription.Context.TENANT)
 
-    sub_json = sub.to_json()
+    sub_json = sub.json
     assert sub_json['subscription'] == 'name'
     assert sub_json['context'] == 'tenant'
     assert sub_json['source'] == {'id': 'source_id'}
@@ -40,14 +40,14 @@ def test_formatting():
 
     sub.fragments = ['f1', 'f2']
     sub.type_filter = 'type_filter'
-    sub_json = sub.to_json()
+    sub_json = sub.json
     assert sub_json['fragmentsToCopy'] == sub.fragments
     assert sub_json['subscriptionFilter']['typeFilter'] == sub.type_filter
     assert len(sub_json) == 5
 
     sub.api_filter = ['a1', 'a2']
     sub.non_persistent = True
-    sub_json = sub.to_json()
+    sub_json = sub.json
     assert sub_json['subscriptionFilter']['typeFilter'] == sub.type_filter
     assert sub_json['subscriptionFilter']['apis'] == sub.api_filter
     assert sub_json['nonPersistent'] is True

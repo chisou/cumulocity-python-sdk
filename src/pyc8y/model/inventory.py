@@ -8,7 +8,7 @@ from typing import AsyncIterator, Sequence, TypeVar
 
 from pyc8y.rest import BatchError
 from pyc8y.base_util import encode_odata_query_value, ensure_sequence, unwrap_args
-from pyc8y.model.managed_object import ManagedObject, Device, DeviceGroup
+from pyc8y.model.managed_object import Availability, ManagedObject, Device, DeviceGroup
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
     json_property,
@@ -37,40 +37,6 @@ def references_property(key: str) -> property:
         return [ObjectReference(x["id"], x.get("name", None)) for x in self._source_json[key]["references"]]
 
     return property(getter)
-
-
-@dataclass
-class Availability:
-    """Cumulocity availability status labels"""
-
-    class ConnectionStatus:
-        """Connection status labels"""
-
-        CONNECTED = "CONNECTED"
-        DISCONNECTED = "DISCONNECTED"
-
-    class DataStatus:
-        """Data status labels"""
-
-        AVAILABLE = "AVAILABLE"
-        UNAVAILABLE = "UNAVAILABLE"
-
-    def __init__(self, json):
-        self._json = json
-
-    device_id = json_property("deviceId", read_only=True)
-    external_id = json_property("externalId", read_only=True)
-    connection_status = json_property("connectionStatus", read_only=True)
-    data_status = json_property("dataStatus", read_only=True)
-    last_message = json_property("lastMessage", read_only=True)
-    last_message_time = json_property("lastMessage", read_only=True)
-    last_message_datetime = datetime_property("lastMessage")
-    interval = json_property("interval", read_only=True)
-
-    @property
-    def interval_minutes(self) -> int:
-        """Return the required update interval in minutes as integer."""
-        return int(self.interval.split(" ", 1)[0])
 
 
 MO = TypeVar("MO", bound="ManagedObject")

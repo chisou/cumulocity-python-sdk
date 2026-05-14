@@ -40,7 +40,7 @@ def test_formatting():
         p["id"] = random.randint(1, 999)
     role.permissions = perms
 
-    full_json = role.to_json(only_updated=False)
+    full_json = role.json
     assert full_json['name'] == 'SomeRole'
     assert full_json['description'] == 'SomeDescription'
 
@@ -53,11 +53,11 @@ def test_formatting():
 
 
 def test_formatting_diff():
-    """Verify that to_json(only_updated=True) returns only staged changes."""
+    """Verify that _staged_json returns only staged changes."""
     role = InventoryRole.from_json(SAMPLE_JSON)
 
     role.name = "NewName"
-    diff_json = role.to_json(only_updated=True)
+    diff_json = role._staged_json
 
     assert diff_json['name'] == 'NewName'
     assert 'description' not in diff_json

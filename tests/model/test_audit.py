@@ -65,7 +65,7 @@ def test_formatting():
         customFragment={'value': 12},
     )
 
-    record_json = record.to_json()
+    record_json = record.json
 
     assert record_json['type'] == Type.ALARM
     assert record_json['source'] == {'id': 'source-id'}
@@ -88,15 +88,15 @@ def test_formatting():
 def test_no_changes():
     """Verify that the changes fragment is absent when not provided."""
     record = AuditRecord(type='SomeType')
-    assert 'changes' not in record.to_json()
+    assert 'changes' not in record.json
     assert record.changes is None
 
 
 def test_empty_changes():
     """Verify that the changes fragment can be present but empty."""
     record = AuditRecord(type='SomeType', changes=[])
-    assert 'changes' in record.to_json()
-    assert len(record.to_json()['changes']) == 0
+    assert 'changes' in record.json
+    assert len(record.json['changes']) == 0
 
 
 def test_changes_are_immutable(samples_json):
@@ -109,10 +109,9 @@ def test_changes_are_immutable(samples_json):
 def test_change_roundtrip():
     """Verify Change serialization and deserialization."""
     change = Change(attribute='status', new_value='CLEARED', previous_value='ACTIVE', type='SomeType')
-    j = change.to_json()
-    assert j == {'attribute': 'status', 'newValue': 'CLEARED', 'previousValue': 'ACTIVE', 'type': 'SomeType'}
+    assert dict(change) == {'attribute': 'status', 'newValue': 'CLEARED', 'previousValue': 'ACTIVE', 'type': 'SomeType'}
 
-    restored = Change.from_json(j)
+    restored = Change(dict(change))
     assert restored.attribute == 'status'
     assert restored.new_value == 'CLEARED'
     assert restored.previous_value == 'ACTIVE'

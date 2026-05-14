@@ -37,7 +37,7 @@ def test_measurement_parsing():
     assert m.time == '2020-12-31T22:33:44,567Z'
     assert m["c8y_Measurement.c8y_temperature.value"] == 12.3
 
-    assert m.to_json() == measurement_json
+    assert m.json == measurement_json
 
 
 def test_measurement_serialization():
@@ -52,7 +52,7 @@ def test_measurement_serialization():
         ],
         fragment = {"series3": {"value": 3}}
     )
-    assert m.to_json()["fragment"] == {
+    assert m.json["fragment"] == {
         "series": {"value": 1, "unit": "#"},
         "series2": {"value": 2},
         "series3": {"value": 3}

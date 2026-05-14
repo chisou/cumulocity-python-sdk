@@ -48,7 +48,7 @@ def sample_operation():
 
 def test_formatting(sample_operation):
     """Verify that JSON formatting works."""
-    op_json = sample_operation.to_json()
+    op_json = sample_operation.json
 
     assert 'creationTime' not in op_json
 

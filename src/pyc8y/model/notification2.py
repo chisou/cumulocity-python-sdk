@@ -75,7 +75,7 @@ class Subscription(CumulocityObject):
     @property
     def source_id(self) -> str | None:
         """Managed object ID the subscription is for."""
-        raw = self._json.get("source")
+        raw = self.json.get("source")
         return raw["id"] if raw else None
 
     @source_id.setter
@@ -86,7 +86,7 @@ class Subscription(CumulocityObject):
     @property
     def api_filter(self) -> list[str] | None:
         """List of APIs/resources this subscription covers."""
-        sf = self._json.get("subscriptionFilter")
+        sf = self.json.get("subscriptionFilter")
         return sf.get("apis") if sf else None
 
     @api_filter.setter
@@ -99,7 +99,7 @@ class Subscription(CumulocityObject):
     @property
     def type_filter(self) -> str | None:
         """Object type the subscription is for."""
-        sf = self._json.get("subscriptionFilter")
+        sf = self.json.get("subscriptionFilter")
         return sf.get("typeFilter") if sf else None
 
     @type_filter.setter

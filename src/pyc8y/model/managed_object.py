@@ -7,6 +7,7 @@ from pyc8y.model.user import User, Users
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
+    JsonObject,
     json_property,
     time_property,
     datetime_property,
@@ -36,8 +37,7 @@ def references_property(key: str) -> property:
     return property(getter)
 
 
-@dataclass
-class Availability:
+class Availability(JsonObject):
     """Cumulocity availability status labels"""
 
     class ConnectionStatus:
@@ -52,14 +52,12 @@ class Availability:
         AVAILABLE = "AVAILABLE"
         UNAVAILABLE = "UNAVAILABLE"
 
-    def __init__(self, json):
-        self._json = json
-
     device_id = json_property("deviceId", read_only=True)
     external_id = json_property("externalId", read_only=True)
     connection_status = json_property("connectionStatus", read_only=True)
     data_status = json_property("dataStatus", read_only=True)
     last_message = json_property("lastMessage", read_only=True)
+    last_message_time = json_property("lastMessage", read_only=True)
     last_message_datetime = datetime_property("lastMessage")
     interval = json_property("interval", read_only=True)
 
