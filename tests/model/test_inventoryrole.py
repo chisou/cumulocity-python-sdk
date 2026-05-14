@@ -23,7 +23,7 @@ def test_parsing():
         pid = p_json['id']
         assert permissions[pid].type == p_json['type']
         assert permissions[pid].scope == p_json['scope']
-        assert permissions[pid].level == p_json['permission']
+        assert permissions[pid].permission == p_json['permission']
 
 
 def test_formatting():
@@ -49,7 +49,7 @@ def test_formatting():
         jp = json_permissions[p.id]
         assert jp['type'] == p.type
         assert jp['scope'] == p.scope
-        assert jp['permission'] == p.level
+        assert jp['permission'] == p.permission
 
 
 def test_formatting_diff():
