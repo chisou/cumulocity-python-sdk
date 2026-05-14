@@ -18,6 +18,7 @@ PyJWT
 pylint
 pytest
 pytest-asyncio
+pytest_benchmark
 pytest-cov
 python-dict-display-filter
 python-dotenv
