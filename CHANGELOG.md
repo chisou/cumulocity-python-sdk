@@ -4,12 +4,15 @@
 
 * Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood.
 
-* Added functions `get_tenant_options` and `get_current_tenant_options` to Applications API.
+* Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, ...) and bulk operations
+  (`create`, `update`, `apply_to`, `delete`, ...) to automatically perform the activities unordered and in parallel.
+
+* Added the `expression` parameter to all query-like functions (`select`, `get_all`, `delete_by`, ...) for consistency. 
 
 * Added `send_to` function to Operations API to send an operation to a collection of devices.
 
-* Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, etc.) and bulk operations
-  (`create`, `update`, `apply_to`, `delete`, etc.) to automatically perform the activities unordered and in parallel.
+* Added functions `get_tenant_options` and `get_current_tenant_options` to Applications API.
+
 
 ### Breaking changes
 
@@ -44,6 +47,12 @@
 
 * All ID are now required to be `string`s. Integers are no longer supported.
 
+* Default page size is now a reasonable 100 throughout the SDK. Also, a default limit of 5 is applied to ease use in
+  interactive ("quick grab") scenarios. Be sure to define proper limits and page sizes in production use.
+
+* Object-oriented `update` and `reload` now automatically update the `self` object as well. They feature a new `copy`
+  parameter to return a new instance and leave self as-is if needed.
+ 
 * Cumulocity objects featuring a last updated date: The Python attributes were renamed to 
   `update_time`/`update_datetime` (previously `updated_time`/`updated_datetime`).
 
