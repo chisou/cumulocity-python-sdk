@@ -1,9 +1,11 @@
 import asyncio
-from typing import Self, AsyncIterator, Sequence
-
+from typing import Self, AsyncIterator, Sequence, TYPE_CHECKING
 
 from pyc8y.base_util import unwrap_args, ensure_sequence
 from pyc8y.model.matcher import JsonMatcher
+
+if TYPE_CHECKING:
+    from pyc8y.model.managed_object import ManagedObject
 from pyc8y.auth import BasicAuth
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, \
@@ -269,6 +271,7 @@ class UserGroups(CumulocityResource):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(
@@ -701,6 +704,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(
@@ -760,8 +764,17 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         """
         await self._delete(*roles, workers=workers)
 
+    def build_assignment_path(self, username: str, assignment_id: str | int | None = None) -> str:
+        """Build the URL path for a user's inventory-role assignment(s).
+
+        Returns the collection path when `assignment_id` is omitted, or the
+        path to a single assignment otherwise.
+        """
+        base = f"/user/{self.c8y.tenant_id}/users/{username}/roles/inventory"
+        return f"{base}/{assignment_id}" if assignment_id is not None else base
+
     async def get_assignments(self, username: str) -> list[InventoryRoleAssignment]:
-        """Retrieve all inventory role assignments for a user.
+        """Retrieve all inventory role assignments of a user.
 
         Args:
             username (str): Username of the Cumulocity user
@@ -769,7 +782,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         Returns:
             List of InventoryRoleAssignment instances
         """
-        result = await self.c8y.get(f"/user/{self.c8y.tenant_id}/users/{username}/roles/inventory")
+        result = await self.c8y.get(self.build_assignment_path(username))
         return [
             InventoryRoleAssignment.from_json(j, c8y=self.c8y)
             for j in result["inventoryAssignments"]
@@ -791,30 +804,98 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         Returns:
             The created InventoryRoleAssignment
         """
-        role_ids = [r.id if isinstance(r, InventoryRole) else r for r in roles]
+        payload = {
+            "managedObject": str(managed_object_id),
+            "roles": [{"id": rid} for rid in ensure_ids(roles)],
+        }
+        result = await self.c8y.post(self.build_assignment_path(username), json=payload)
+        return InventoryRoleAssignment.from_json(result, c8y=self.c8y)
+
+    async def reassign(
+        self,
+        username: str,
+        assignment_id: str | int,
+        managed_object_id: str | int,
+        *roles: InventoryRole | int | str,
+    ) -> InventoryRoleAssignment:
+        """Replace an existing inventory role assignment.
+
+        Note: The Cumulocity API replaces the assignment entirely; the
+        previous set of roles is *not* preserved or merged. Pass the full
+        intended set of roles.
+
+        Args:
+            username (str): Username of the Cumulocity user
+            assignment_id (str|int): ID of the existing assignment to replace
+            managed_object_id (str|int): ID of the managed object (e.g. device group)
+            *roles (InventoryRole|int|str): Role objects or IDs to assign
+
+        Returns:
+            The updated InventoryRoleAssignment
+        """
         payload = {
             "managedObject": {"id": str(managed_object_id)},
-            "roles": [{"id": rid} for rid in role_ids],
+            "roles": [{"id": rid} for rid in ensure_ids(roles)],
         }
-        result = await self.c8y.post(
-            f"/user/{self.c8y.tenant_id}/users/{username}/roles/inventory",
+        result = await self.c8y.put(
+            self.build_assignment_path(username, assignment_id),
             json=payload,
         )
         return InventoryRoleAssignment.from_json(result, c8y=self.c8y)
 
-    async def unassign(self, username: str, *assignment_ids: str | int) -> None:
+    async def unassign(
+        self,
+        username: str,
+        *assignment_ids: str | int,
+        workers: int | None = None,
+    ) -> None:
         """Remove inventory role assignments from a user.
 
         Args:
             username (str): Username of the Cumulocity user
             *assignment_ids (str|int): IDs of existing inventory role assignments
+            workers (int): Number of parallel requests; defaults to sequential
+
+        Raises:
+            BatchError: If one or more individual deletes fail.
         """
-        base_path = f"/user/{self.c8y.tenant_id}/users/{username}/roles/inventory"
         await run_batched(
             assignment_ids,
-            None,
-            lambda aid: self.c8y.delete(f"{base_path}/{aid}"),
+            workers,
+            lambda aid: self.c8y.delete(self.build_assignment_path(username, aid)),
         )
+
+    async def unassign_by(
+        self,
+        username: str,
+        *objects: "str | ManagedObject",
+        workers: int | None = None,
+    ) -> None:
+        """Remove a user's inventory role assignments by managed object.
+
+        Convenience method, not backed by a single API call: this first
+        reads all the user's assignments, then deletes the matching ones
+        individually by ID.
+
+        Args:
+            username (str): Username of the Cumulocity user
+            *objects (str|ManagedObject): Managed objects (or IDs) whose
+                assignments should be removed; if omitted, all assignments
+                for this user are removed. Missing matches are silently
+                ignored.
+            workers (int): Number of parallel requests; defaults to sequential
+
+        Raises:
+            BatchError: If one or more individual deletes fail.
+        """
+        assignments = await self.get_assignments(username)
+        target_ids = set(ensure_ids(objects)) if objects else None
+        ids_to_delete = [
+            x.id
+            for x in assignments
+            if target_ids is None or x.managed_object_id in target_ids
+        ]
+        await self.unassign(username, *ids_to_delete, workers=workers)
 
 
 class User(BaseUser):
@@ -1085,6 +1166,7 @@ class Users(CumulocityResource):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(

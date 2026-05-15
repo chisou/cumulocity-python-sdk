@@ -44,6 +44,9 @@
 
 * The `level` attribute in the `Permission` class has been renamed to `permission` to match the JSON structure.
 
+* Inventory role assignments are not part of the `Users` class, moved from `InventoryRoles` because the API logically
+  belongs to users and role assignments cannot be created without a user reference. 
+
 * The `SubscriptionListener` listener implementation has been promoted to a standard component. It has been simplified
   and converted to run async callbacks. It can be created from `MultiTenantCumulocityApp` using the `create_listener`
   function. 
