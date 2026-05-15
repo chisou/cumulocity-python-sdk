@@ -266,193 +266,112 @@ def fix_sample_series():
     return Series(series_json)
 
 
-def test_collect_single_series_single_value(sample_series: Series):
-    """Test collecting a single value (min or max) from a single series."""
-    for s in sample_series.specs:
-        values = sample_series.collect(series=s.series, value='min')
-        # -> None values should be filtered out
-        assert all(values)
-        assert len(values) < len(sample_series['values'])
-        # -> all values should be of the same type
-        t = type(values[0])
-        assert all(isinstance(v, t) for v in values)
+def test_values_of_single_series(sample_series: Series):
+    """values_of returns a flat list aligned with timestamps; missing entries are None."""
+    for spec in sample_series.specs:
+        values = sample_series.values_of(series=spec.series, value='min')
+        assert len(values) == len(sample_series['values'])
+        assert all(v is None or isinstance(v, (int, float)) for v in values)
 
 
-def test_collect_single_series_single_value_with_timestamp(sample_series: Series):
-    """Test collecting a single value (min or max) with timestamps from a
-    single series."""
-    for s in sample_series.specs:
-        values = sample_series.collect(series=s.series, value='min', timestamps=True)
-        # -> None values should be filtered out
-        assert all(values)
-        assert len(values) < len(sample_series['values'])
-        # -> all values should be 2-tuples (timestamp, value)
-        assert all(isinstance(v, tuple) for v in values)
-        # -> all timestamps should be strings
-        assert all(isinstance(v[0], str) for v in values)
-        # -> all values (2nd element) should have same type
-        t = type(values[0][1])
-        assert all(isinstance(v[1], t) for v in values)
+def test_values_of_default_series_when_only_one():
+    """values_of can omit `series` when there's exactly one."""
+    only_one = Series({
+        "series": [{"type": "c8y_T", "name": "T", "unit": "C"}],
+        "values": {
+            "2026-01-01T00:00:00Z": [{"min": 1.0, "max": 2.0}],
+            "2026-01-01T00:01:00Z": [{"min": 3.0, "max": 4.0}],
+        },
+        "truncated": False,
+    })
+    assert only_one.values_of(value='min') == [1.0, 3.0]
 
 
-def test_collect_single_series(sample_series: Series):
-    """Test collecting all values (min and max) from a single series."""
-    for s in sample_series.specs:
-        values = sample_series.collect(series=s.series)
-        # -> None values should be filtered out
-        assert all(values)
-        assert len(values) < len(sample_series['values'])
-        # -> all values should be 2-tuples (min, max)
-        assert all(isinstance(v, tuple) for v in values)
-        # -> all min/max values should have same type
-        t = type(values[0][0])
-        assert all(isinstance(v[1], t) for v in values)
+def test_values_of_default_value_when_only_one():
+    """values_of can omit `value` when the series holds exactly one value key."""
+    one_value = Series({
+        "series": [{"type": "c8y_T", "name": "T", "unit": "C"}],
+        "values": {
+            "2026-01-01T00:00:00Z": [{"min": 1.0}],
+            "2026-01-01T00:01:00Z": [{"min": 3.0}],
+        },
+        "truncated": False,
+    })
+    assert one_value.values_of() == [1.0, 3.0]
 
 
-def test_collect_single_series_with_timestamp(sample_series: Series):
-    """Test collecting all values (min and max) plus timestamp from a
-    single series.
-
-    The result should be a list of 3-tuples, each of which contains the
-    timestamp plus min and max value of that series at that timestamp:
-
-        [ (<timestamp>, 4, 5), (<timestamp>, 7, 8), ... ]
-
-    There are no None values, they are filtered out when looking at just
-    one series.
-    """
-    for s in sample_series.specs:
-        values = sample_series.collect(series=s.series, timestamps='datetime')
-        # -> None values should be filtered out
-        assert all(values)
-        assert len(values) < len(sample_series['values'])
-        # -> all values should be 3-tuples (timestamp, min, max)
-        assert all(isinstance(v, tuple) for v in values)
-        assert all(len(v) == 3 for v in values)
-        # -> all timestamps (1st element) should be datetime
-        assert all(isinstance(v[0], datetime) for v in values)
-        # -> all min/max values (2nd/3rd element) should have same type
-        t = type(values[0][1])
-        assert all(isinstance(v[2], t) for v in values)
+def test_values_of_requires_series_when_ambiguous(sample_series: Series):
+    """Omitting `series` is rejected if multiple series are present."""
+    with pytest.raises(ValueError, match="multiple series"):
+        sample_series.values_of(value='min')
 
 
-def test_collect_multiple_series_single_value(sample_series: Series):
-    """Test collecting a single value (min or max) from multiple series.
-
-    The result should be a list of tuples, each of which contains the actual
-    value at a single time for each series:
-
-        [ (4, 0.4), (5, 0.99), ..., (None, 0.21), ..., (12, None), ... ]
-
-    As we are collecting values from multiple series, there might be None
-    values (whenever a series has a value at a specific timestamp or not).
-    """
-    series_names = [spec.series for spec in sample_series.specs]
-    values = sample_series.collect(series=series_names, value='min')
-    # -> each value should be an n-tuple (one for each series)
-    assert all(isinstance(v, tuple) for v in values)
-    assert all(len(v) == len(series_names) for v in values)
-    # -> no values should have been filtered
-    assert len(values) == len(sample_series['values'])
-
-    # -> each element in the tuple should have the same type
-    #    (unless they are None)
-    for i in range(0, len(series_names)):
-        t = type(values[0][i])
-        assert t is not tuple
-        assert all(isinstance(v[i], t) for v in values if v[i])
+def test_values_of_requires_value_when_ambiguous(sample_series: Series):
+    """Omitting `value` is rejected if the series holds multiple value keys."""
+    spec = sample_series.specs[0]
+    with pytest.raises(ValueError, match="multiple values"):
+        sample_series.values_of(series=spec.series)
 
 
-def test_collect_multiple_series_single_value_with_timestamp(sample_series: Series):
-    """Test collecting a single value (min or max) from multiple series.
-    (including timestamp).
-
-    The result should be a list of tuples, each of which contains the timestamp
-    and actual value at a single time for each series:
-
-        [ (<timestamp>, 4, 0.4), (<timestamp>, 5, 0.99), ...,
-          (timestamp, None, 0.21), ..., (timestamp, 12, None), ... ]
-
-    As we are collecting values from multiple series, there might be None
-    values (whenever a series has a value at a specific timestamp or not).
-    """
-    series_names = [spec.series for spec in sample_series.specs]
-    values = sample_series.collect(series=series_names, value='min', timestamps=True)
-    # -> each value should be an n-tuple (one for each series + timestamp)
-    assert all(isinstance(v, tuple) for v in values)
-    assert all(len(v) == len(series_names) + 1  for v in values)
-    # -> no values should have been filtered
-    assert len(values) == len(sample_series['values'])
-
-    # -> each element in the n-tuple should be an m-tuple
-    #    timestamp + values for each series
-    assert all(isinstance(v[0], str) for v in values)
-    # -> subsequent elements should all have the same type
-    #    (if they are not None)
-    for i in range(1, len(series_names)+1):
-        t = type(values[0][i])
-        assert all(isinstance(v[i], t) for v in values if v[i])
+def test_values_of_unknown_series(sample_series: Series):
+    with pytest.raises(KeyError, match="No such series"):
+        sample_series.values_of(series='nope.thing', value='min')
 
 
-def test_collect_multiple_series(sample_series: Series):
-    """Test collecting all values (min and max) from multiple series.
-
-    The result should be a list of n-tuples (n = number or series), each
-    of which contains a 2-tuple (min,max):
-
-        [ ((4,5), (0.4, 0.5)), ((5,5), (0.99, 1.02)), ...,
-          (None, (0.21, 0.25)), ..., ((12,15), None), ... ]
-
-    As we are collecting values from multiple series, there might be None
-    values (whenever a series has a value at a specific timestamp or not).
-    """
-    series_names = [spec.series for spec in sample_series.specs]
-    values = sample_series.collect(series=series_names)
-    # -> each value should be an n-tuple (one for each series)
-    assert all(isinstance(v, tuple) for v in values)
-    assert all(len(v) == len(series_names) for v in values)
-    # -> no values should have been filtered
-    assert len(values) == len(sample_series['values'])
-
-    # -> each element in the n-tuple should be a 2-tuple
-    #    (min, max - unless they are None)
-    for i in range(0, len(series_names)):
-        assert all(isinstance(v[i], tuple) for v in values if v[i])
-        assert all(len(v[i]) == 2 for v in values if v[i])
+def test_collect_single_value_no_timestamps(sample_series: Series):
+    """collect always returns tuples; single value -> [(v,), ...]."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value='min')
+    assert len(result) == len(sample_series['values'])
+    assert all(isinstance(t, tuple) and len(t) == 1 for t in result)
 
 
-def test_collect_multiple_series_with_timestamp(sample_series: Series):
-    """Test collecting all values (min and max) from multiple series.
+def test_collect_single_value_with_timestamps(sample_series: Series):
+    """collect with single value + timestamps -> [(ts, v), ...]."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value='min', timestamps=True)
+    assert len(result) == len(sample_series['values'])
+    assert all(len(t) == 2 for t in result)
+    assert all(isinstance(t[0], str) for t in result)
 
-    The result should be a list of n-tuples (n = number or series), each
-    of which contains a 2-tuple (min,max) for each series
 
-        [ (<timestamp>, (4,5), (0.4, 0.5)), (<timestamp>, (5,5), (0.99, 1.02)), ...,
-          (<timestamp>, None, (0.21, 0.25)), ..., (<timestamp>, (12,15), None), ... ]
+def test_collect_multi_value(sample_series: Series):
+    """collect with a list of values -> tuples one element per value."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value=['min', 'max'])
+    assert all(len(t) == 2 for t in result)
 
-    As we are collecting values from multiple series, there might be None
-    values (whenever a series has a value at a specific timestamp or not).
-    """
-    series_names = [spec.series for spec in sample_series.specs]
-    values = sample_series.collect(series=series_names, timestamps='datetime')
 
-    # -> each value should be an n-tuple (one for each series plus timestamp)
-    assert all(isinstance(v, tuple) for v in values)
-    assert all(len(v) == len(series_names) + 1 for v in values)
-    # -> no values should have been filtered
-    assert len(values) == len(sample_series['values'])
+def test_collect_multi_value_with_datetime_timestamps(sample_series: Series):
+    """collect with multi values + datetime timestamps -> [(dt, v1, v2), ...]."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value=['min', 'max'], timestamps='datetime')
+    assert all(len(t) == 3 for t in result)
+    assert all(isinstance(t[0], datetime) for t in result)
 
-    # -> the first element in each n-tuple should be the timestamp
-    assert all(isinstance(v[0], datetime) for v in values)
 
-    # -> subsequent elements should all be 2-tuples, one for each series
-    #    (unless they are None, indicating that a series did not define a
-    #    value at this timestamp)
-    for i in range(1, len(series_names)+1):
-        assert all(isinstance(v[i], tuple) for v in values if v[i])
-        assert all(len(v[i]) == 2 for v in values if v[i])
+def test_collect_defaults_to_all_value_keys(sample_series: Series):
+    """When value is omitted, all available value keys are collected."""
+    spec = sample_series.specs[0]
+    # determine the actual value keys present in the data
+    expected_keys = next(
+        row[0].keys() for row in sample_series['values'].values() if row and row[0]
+    )
+    result = sample_series.collect(series=spec.series)
+    assert all(len(t) == len(expected_keys) for t in result)
 
-    # -> if not None, each element in the 2-tuple (min, max) have same type
-    # pylint: disable=unidiomatic-typecheck
-    for i in range(1, len(series_names)+1):
-        assert all(type(v[i][0]) == type(v[i][1]) for v in values if v[i])
+
+def test_collect_epoch_timestamps(sample_series: Series):
+    """timestamps='epoch' yields float seconds-since-epoch as the prefix."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value='min', timestamps='epoch')
+    assert all(isinstance(t[0], float) for t in result)
+
+
+def test_collect_preserves_alignment_with_nones(sample_series: Series):
+    """Rows where the series has no value yield None entries (not dropped)."""
+    spec = sample_series.specs[0]
+    result = sample_series.collect(series=spec.series, value='min')
+    assert len(result) == len(sample_series['values'])
+    # at least one None expected in the sample (the old test asserted Nones existed)
+    assert any(t[0] is None for t in result)

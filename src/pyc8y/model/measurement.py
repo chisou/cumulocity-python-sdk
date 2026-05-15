@@ -239,148 +239,128 @@ class Series(dict):
         """
         return self["values"]
 
-    def collect(
+    def values_of(
         self,
-        series: str | Sequence[str] | None = None,
-        value: str | Sequence[str] | None = None,
-        timestamps: bool | str | None = None,
-    ) -> list | list[tuple]:
-        """Collect series results.
+        series: str | None = None,
+        value: str | None = None,
+    ) -> list[float | None]:
+        """Return a flat list of values for one series and one value key.
+
+        Missing entries (the series had no value at a given timestamp) are
+        represented as `None` to preserve row alignment with `.values.keys()`.
 
         Args:
-            series (str|Sequence[str]):  Which series' values to collect. If
-                multiple series are collected each element in the result will
-                be a tuple. If omitted, all available series are collected.
-            value (str | Sequence[str]):  Which value(s) (min/max/avg/...) to
-                collect. Multiple values can be specified. If omitted, all
-                available values are collected.
-            timestamps (bool|str):  Whether each element in the result list
-                will be prepended with the corresponding timestamp. If True,
-                the timestamp string will be included; Use 'datetime' or
-                'epoch' to parse the timestamp string.
+            series (str): Series name (e.g. 'c8y_Temperature.T'). Can be
+                omitted if this object holds exactly one series.
+            value (str): Value key (e.g. 'min', 'max'). Can be omitted if
+                the series holds exactly one value key.
 
         Returns:
-            A simple list or list of tuples (potentially nested) depending on the
-            parameter combination.
+            A list of floats (or `None` for missing rows).
         """
-
-        # we want explicit else's to make the logic easier to understand
-        # pylint: disable=no-else-return, too-many-return-statements, too-many-branches, line-too-long
-
-        def indexes_by_name():
-            """Mapping series names to indexes in value groups."""
-            return {f"{s[1].type}.{s[1].name}": s[0] for s in enumerate(self.specs)}
-
-        def parse_timestamp(t):
-            """Parse timestamps."""
-            if timestamps == "datetime":
-                return to_datetime(t)
-            if timestamps == "epoch":
-                return to_datetime(t).timestamp()
-            return t
-
-        def value_keys():
-            for vg in self["values"].values():
-                if vg and vg[0] is not None:
-                    return vg[0].keys()
-            raise ValueError("Unable to collect data, data appears to be empty.")
-
-        # use all series if no series provided
         if not series:
-            series = [s.series for s in self.specs]
+            self._assert_single_series()
+            index = 0
+        else:
+            index = self._resolve_series_index(series)
 
-        # single series
-        if isinstance(series, str):
-            # which index to pull from values?
-            i = indexes_by_name()[series]
+        if value is None:
+            value = self._single_value_key(index)
+        return [
+            row[index].get(value) if index < len(row) and row[index] else None
+            for row in self.values.values()
+        ]
 
-            # single value
-            if isinstance(value, str):
-                if not timestamps:
-                    # iterate over all values, select value group at specific
-                    # index v[i] and extract specific value [value]. The value
-                    # group may be undefined (None), hence filter for value v[i]
-                    return [v[i].get(value, None) for v in self["values"].values() if (len(v) > i and v[i])]
-                else:
-                    # like above, but include timestamps
-                    return [
-                        (parse_timestamp(k), v[i].get(value, None))
-                        for k, v in self["values"].items()
-                        if (len(v) > i and v[i])
-                    ]
+    def collect(
+        self,
+        series: str | None = None,
+        value: str | Sequence[str] | None = None,
+        timestamps: bool | str | None = None,
+    ) -> list[tuple]:
+        """Collect series results as a list of tuples.
 
-            # multiple values
-            else:
-                keys = value if value is not None else value_keys()
-                if not timestamps:
-                    # iterate over all values, select value group at specific
-                    # index v[i] and extract all (min, count, ...) values. The value
-                    # group may be undefined (None), hence filter for value v[i]
-                    return [
-                        tuple(v[i].get(key, None) for key in keys)
-                        for v in self["values"].values()
-                        if (len(v) > i and v[i])
-                    ]
-                else:
-                    # like above, but include timestamps
-                    return [
-                        (parse_timestamp(k), *(v[i].get(key, None) for key in keys))
-                        for k, v in self["values"].items()
-                        if (len(v) > i and v[i])
-                    ]
+        Each row corresponds to one timestamp and always carries a tuple.
+        Use `values_of` instead if you just want a flat list of values for
+        a single (series, value) combination.
 
-        # multiple series
-        if isinstance(series, Sequence):
-            ii = [indexes_by_name()[s] for s in series]
+        Args:
+            series (str): Series name. Can be omitted if this object holds
+                exactly one series.
+            value (str | Sequence[str]): Value key or list of keys (e.g.
+                'min', 'max'). If omitted, all available value keys are
+                collected.
+            timestamps (bool | str): If truthy, each tuple is prefixed with
+                the corresponding timestamp. Use `True` for the raw string,
+                `'datetime'` for parsed datetimes, `'epoch'` for epoch
+                seconds.
 
-            # single value
-            if isinstance(value, str):
-                if not timestamps:
-                    # iterate over all values, collect specified value groups
-                    # at their index v[i] and extract specific value [value].
-                    # The value group may be undefined (None) which will result
-                    # in a None value in the tuple as well.
-                    return [
-                        # collect values of all indexes (None of not defined)
-                        tuple(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii)
-                        for v in self["values"].values()
-                    ]
-                else:
-                    # like above, but prepend with timestamps
-                    return [
-                        (parse_timestamp(k), *(v[i].get(value, None) if (len(v) > i and v[i]) else None for i in ii))
-                        for k, v in self["values"].items()
-                    ]
+        Returns:
+            A list of tuples:
+              - timestamps=False, value='min'           -> [(min,), ...]
+              - timestamps=True,  value='min'           -> [(ts, min), ...]
+              - timestamps=False, value=['min', 'max']  -> [(min, max), ...]
+              - timestamps='datetime', value=None       -> [(dt, min, max, ...), ...]
+        """
+        if not series:
+            self._assert_single_series()
+            index = 0
+        else:
+            index = self._resolve_series_index(series)
+        value_keys = (
+            [value] if isinstance(value, str)
+            else list(value) if value
+            else self._available_value_keys(index)
+        )
 
-            # multiple values
-            else:
-                keys = value if value is not None else value_keys()
-                if not timestamps:
-                    # iterate over all values, collect specified value groups
-                    # at their index v[i] and extract specific keys (min, count, ...).
-                    # The value group may be undefined (None) which will result
-                    # in a None value in the tuple as well.
-                    return [
-                        # collect values of all indexes (None of not defined)
-                        tuple(
-                            (tuple(v[i].get(key, None) for key in keys)) if (len(v) > i and v[i]) else None for i in ii
-                        )
-                        for v in self["values"].values()
-                    ]
-                else:
-                    # like above, but prepend with timestamps
-                    return [
-                        (
-                            parse_timestamp(k),
-                            *(
-                                tuple(v[i].get(key, None) for key in keys) if (len(v) > i and v[i]) else None
-                                for i in ii
-                            ),
-                        )
-                        for k, v in self["values"].items()
-                    ]
+        def values_at(row):
+            cell = row[index] if index < len(row) and row[index] else None
+            return tuple(cell.get(k) if cell else None for k in value_keys)
 
-        raise ValueError("Invalid combination of arguments")
+        if timestamps:
+            return [
+                (self._parse_timestamp(ts, timestamps), *values_at(row))
+                for ts, row in self.values.items()
+            ]
+        return [values_at(row) for row in self.values.values()]
+
+    def _assert_single_series(self) -> None:
+        """Assert that this object holds exactly one series."""
+        if len(self.specs) != 1:
+            raise ValueError(
+                f"Series name must be specified if the data holds multiple series. "
+                f"Found {', '.join(s.series for s in self.specs)}."
+            )
+
+    def _resolve_series_index(self, series: str) -> int:
+        try:
+            return {s.series: i for i, s in enumerate(self.specs)}[series]
+        except KeyError as e:
+            raise KeyError(
+                f"No such series: {series}. "
+                f"Available series are {', '.join(s.series for s in self.specs)}."
+            ) from e
+
+    def _available_value_keys(self, series_index: int) -> list[str]:
+        for row in self.values.values():
+            if series_index < len(row) and row[series_index]:
+                return list(row[series_index].keys())
+        raise ValueError("Unable to determine value keys: no data points present.")
+
+    def _single_value_key(self, series_index: int) -> str:
+        """Return the sole value key for the series, raising if there is more than one.
+        Walks the data only until the first non-empty cell."""
+        keys = self._available_value_keys(series_index)
+        if len(keys) != 1:
+            raise ValueError(f"Value must be specified if the series holds multiple values. Found {', '.join(keys)}.")
+        return keys[0]
+
+    @staticmethod
+    def _parse_timestamp(ts: str, mode: bool | str):
+        if mode == "datetime":
+            return to_datetime(ts)
+        if mode == "epoch":
+            return to_datetime(ts).timestamp()
+        return ts
 
     @staticmethod
     def _encode_name(n: str) -> str:
@@ -417,32 +397,17 @@ class Series(dict):
             raise ImportError("numpy is required. Install with: pip install pyc8y[pandas]") from e
 
         if not series:
-            if len(self.specs) > 1:
-                raise ValueError(f"Series name must be specified if the data holds multiple series. Found {', '.join(x.series for x in self.specs)}.")
-            series = self.specs[0].series
-
-        series_index = {s.series: i for i, s in enumerate(self.specs)}.get(series, None)
-        if series_index is None:
-            raise KeyError(f"No such series: {series}. Available series are {', '.join(x.series for x in self.specs)}.")
-
-        value_keys = next(
-            (
-                row[series_index].keys()
-                for row in self["values"].values()
-                if series_index < len(row) and row[series_index] is not None
-            ),
-            None,
-        )
-        if not value_keys:
-            return np.empty(0)
-        if not value:
-            if len(value_keys) > 1:
-                raise ValueError(f"Value must be specified if the data holds multiple values. Found {', '.join(value_keys)}.")
-            value = value_keys[0]
+            self._assert_single_series()
+            series_index = 0
         else:
-            if value not in value_keys:
-                raise KeyError(
-                    f"No such series value: {value}. Available values are {', '.join(value_keys)}.")
+            series_index = self._resolve_series_index(series)
+        if value is None:
+            try:
+                value = self._single_value_key(series_index)
+            except ValueError as e:
+                if "no data points" in str(e):
+                    return np.empty(0)
+                raise
 
         rows = list(self['values'].values())
         n = len(rows)
@@ -1049,13 +1014,13 @@ class Measurements(CumulocityResource[Measurement]):
         *,
         source: str | None = None,
         aggregation: str | None = None,
-        series: str | Sequence[str] | None = None,
+        series: str | None = None,
         before: str | datetime | None = None,
         after: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
         reverse: bool | None = None,
-        value: str | None = None,
+        value: str | Sequence[str] | None = None,
         timestamps: bool | str | None = None,
         **kwargs,
     ):
