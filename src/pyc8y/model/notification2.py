@@ -228,6 +228,7 @@ class Subscriptions(CumulocityResource[Subscription]):
             page_number=page_number,
             limit=limit,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(

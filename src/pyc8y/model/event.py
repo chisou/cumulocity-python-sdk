@@ -335,6 +335,7 @@ class Events(CumulocityResource[Event]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=bool(reverse or revert),
         )
 
     async def get_all(

@@ -1,10 +1,12 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
+import asyncio
 from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock
 
 import pytest
 
-from pyc8y.model.model_base import map_params
+from pyc8y.model.model_base import CumulocityResource, map_params
 
 
 td = timedelta
@@ -138,3 +140,89 @@ def test_map_params_age_coercion(monkeypatch, kwarg, expected_key):
     monkeypatch.setattr("pyc8y.model.model_base.now_datetime", lambda: frozen_now)
     result = map_params(**{kwarg: td(hours=1)})
     assert result == [(expected_key, "2025-12-31T23:00:00.000Z")]
+
+
+# -----------------------------------------------------------------------------
+# Sliding-window worker behavior in _stream_pages / _iterate
+# -----------------------------------------------------------------------------
+
+
+async def test_stream_pages_yields_in_order_with_workers():
+    """Pages are yielded in launch order even when later pages finish first."""
+    res = CumulocityResource(Mock())
+
+    async def fetch(page, **_):
+        # earlier pages take longer → later pages would finish first if order
+        # weren't enforced. We expect them in launch order anyway.
+        await asyncio.sleep((10 - page) * 0.005 if page <= 5 else 0)
+        return [{"page": page}] if page <= 5 else []
+
+    pages = []
+    async for p in res._stream_pages(fetch, start_page=1, workers=3, expression=None, params=None):
+        pages.append(p)
+
+    # 5 non-empty + 1 sentinel empty
+    assert [p[0]["page"] for p in pages if p] == [1, 2, 3, 4, 5]
+    assert pages[-1] == []
+
+
+async def test_stream_pages_keeps_workers_busy():
+    """When a page completes, a new fetch is launched immediately — no batch stalls."""
+    res = CumulocityResource(Mock())
+    concurrency_observed = []
+    in_flight = 0
+    lock = asyncio.Lock()
+
+    async def fetch(page, **_):
+        nonlocal in_flight
+        async with lock:
+            in_flight += 1
+            concurrency_observed.append(in_flight)
+        try:
+            await asyncio.sleep(0.005)
+            return [{"page": page}] if page <= 6 else []
+        finally:
+            async with lock:
+                in_flight -= 1
+
+    pages = []
+    async for p in res._stream_pages(fetch, start_page=1, workers=3, expression=None, params=None):
+        pages.append(p)
+
+    # at some point we should have seen `workers` concurrent fetches
+    assert max(concurrency_observed) == 3
+
+
+async def test_stream_pages_workers_one_is_sequential():
+    """workers=1 falls back to plain sequential fetch."""
+    res = CumulocityResource(Mock())
+    seen = []
+
+    async def fetch(page, **_):
+        seen.append(page)
+        return [{"page": page}] if page <= 3 else []
+
+    async for _ in res._stream_pages(fetch, start_page=1, workers=1, expression=None, params=None):
+        pass
+    assert seen == [1, 2, 3, 4]
+
+
+async def test_stream_pages_cancels_overshoot_on_empty():
+    """Speculative fetches launched past the last full page are cancelled cleanly."""
+    res = CumulocityResource(Mock())
+    cancelled = []
+
+    async def fetch(page, **_):
+        try:
+            await asyncio.sleep(0.005 * page)  # later pages take longer
+            return [{"page": page}] if page <= 2 else []
+        except asyncio.CancelledError:
+            cancelled.append(page)
+            raise
+
+    async for _ in res._stream_pages(fetch, start_page=1, workers=4, expression=None, params=None):
+        pass
+
+    # we asked for 4 in-flight; pages 1,2 returned data, page 3 was empty (sentinel),
+    # page 4 was launched before we saw the empty → cancelled on exit
+    assert 4 in cancelled

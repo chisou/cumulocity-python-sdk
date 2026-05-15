@@ -212,6 +212,7 @@ class Operations(CumulocityResource[Operation]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=bool(reverse),
         )
 
     async def get_all(
@@ -586,6 +587,7 @@ class BulkOperations(CumulocityResource[BulkOperation]):
             include=include,
             exclude=exclude,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(

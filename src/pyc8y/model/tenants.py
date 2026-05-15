@@ -197,6 +197,7 @@ class Tenants(CumulocityResource[Tenant]):
             limit=limit,
             as_values=as_values,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(

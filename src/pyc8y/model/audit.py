@@ -262,6 +262,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=bool(reverse),
         )
 
     async def get_all(

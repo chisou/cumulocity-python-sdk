@@ -335,6 +335,7 @@ class Applications(CumulocityResource[Application]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=False,
         )
 
     async def get_all(

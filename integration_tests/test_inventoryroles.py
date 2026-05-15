@@ -91,19 +91,19 @@ async def test_select(live_c8y: CumulocityClient):
     assert all_roles
 
     # client-side include filter
-    with_desc = await live_c8y.inventory_roles.get_all(limit=None, include='description != null')
-    without_desc = [r for r in all_roles if not r.description]
+    without_desc = await live_c8y.inventory_roles.get_all(limit=None, include='not description')
+    with_desc = [r for r in all_roles if r.description]
     assert {r.id for r in with_desc} == {r.id for r in all_roles} - {r.id for r in without_desc}
 
 
 async def test_assignments(live_c8y: CumulocityClient, session_device, module_factory):
     """Verify that inventory roles can be assigned, retrieved and unassigned."""
-    email = 'user_' + create_random_name() + '@test.com'
-    role1 = await module_factory(InventoryRole(name='role_' + create_random_name(), permissions=[
+    email = f'user_{create_random_name()}@test.com'
+    role1 = await module_factory(InventoryRole(name=f'role_{create_random_name()}', permissions=[
         ReadPermission(scope=Permission.Scope.ALARM),
         WritePermission(scope=Permission.Scope.AUDIT),
     ]))
-    role2 = await module_factory(InventoryRole(name='role_' + create_random_name(), permissions=[
+    role2 = await module_factory(InventoryRole(name=f'role_{create_random_name()}', permissions=[
         ReadPermission(scope=Permission.Scope.ANY),
         WritePermission(scope=Permission.Scope.MEASUREMENT),
     ]))

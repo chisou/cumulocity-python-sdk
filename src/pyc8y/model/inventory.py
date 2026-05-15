@@ -497,6 +497,7 @@ class Inventory(CumulocityResource[MO]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
+            preserve_order=bool(order_by),
         )
 
     def _collate_filter_params(

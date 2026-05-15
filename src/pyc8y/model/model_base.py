@@ -1,4 +1,5 @@
 import asyncio
+from collections import deque
 from copy import deepcopy
 from typing import (
     Any,
@@ -610,9 +611,9 @@ class CumulocityResource(Generic[CO]):
         exclude: str | JsonMatcher | None = None,
         as_values: AsValuesSpec | None = None,
         workers: int | None = None,
+        preserve_order: bool = True,
         fetch_page: PageFetcher | None = None,
     ) -> AsyncIterator[CO]:
-        # if no specific page is defined we just start at 1
         current_page = page_number if page_number else 1
         num_results = 0
         # compile/prepare filter if defined
@@ -626,41 +627,172 @@ class CumulocityResource(Generic[CO]):
             exclude = self.default_matcher(exclude)
 
         _fetch = fetch_page or self._fetch_page
+        # parallel fetching only applies when iterating across pages
+        effective_workers = 1 if page_number else (workers or 1)
+        stream = (
+            self._stream_pages(_fetch, current_page, effective_workers, expression, params)
+            if preserve_order or effective_workers <= 1
+            else self._stream_pages_unordered(_fetch, current_page, effective_workers, expression, params)
+        )
 
-        # parallel page fetching only makes sense when not pinned to a single page
-        use_workers = workers and workers > 1 and not page_number
-
-        while True:
-            # fetch one batch of pages — either `workers` pages in parallel or one sequentially
-            if use_workers:
-                all_tasks = [
-                    _fetch(current_page + i, expression=expression, params=params)
-                    for i in range(workers)
+        async for obj_jsons in stream:
+            if not obj_jsons:
+                return
+            if include or exclude:
+                obj_jsons = [
+                    x
+                    for x in obj_jsons
+                    if (not include or include.safe_matches(x)) and (not exclude or not exclude.safe_matches(x))
                 ]
-                all_pages = await asyncio.gather(*all_tasks)
-            else:
-                all_pages = [await _fetch(current_page, expression=expression, params=params)]
+            for json in obj_jsons:
+                if limit and num_results >= limit:
+                    return
+                yield as_tuple(json, as_values) if as_values else self._object_type.from_json(json, c8y=self.c8y)
+                num_results += 1
+            if page_number:
+                return
 
-            done = False
-            for obj_jsons in all_pages:
-                if not obj_jsons:
-                    done = True
-                    break
-                if include or exclude:
-                    obj_jsons = [
-                        x
-                        for x in obj_jsons
-                        if (not include or include.safe_matches(x)) and (not exclude or not exclude.safe_matches(x))
-                    ]
-                for json in obj_jsons:
-                    if limit and num_results >= limit:
+    async def _stream_pages(
+        self,
+        fetch: "PageFetcher",
+        start_page: int,
+        workers: int,
+        expression: str | None,
+        params: Sequence[tuple[str, str]] | None,
+    ) -> AsyncIterator[list]:
+        """Yield pages in launch order.
+
+        When `workers > 1`, keeps a sliding window of `workers` concurrent
+        page-fetch tasks: as soon as the head completes (and is yielded), a
+        new fetch is launched, so workers stay continuously busy without
+        sacrificing page ordering. Stops on the first empty page; any pages
+        launched speculatively past it are cancelled.
+        """
+        current = start_page
+
+        if workers <= 1:
+            while True:
+                page = await fetch(current, expression=expression, params=params)
+                yield page
+                if not page:
+                    return
+                current += 1
+            return
+
+        in_flight: "deque[asyncio.Task]" = deque()
+
+        def launch():
+            nonlocal current
+            in_flight.append(asyncio.create_task(
+                fetch(current, expression=expression, params=params)
+            ))
+            current += 1
+
+        try:
+            for _ in range(workers):
+                launch()
+            while in_flight:
+                page = await in_flight.popleft()
+                yield page
+                if not page:
+                    return
+                launch()
+        finally:
+            for t in in_flight:
+                t.cancel()
+            for t in list(in_flight):
+                try:
+                    await t
+                except BaseException:  # noqa: BLE001
+                    pass
+
+    async def _stream_pages_unordered(
+        self,
+        fetch: "PageFetcher",
+        start_page: int,
+        workers: int,
+        expression: str | None,
+        params: Sequence[tuple[str, str]] | None,
+    ) -> AsyncIterator[list]:
+        """Yield pages as they complete — no ordering guarantee.
+
+        Same sliding window as `_stream_pages`, but yields whichever fetch
+        finishes first. Use when the caller will sort results downstream
+        (or doesn't care about order).
+        """
+        current = start_page
+        in_flight: set[asyncio.Task] = set()
+
+        def launch():
+            nonlocal current
+            in_flight.add(asyncio.create_task(
+                fetch(current, expression=expression, params=params)
+            ))
+            current += 1
+
+        try:
+            for _ in range(workers):
+                launch()
+            while in_flight:
+                done, _pending = await asyncio.wait(in_flight, return_when=asyncio.FIRST_COMPLETED)
+                for task in done:
+                    in_flight.discard(task)
+                    page = task.result()
+                    yield page
+                    if not page:
                         return
-                    yield as_tuple(json, as_values) if as_values else self._object_type.from_json(json, c8y=self.c8y)
-                    num_results += 1
+                    launch()
+        finally:
+            for t in in_flight:
+                t.cancel()
+            for t in list(in_flight):
+                try:
+                    await t
+                except BaseException:  # noqa: BLE001
+                    pass
 
-            if done or page_number:
-                break
-            current_page += workers if use_workers else 1
+    async def to_dataframe(
+        self,
+        *args,
+        columns: Sequence[str | tuple[str, str]],
+        workers: int = 5,
+        **kwargs,
+    ):
+        """Bulk-load matching objects into a Pandas DataFrame.
+
+        Streams pages concurrently (sliding window, `workers` in flight) and
+        appends each object's values directly into per-column lists — no
+        intermediate row tuples, no transposition. The fetch order is
+        unordered unless the underlying `select(...)` enforces ordering via
+        its arguments (e.g. `reverse=True`, `order_by=...`); for typical
+        bulk loads where sorting happens downstream this gives maximum
+        throughput.
+
+        Args:
+            *args: Positional args forwarded to `select(...)`.
+            columns: Sequence of column specs. Each entry is either a bare
+                JSON path (used as both column name and access path) or a
+                `(name, path)` tuple.
+            workers: Number of concurrent page fetches; default 5.
+            **kwargs: Keyword args forwarded to `select(...)`.
+
+        Returns:
+            A Pandas DataFrame; one column per spec, one row per matching
+            object.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError("pandas is required. Install with: pip install pyc8y[pandas]") from e
+
+        names = [c if isinstance(c, str) else c[0] for c in columns]
+        paths = [c if isinstance(c, str) else c[1] for c in columns]
+        col_data: dict[str, list] = {n: [] for n in names}
+
+        async for obj in self.select(*args, workers=workers, **kwargs):
+            for name, path in zip(names, paths):
+                col_data[name].append(obj.get(path))
+        return pd.DataFrame(col_data)
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
