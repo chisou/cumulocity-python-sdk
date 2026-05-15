@@ -9,7 +9,7 @@ from typing import List
 
 import pytest
 
-from pyc8y.base_util import is_sequence
+from pyc8y.base_util import is_sequence, ensure_sequence
 from pyc8y.client import CumulocityClient
 from pyc8y.model import Device, Measurement, Series, Value, Kelvin, Count
 from pyc8y.model.measurement import AggregationType
@@ -245,7 +245,7 @@ async def test_collect_single_series(name, aggregated_series_result, unaggregate
         "new_aggregated": new_aggregated_series_result,
     }[name]
     for spec in series_result.specs:
-        values = series_result.collect(series=spec.series, value='min')
+        values = series_result.values_of(series=spec.series, value='min')
         # -> None values should be filtered out
         assert values
         assert all(v is not None for v in values)
@@ -312,14 +312,15 @@ async def test_get_and_collect_series(live_c8y, sample_series_device):
             after='1970-01-01',
             before='now'
         )
-        assert collected == directly_collected
+        # we have to filter None rows because pulling a single series would do the same
+        assert [x for x in collected if x[0] is not None] == directly_collected
 
 
 @pytest.mark.parametrize('aggregation_function', [
     'min',
     ['max', 'avg'],
     ("avg", "sum", "count"),
-])
+], ids=["min", "max-avg", "max-sum-count"])
 async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
     """Verify that the new aggregation functions work as expected."""
     for series_name in sample_series_device["c8y_SupportedSeries"]:
@@ -335,18 +336,16 @@ async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_
         # collect all functions
         collected = series.collect(value=aggregation_function)
         # -> each element is a tuple (of all queried series)
+        num_values = len(ensure_sequence(aggregation_function))
         assert isinstance(collected[0], tuple)
-        # -> each value holds the values of all aggregation function
-        if isinstance(aggregation_function, str):  # single function
-            assert isinstance(collected[0][0], float)
-        else:
-            assert isinstance(collected[0][0], tuple)
-            assert isinstance(collected[0][0][0], float)
-
+        assert all(len(x) == num_values for x in collected)
+        # -> each tuple holds the values of all aggregation function
+        assert isinstance(collected[0][0], float)
+        assert all(isinstance(x[y], float) for y in range(num_values) for x in collected)
         # collect individual function results
         aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
         for fun in aggregation_function:
-            collected = series.collect(series=series_name, value=fun)
+            collected = series.values_of(series=series_name, value=fun)
             # -> the values are held directly
             assert isinstance(collected[0], float)
 
@@ -355,7 +354,7 @@ async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_
     'min',
     ['max', 'avg'],
     ("avg", "sum", "count"),
-])
+],ids=["min", "max-avg", "max-sum-count"])
 async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
     """Verify that the new aggregation functions work as expected."""
     series = await live_c8y.measurements.get_series(
@@ -368,21 +367,21 @@ async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_d
     )
 
     # collect all functions
-    collected = series.collect(value=aggregation_function)
-    # -> each element is a tuple (of all queried series)
+    collected = series.collect(value=aggregation_function, timestamps="datetime")
+    # -> each element is a tuple (of all queried series times aggregation functions plus 1 for the timestamp)
+    num_values = len(series.specs) * len(ensure_sequence(aggregation_function)) + 1
     assert isinstance(collected[0], tuple)
-    # -> each value holds the values of all aggregation function
-    if isinstance(aggregation_function, str):  # single function
-        assert isinstance(collected[0][0], float)
-    else:
-        assert isinstance(collected[0][0], tuple)
-        assert isinstance(collected[0][0][0], float)
+    assert all(len(x) == num_values for x in collected)
+    # -> each "row" holds the values of all aggregation function
+    assert isinstance(collected[0][0], datetime)  # timestamp
+    assert isinstance(collected[0][1], float)  # aggregated value
+    assert all(isinstance(x[y], float | None) for y in range(1, num_values) for x in collected)
 
     # collect individual function results
     aggregation_function = [aggregation_function] if isinstance(aggregation_function, str) else aggregation_function
     for series_name in sample_series_device["c8y_SupportedSeries"]:
         for fun in aggregation_function:
-            collected = series.collect(series=series_name, value=fun)
+            collected = series.values_of(series=series_name, value=fun)
             # -> the values are held directly
             assert isinstance(collected[0], float)
 

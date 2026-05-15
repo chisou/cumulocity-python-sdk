@@ -243,11 +243,12 @@ class Series(dict):
         self,
         series: str | None = None,
         value: str | None = None,
-    ) -> list[float | None]:
-        """Return a flat list of values for one series and one value key.
+    ) -> list[float]:
+        """Return a flat list of actual values for one series and one value key.
 
-        Missing entries (the series had no value at a given timestamp) are
-        represented as `None` to preserve row alignment with `.values.keys()`.
+        Rows where the series has no value (or the value key is missing) are
+        skipped; the result is therefore *not* aligned with `.values.keys()`.
+        Use `collect(timestamps=...)` if you need alignment.
 
         Args:
             series (str): Series name (e.g. 'c8y_Temperature.T'). Can be
@@ -256,7 +257,7 @@ class Series(dict):
                 the series holds exactly one value key.
 
         Returns:
-            A list of floats (or `None` for missing rows).
+            A list of floats; `None` entries are filtered out.
         """
         if not series:
             self._assert_single_series()
@@ -266,26 +267,32 @@ class Series(dict):
 
         if value is None:
             value = self._single_value_key(index)
-        return [
+        candidates = (
             row[index].get(value) if index < len(row) and row[index] else None
             for row in self.values.values()
-        ]
+        )
+        return [v for v in candidates if v is not None]
 
     def collect(
         self,
-        series: str | None = None,
+        series: str | Sequence[str] | None = None,
         value: str | Sequence[str] | None = None,
         timestamps: bool | str | None = None,
     ) -> list[tuple]:
-        """Collect series results as a list of tuples.
+        """Collect series results as a list of flat tuples.
 
-        Each row corresponds to one timestamp and always carries a tuple.
+        Each row corresponds to one timestamp and always carries a tuple of
+        uniform length: `(len(series) * len(value_keys))`, optionally
+        prefixed with the timestamp. Column order is series-major
+        (`s0_v0, s0_v1, ..., s1_v0, s1_v1, ...`). Missing values appear as
+        `None`.
+
         Use `values_of` instead if you just want a flat list of values for
         a single (series, value) combination.
 
         Args:
-            series (str): Series name. Can be omitted if this object holds
-                exactly one series.
+            series (str | Sequence[str]): Series name or names. If omitted,
+                all series are collected.
             value (str | Sequence[str]): Value key or list of keys (e.g.
                 'min', 'max'). If omitted, all available value keys are
                 collected.
@@ -295,26 +302,21 @@ class Series(dict):
                 seconds.
 
         Returns:
-            A list of tuples:
-              - timestamps=False, value='min'           -> [(min,), ...]
-              - timestamps=True,  value='min'           -> [(ts, min), ...]
-              - timestamps=False, value=['min', 'max']  -> [(min, max), ...]
-              - timestamps='datetime', value=None       -> [(dt, min, max, ...), ...]
+            A list of tuples. Example shapes:
+              - 1 series, value='min'                 -> [(min,), ...]
+              - 1 series, value=['min','max'], ts=True -> [(ts, min, max), ...]
+              - 2 series, value='min'                 -> [(A_v, B_v), ...]
+              - 2 series, value=['min','max']         -> [(A_min, A_max, B_min, B_max), ...]
         """
-        if not series:
-            self._assert_single_series()
-            index = 0
-        else:
-            index = self._resolve_series_index(series)
-        value_keys = (
-            [value] if isinstance(value, str)
-            else list(value) if value
-            else self._available_value_keys(index)
-        )
+        indices = [i for i, _ in self._resolve_selection(series)]
+        value_keys = self._resolve_value_keys(value, sample_index=indices[0])
 
         def values_at(row):
-            cell = row[index] if index < len(row) and row[index] else None
-            return tuple(cell.get(k) if cell else None for k in value_keys)
+            return tuple(
+                (row[i].get(k) if i < len(row) and row[i] else None)
+                for i in indices
+                for k in value_keys
+            )
 
         if timestamps:
             return [
@@ -345,6 +347,36 @@ class Series(dict):
             if series_index < len(row) and row[series_index]:
                 return list(row[series_index].keys())
         raise ValueError("Unable to determine value keys: no data points present.")
+
+    def _resolve_selection(
+        self,
+        series: "str | Sequence[str] | None",
+    ) -> list[tuple[int, str]]:
+        """Resolve a `series` argument to a list of (index, name) pairs.
+
+        Defaults to all series when `series` is None.
+        """
+        if not series:
+            return [(i, s.series) for i, s in enumerate(self.specs)]
+        if isinstance(series, str):
+            return [(self._resolve_series_index(series), series)]
+        return [(self._resolve_series_index(s), s) for s in series]
+
+    def _resolve_value_keys(
+        self,
+        value: "str | Sequence[str] | None",
+        *,
+        sample_index: int = 0,
+    ) -> list[str]:
+        """Resolve a `value` argument to a list of value keys.
+
+        Defaults to all available value keys (peeked from `sample_index`).
+        """
+        if isinstance(value, str):
+            return [value]
+        if value:
+            return list(value)
+        return self._available_value_keys(sample_index)
 
     def _single_value_key(self, series_index: int) -> str:
         """Return the sole value key for the series, raising if there is more than one.
@@ -449,42 +481,20 @@ class Series(dict):
         except ImportError as e:
             raise ImportError("pandas is required. Install with: pip install pyc8y[pandas]") from e
 
-        # ensure sequences
-        series = [series] if isinstance(series, str) else series
-        value = [value] if isinstance(value, str) else value
-        selected: list[tuple[int, str]] = []   # selected indexed and series names
-
-        index_by_name = {s.series: i for i, s in enumerate(self.specs)}
-        if series:
-            unknown = [x for x in series if x not in index_by_name]
-            if unknown:
-                raise KeyError(f"No such series: {', '.join(unknown)}. Available series are: {', '.join(index_by_name)}.")
-            selected = [(index_by_name[x], x) for x in series]
-        else:
-            # select all
-            selected = [(v, k) for k, v in index_by_name]
-
+        selected = self._resolve_selection(series)
         rows = list(self.values.values())
         ts_strings = list(self.values.keys())
+        value_keys = self._resolve_value_keys(value, sample_index=selected[0][0])
 
-        if isinstance(value, str):
-            value_keys = [value]
-        elif isinstance(value, list):
-            value_keys = value
-        else:
-            value_keys = next(
-                (list(vg.keys()) for row in rows for vg in row if vg is not None),
-                [],
-            )
-
-        if isinstance(value, (str, list)):
-            available_keys = next(
-                (list(vg.keys()) for row in rows for vg in row if vg is not None),
-                [],
-            )
+        # strict-mode check: if the caller named keys, reject unknown ones
+        if value is not None:
+            available_keys = self._available_value_keys(selected[0][0])
             unknown_keys = [k for k in value_keys if k not in available_keys]
             if unknown_keys:
-                raise KeyError(f"No such value key(s): {', '.join(unknown_keys)}. Available values are: {', '.join(available_keys)}.")
+                raise KeyError(
+                    f"No such value key(s): {', '.join(unknown_keys)}. "
+                    f"Available values are: {', '.join(available_keys)}."
+                )
 
         columns = {}
         for idx, name in selected:
@@ -938,6 +948,7 @@ class Measurements(CumulocityResource[Measurement]):
             limit=limit,
             as_values=as_values,
             workers=workers,
+            preserve_order=bool(reverse),
         )
 
     async def get_series(
@@ -1014,7 +1025,7 @@ class Measurements(CumulocityResource[Measurement]):
         *,
         source: str | None = None,
         aggregation: str | None = None,
-        series: str | None = None,
+        series: str | Sequence[str] | None = None,
         before: str | datetime | None = None,
         after: str | datetime | None = None,
         min_age: str | timedelta | None = None,

@@ -267,11 +267,14 @@ def fix_sample_series():
 
 
 def test_values_of_single_series(sample_series: Series):
-    """values_of returns a flat list aligned with timestamps; missing entries are None."""
+    """values_of returns a flat list of actual values; None entries are filtered out."""
     for spec in sample_series.specs:
         values = sample_series.values_of(series=spec.series, value='min')
-        assert len(values) == len(sample_series['values'])
-        assert all(v is None or isinstance(v, (int, float)) for v in values)
+        assert values, "expected at least one value"
+        # all entries are real numbers — never None
+        assert all(isinstance(v, (int, float)) for v in values)
+        # result is at most as long as the timestamp count (gaps were filtered)
+        assert len(values) <= len(sample_series['values'])
 
 
 def test_values_of_default_series_when_only_one():
@@ -375,3 +378,147 @@ def test_collect_preserves_alignment_with_nones(sample_series: Series):
     assert len(result) == len(sample_series['values'])
     # at least one None expected in the sample (the old test asserted Nones existed)
     assert any(t[0] is None for t in result)
+
+
+def test_collect_multi_series_single_value(sample_series: Series):
+    """Two series, one value key -> flat tuple of len(series)."""
+    names = [s.series for s in sample_series.specs]
+    result = sample_series.collect(series=names, value='min')
+    assert len(result) == len(sample_series['values'])
+    assert all(len(t) == len(names) for t in result)
+    # all entries are floats or None (never nested tuples)
+    assert all(all(v is None or isinstance(v, (int, float)) for v in t) for t in result)
+
+
+def test_collect_multi_series_multi_value(sample_series: Series):
+    """Two series, two value keys -> flat tuple of series×values."""
+    names = [s.series for s in sample_series.specs]
+    result = sample_series.collect(series=names, value=['min', 'max'])
+    assert len(result) == len(sample_series['values'])
+    expected_width = len(names) * 2
+    assert all(len(t) == expected_width for t in result)
+    # entries are flat scalars, never nested
+    assert all(all(v is None or isinstance(v, (int, float)) for v in t) for t in result)
+
+
+def test_collect_multi_series_with_timestamps(sample_series: Series):
+    """Two series, all-value-keys, with datetime timestamps -> (dt, A_v0, A_v1, ..., B_v0, ...)."""
+    names = [s.series for s in sample_series.specs]
+    # discover available value keys to compute expected width
+    available_keys = next(
+        row[0].keys() for row in sample_series['values'].values() if row and row[0]
+    )
+    result = sample_series.collect(series=names, timestamps='datetime')
+    expected_width = 1 + len(names) * len(available_keys)
+    assert all(len(t) == expected_width for t in result)
+    assert all(isinstance(t[0], datetime) for t in result)
+
+
+def test_collect_no_args_pulls_everything(sample_series: Series):
+    """With no series and no value, collect returns every series × every value key."""
+    available_keys = next(
+        row[0].keys() for row in sample_series['values'].values() if row and row[0]
+    )
+    result = sample_series.collect()
+    expected_width = len(sample_series.specs) * len(available_keys)
+    assert all(len(t) == expected_width for t in result)
+
+
+def test_collect_multi_series_missing_yields_nones_not_subtuples(sample_series: Series):
+    """When one series has no data at a timestamp, the corresponding slots are None
+    (not a None sub-tuple — the result stays flat)."""
+    names = [s.series for s in sample_series.specs]
+    result = sample_series.collect(series=names, value=['min', 'max'])
+    # find a row that has a None somewhere (the sample data is known to have gaps)
+    rows_with_none = [t for t in result if any(v is None for v in t)]
+    assert rows_with_none, "sample data should have gaps"
+    # every entry of every tuple is scalar-or-None, never a tuple
+    assert all(not isinstance(v, tuple) for t in rows_with_none for v in t)
+
+
+# ---------------------------------------------------------------------------
+# Benchmark: row-oriented (collect → DataFrame) vs columnar (to_dataframe)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(name='pd_module')
+def fix_pandas():
+    pd = pytest.importorskip('pandas')
+    return pd
+
+
+def _df_from_collect(series: Series, pd):
+    """Build a DataFrame the row-oriented way: collect rows + column names."""
+    names = [s.series for s in series.specs]
+    # discover value keys
+    value_keys = next(
+        (list(vg.keys()) for row in series['values'].values() for vg in row if vg),
+        [],
+    )
+    rows = series.collect(series=names, value=value_keys, timestamps='datetime')
+    columns = ['ts'] + [
+        f'{Series._encode_name(n)}_{k}' if len(value_keys) > 1 else Series._encode_name(n)
+        for n in names
+        for k in value_keys
+    ]
+    return pd.DataFrame(rows, columns=columns).set_index('ts')
+
+
+def test_benchmark_df_from_collect(benchmark, sample_series: Series, pd_module):
+    """Row-oriented: collect() then pd.DataFrame()."""
+    benchmark(_df_from_collect, sample_series, pd_module)
+
+
+def test_benchmark_df_from_to_dataframe(benchmark, sample_series: Series, pd_module):
+    """Columnar: to_dataframe() directly."""
+    benchmark(sample_series.to_dataframe, timestamps='datetime')
+
+
+def test_both_paths_produce_equivalent_dataframes(sample_series: Series, pd_module):
+    """Sanity-check: both paths produce DataFrames of equal shape (column-names may differ)."""
+    df_collect = _df_from_collect(sample_series, pd_module)
+    df_direct = sample_series.to_dataframe(timestamps='datetime')
+    assert df_collect.shape == df_direct.shape
+    assert list(df_collect.index) == list(df_direct.index)
+
+
+def _make_synthetic_series(n_rows: int, n_series: int = 2, value_keys=('min', 'max')) -> Series:
+    """Build a synthetic Series result with `n_rows` timestamps × `n_series` series."""
+    import random
+    base_ts = datetime(2026, 1, 1)
+    return Series({
+        'truncated': False,
+        'series': [
+            {'type': f'c8y_T{i}', 'name': f'T{i}', 'unit': 'C'}
+            for i in range(n_series)
+        ],
+        'values': {
+            (base_ts + timedelta(seconds=r)).isoformat() + 'Z': [
+                # 10% gap rate; otherwise dict of value_keys
+                None if random.random() < 0.1 else {k: random.random() * 100 for k in value_keys}
+                for _ in range(n_series)
+            ]
+            for r in range(n_rows)
+        },
+    })
+
+
+@pytest.fixture(scope='module')
+def synthetic_series_by_size():
+    """Pre-built synthetic Series results for benchmark scaling."""
+    import random
+    random.seed(42)  # determinism
+    return {n: _make_synthetic_series(n) for n in (10, 100, 1000, 5000)}
+
+
+@pytest.mark.parametrize('n_rows', [10, 100, 1000, 5000])
+def test_benchmark_scale_df_from_collect(benchmark, synthetic_series_by_size, pd_module, n_rows):
+    """Row-oriented across sizes."""
+    s = synthetic_series_by_size[n_rows]
+    benchmark(_df_from_collect, s, pd_module)
+
+
+@pytest.mark.parametrize('n_rows', [10, 100, 1000, 5000])
+def test_benchmark_scale_df_from_to_dataframe(benchmark, synthetic_series_by_size, pd_module, n_rows):
+    """Columnar across sizes."""
+    s = synthetic_series_by_size[n_rows]
+    benchmark(s.to_dataframe, timestamps='datetime')
