@@ -51,7 +51,6 @@ async def _isolate_call_url(fun, **kwargs):
 @pytest.mark.parametrize('params, expected, not_expected', [
     ({'expression': 'EX', 'type': 'T'}, ['?EX'], ['type']),
     ({'type': 'T', 'source': 'S', 'fragment': 'F'}, ['type=T', 'source=S', 'fragmentType=F'], []),
-    ({'reverse': False}, ['revert=false'], ['reverse']),
     # data priorities
     ({'date_from': '2020-12-31', 'date_to': '2021-12-31'},
      ['dateFrom=2020-12-31', 'dateTo=2021-12-31'],
@@ -72,7 +71,6 @@ async def _isolate_call_url(fun, **kwargs):
 ], ids=[
     'expression',
     'type+source+fragment',
-    'reverse',
     'date_from+date_to',
     'after+before',
     'last_updated_from+last_updated_to',
@@ -82,6 +80,22 @@ async def _isolate_call_url(fun, **kwargs):
 async def test_select(fun, params, expected, not_expected):
     """Verify that the select function's parameters are processed as expected."""
     resource = await _isolate_call_url(fun, **params)
+    for e in expected:
+        assert e in resource, f"Expected '{e}' in URL: {resource}"
+    for ne in not_expected:
+        assert ne not in resource, f"Did not expect '{ne}' in URL: {resource}"
+
+
+@pytest.mark.parametrize('params, expected, not_expected', [
+    ({'asc': True}, ['revert=true'], ['reverse', 'asc']),
+    ({'asc': False}, ['revert=false'], ['reverse', 'asc']),
+    ({'revert': True}, ['revert=true'], ['reverse']),
+    # revert wins when both supplied
+    ({'asc': True, 'revert': False}, ['revert=false'], ['reverse']),
+])
+async def test_select_ordering(params, expected, not_expected):
+    """Verify `asc` / `revert` translate to the server's `revert` correctly on Events."""
+    resource = await _isolate_call_url(Events.get_all, **params)
     for e in expected:
         assert e in resource, f"Expected '{e}' in URL: {resource}"
     for ne in not_expected:

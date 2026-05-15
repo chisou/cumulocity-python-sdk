@@ -149,7 +149,7 @@ def map_params(
     source=None,
     with_source_assets=None,
     with_source_devices=None,
-    reverse=None,
+    revert=None,
     **kwargs,
 ) -> Sequence[tuple[str, str]]:
     def multi(*xs):
@@ -203,12 +203,19 @@ def map_params(
         ("createdTo", created_to),
         ("lastUpdatedFrom", updated_from),
         ("lastUpdatedTo", updated_to),
-        ("revert", encode(reverse)),
+        ("revert", encode(revert)),
         *(("series", s) for s in series),
         *(("aggregationFunction", f) for f in aggregation_function),
         *((k, encode(v)) for k, v in kwargs.items()),
     )
     return [(to_pascal_case(k), str(v)) for k, v in params if v is not None]
+
+
+def expression_implies_order(expression: str | None) -> bool:
+    """True if a raw expression/query string contains an ordering directive."""
+    if not expression:
+        return False
+    return "revert" in expression or "orderby" in expression
 
 
 def encode(value: Any | Sequence | None) -> Sequence | str | None:
@@ -764,7 +771,7 @@ class CumulocityResource(Generic[CO]):
         appends each object's values directly into per-column lists — no
         intermediate row tuples, no transposition. The fetch order is
         unordered unless the underlying `select(...)` enforces ordering via
-        its arguments (e.g. `reverse=True`, `order_by=...`); for typical
+        its arguments (e.g. `asc=True`, `order_by=...`); for typical
         bulk loads where sorting happens downstream this gives maximum
         throughput.
 

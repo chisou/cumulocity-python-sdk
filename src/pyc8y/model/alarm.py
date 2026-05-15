@@ -168,8 +168,6 @@ class Alarms(CumulocityResource[Alarm]):
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
         with_source_additions: bool | None = None,
-        reverse: bool | None = None,
-        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -227,9 +225,6 @@ class Alarms(CumulocityResource[Alarm]):
                 devices should be included. Requires `source`
             with_source_additions (bool): Whether also alarms for related source
                 additions should be included. Requires `source`.
-            reverse (bool):  Invert the order of results, starting with the
-                most recent one
-            revert(bool):  Same as`reverse`
             limit (int | None):  Maximum number of results. Default is 5 to support
                 quick Jupyter-style exploration; pass `None` to fetch all matching.
             include (str | JsonMatcher): Matcher/expression to filter the query
@@ -284,8 +279,6 @@ class Alarms(CumulocityResource[Alarm]):
                 with_source_devices=with_source_devices,
                 with_source_assets=with_source_assets,
                 with_source_additions=with_source_additions,
-                reverse=reverse,
-                revert=revert,
                 page_size=page_size,
                 **kwargs,
             )
@@ -301,7 +294,7 @@ class Alarms(CumulocityResource[Alarm]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(reverse or revert),
+            preserve_order=False,
         )
 
     async def get_all(
@@ -330,8 +323,6 @@ class Alarms(CumulocityResource[Alarm]):
         last_updated_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
-        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -375,8 +366,6 @@ class Alarms(CumulocityResource[Alarm]):
                 last_updated_to=last_updated_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
-                revert=revert,
                 with_source_devices=with_source_devices,
                 with_source_assets=with_source_assets,
                 limit=limit,

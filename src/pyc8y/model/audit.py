@@ -190,7 +190,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -218,7 +217,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             date_to (str|datetime):  Same as `before`
             min_age (timedelta|str):  Minimum age for selected records
             max_age (timedelta|str):  Maximum age for selected records
-            reverse (bool):  Invert the order of results
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
             limit (int | None):  Maximum number of results. Default is 5 to support
@@ -246,7 +244,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
                 page_size=page_size,
                 **kwargs,
             )
@@ -262,7 +259,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(reverse),
+            preserve_order=False,
         )
 
     async def get_all(
@@ -279,7 +276,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -310,7 +306,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
                 include=include,
                 exclude=exclude,
                 limit=limit,

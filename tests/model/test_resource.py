@@ -27,7 +27,7 @@ UTC = timezone.utc
 
         # named parameters that get renamed
         ({"fragment": "f"},                                          [("fragmentType", "f")]),
-        ({"reverse": True},                                          [("revert", "true")]),
+        ({"revert": True},                                           [("revert", "true")]),
 
         # date params: short forms renamed, long forms camelCased
         ({"before": "2026-01-01T00:00:00+00:00"},                    [("dateTo",   "2026-01-01T00:00:00.000Z")]),
@@ -47,7 +47,7 @@ UTC = timezone.utc
         ({"date_from": dt(2026, 1, 1, tzinfo=UTC)},                  [("dateFrom", "2026-01-01T00:00:00.000Z")]),
 
         # value encoding
-        ({"reverse": False},                                         [("revert", "false")]),
+        ({"revert": False},                                          [("revert", "false")]),
 
         # sequence expansion
         ({"series": "A"},                                            [("series", "A")]),
@@ -70,7 +70,7 @@ UTC = timezone.utc
         "kwarg-snake-to-camelCase",
         "kwarg-already-camelCase",
         "fragment→fragmentType",
-        "reverse→revert+bool",
+        "revert+bool",
         "before→dateTo",
         "after→dateFrom",
         "date_to→dateTo",

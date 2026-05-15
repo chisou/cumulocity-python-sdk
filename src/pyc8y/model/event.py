@@ -7,6 +7,7 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     datetime_property,
+    expression_implies_order,
     id_property,
     time_property,
     map_params,
@@ -228,7 +229,7 @@ class Events(CumulocityResource[Event]):
         last_updated_to: str | datetime | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
         revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
@@ -277,11 +278,11 @@ class Events(CumulocityResource[Event]):
                 assets should be included. Requires `source`.
             with_source_devices (bool): Whether also events for related source
                 devices should be included. Requires `source`.
-            reverse (bool): Invert the order of results, starting with the
-                most recent one.
-            revert (bool): Same as `reverse`.
-            limit (int | None):  Maximum number of results. Default is 5 to support
-                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            asc (bool): Return results in ascending (oldest first) order if True,
+                descending (newest first) if False. None (default) lets the
+                server apply its default order (descending for Events).
+            revert (bool): Reverse the default ordering.
+            limit (int | None):  Maximum number of results; pass `None` to fetch all.
             include (str|JsonMatcher): Client-side inclusion filter.
             exclude (str|JsonMatcher): Client-side exclusion filter.
             page_size (int | None):  Number of records read per request. If None
@@ -294,6 +295,9 @@ class Events(CumulocityResource[Event]):
         Returns:
             AsyncIterator of Event objects
         """
+        # Events server default = descending. asc=True means revert=True
+        if revert is None and asc is not None:
+            revert = asc
         page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
@@ -318,7 +322,6 @@ class Events(CumulocityResource[Event]):
                 last_updated_to=last_updated_to,
                 with_source_assets=with_source_assets,
                 with_source_devices=with_source_devices,
-                reverse=reverse,
                 revert=revert,
                 page_size=page_size,
                 **kwargs,
@@ -335,7 +338,7 @@ class Events(CumulocityResource[Event]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(reverse or revert),
+            preserve_order=(asc is not None) or (revert is not None) or expression_implies_order(expression),
         )
 
     async def get_all(
@@ -363,7 +366,7 @@ class Events(CumulocityResource[Event]):
         last_updated_to: str | datetime | None = None,
         with_source_assets: bool | None = None,
         with_source_devices: bool | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
         revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
@@ -409,7 +412,7 @@ class Events(CumulocityResource[Event]):
                 last_updated_to=last_updated_to,
                 with_source_assets=with_source_assets,
                 with_source_devices=with_source_devices,
-                reverse=reverse,
+                asc=asc,
                 revert=revert,
                 include=include,
                 exclude=exclude,

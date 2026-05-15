@@ -143,12 +143,10 @@ async def test_select_last_updated(fun, params, expected):
         assert e in resource, f"Expected '{e}' in URL: {resource}"
 
 
-async def test_select_reverse_page_size():
-    """`reverse`/`page_size` only apply to `get_all`/`select` paginated queries."""
-    resource = await _isolate_call_url(Alarms.get_all, reverse=False, page_size=8)
-    assert 'revert=false' in resource, f"Expected 'revert=false' in URL: {resource}"
+async def test_select_page_size():
+    """`page_size` is forwarded as `pageSize` on `get_all`/`select`."""
+    resource = await _isolate_call_url(Alarms.get_all, page_size=8)
     assert 'pageSize=8' in resource, f"Expected 'pageSize=8' in URL: {resource}"
-    assert 'reverse' not in resource, f"Did not expect 'reverse' in URL: {resource}"
 
 
 async def test_select_as_values():

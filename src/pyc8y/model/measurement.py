@@ -15,6 +15,7 @@ from pyc8y.model.model_base import (
     id_property,
     time_property,
     datetime_property,
+    expression_implies_order,
     map_params,
     resolve_page_size,
 )
@@ -686,7 +687,8 @@ class Measurements(CumulocityResource[Measurement]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
@@ -719,7 +721,8 @@ class Measurements(CumulocityResource[Measurement]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
+                asc=asc,
+                revert=revert,
                 limit=limit,
                 page_size=page_size,
                 page_number=page_number,
@@ -859,7 +862,8 @@ class Measurements(CumulocityResource[Measurement]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
@@ -900,8 +904,10 @@ class Measurements(CumulocityResource[Measurement]):
                 at least this age are returned.
             max_age (timedelta):  Timedelta object. Only measurements with
                 at most this age are returned.
-            reverse (bool):  Invert the order of results, starting with the
-                most recent one.
+            asc (bool):  Return results in ascending (oldest first) order if True,
+                descending (newest first) if False. None uses the server default
+                (ascending for Measurements).
+            revert (bool): Reverse the default ordering.
             limit (int | None):  Maximum number of results. Default is 5 to support
                 quick Jupyter-style exploration; pass `None` to fetch all matching.
             page_size (int | None):  Number of records read per request. If None
@@ -918,6 +924,9 @@ class Measurements(CumulocityResource[Measurement]):
             Async iterator for matching Measurement objects or values/value
                 tuples if the `as_values` parameter is defined.
         """
+        # Measurements server default = ascending. asc=False means revert=True
+        if revert is None and asc is not None:
+            revert = not asc
         page_size = resolve_page_size(page_size, limit)
         params = ()
         if not expression:
@@ -937,7 +946,7 @@ class Measurements(CumulocityResource[Measurement]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
+                revert=revert,
                 page_size=page_size,
                 **kwargs,
             )
@@ -948,7 +957,7 @@ class Measurements(CumulocityResource[Measurement]):
             limit=limit,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(reverse),
+            preserve_order=(asc is not None) or (revert is not None) or expression_implies_order(expression),
         )
 
     async def get_series(
@@ -964,7 +973,8 @@ class Measurements(CumulocityResource[Measurement]):
         after: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         **kwargs,
     ) -> Series:
         """Query the database for a list of series and their values.
@@ -990,8 +1000,12 @@ class Measurements(CumulocityResource[Measurement]):
                 at least this age are included.
             max_age (timedelta):  Timedelta object. Only measurements with
                 at most this age are included.
-            reverse (bool):  Invert the order of results, starting with the
-                most recent one.
+            asc (bool):  Return results in ascending (oldest first) order if True,
+                descending (newest first) if False. None uses the server default
+                (ascending for Measurements).
+            revert (bool):  The c8y-native server param. `True` flips the default
+                order to descending. If both `asc` and `revert` are supplied,
+                `revert` wins.
 
         Returns:
             A Series object which wraps the raw JSON result but can also be
@@ -999,6 +1013,8 @@ class Measurements(CumulocityResource[Measurement]):
 
         See also: https://cumulocity.com/api/core/#operation/getMeasurementSeriesResource
         """
+        if revert is None and asc is not None:
+            revert = not asc
         resource_path = f"{self.resource_path}/series"
         if expression:
             response_json = await self.c8y.get(f"{resource_path}?{expression}")
@@ -1013,7 +1029,7 @@ class Measurements(CumulocityResource[Measurement]):
                 after=after,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
+                revert=revert,
                 **kwargs,
             )
             response_json = await self.c8y.get(resource_path, params=params, accept="application/json")
@@ -1030,7 +1046,8 @@ class Measurements(CumulocityResource[Measurement]):
         after: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         value: str | Sequence[str] | None = None,
         timestamps: bool | str | None = None,
         **kwargs,
@@ -1059,8 +1076,12 @@ class Measurements(CumulocityResource[Measurement]):
                 at least this age are included.
             max_age (timedelta):  Timedelta object. Only measurements with
                 at most this age are included.
-            reverse (bool):  Invert the order of results, starting with the
-                most recent one.
+            asc (bool):  Return results in ascending (oldest first) order if True,
+                descending (newest first) if False. None uses the server default
+                (ascending for Measurements).
+            revert (bool):  The c8y-native server param. `True` flips the default
+                order to descending. If both `asc` and `revert` are supplied,
+                `revert` wins.
             value (str):  Which value (min/max) to collect. If omitted, both
                 values will be collected, grouped as 2-tuples.
             timestamps (bool|str):  Whether each element in the result list will
@@ -1083,7 +1104,8 @@ class Measurements(CumulocityResource[Measurement]):
             after=after,
             min_age=min_age,
             max_age=max_age,
-            reverse=reverse,
+            asc=asc,
+            revert=revert,
             **kwargs,
         )
         return result.collect(series=series, value=value, timestamps=timestamps)

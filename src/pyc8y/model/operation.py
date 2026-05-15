@@ -13,6 +13,7 @@ from pyc8y.model.model_base import (
     CumulocityResource,
     json_property,
     datetime_property,
+    expression_implies_order,
     time_property,
     map_params,
     resolve_page_size,
@@ -138,7 +139,8 @@ class Operations(CumulocityResource[Operation]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -167,7 +169,10 @@ class Operations(CumulocityResource[Operation]):
             date_to (str|datetime):  Same as `before`
             min_age (timedelta|str):  Minimum age for selected operations
             max_age (timedelta|str):  Maximum age for selected operations
-            reverse (bool):  Invert the order of results
+            asc (bool):  Return results in ascending (oldest first) order if True,
+                descending (newest first) if False. None (default) uses the
+                server default (ascending for Operations).
+            revert (bool): Reverse the default ordering.
             include (str|JsonMatcher):  Client-side inclusion filter
             exclude (str|JsonMatcher):  Client-side exclusion filter
             limit (int | None):  Maximum number of results. Default is 5 to support
@@ -182,6 +187,9 @@ class Operations(CumulocityResource[Operation]):
         Returns:
             AsyncIterator of Operation objects
         """
+        # Operations server default = ascending. asc=False means revert=True
+        if revert is None and asc is not None:
+            revert = not asc
         page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
             map_params(
@@ -193,7 +201,7 @@ class Operations(CumulocityResource[Operation]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
+                revert=revert,
                 page_size=page_size,
                 agentId=agent_id,
                 deviceId=device_id,
@@ -212,7 +220,7 @@ class Operations(CumulocityResource[Operation]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(reverse),
+            preserve_order=(asc is not None) or (revert is not None) or expression_implies_order(expression),
         )
 
     async def get_all(
@@ -230,7 +238,8 @@ class Operations(CumulocityResource[Operation]):
         date_to: str | datetime | None = None,
         min_age: str | timedelta | None = None,
         max_age: str | timedelta | None = None,
-        reverse: bool | None = None,
+        asc: bool | None = None,
+        revert: bool | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
         limit: int | None = 5,
@@ -262,7 +271,8 @@ class Operations(CumulocityResource[Operation]):
                 date_to=date_to,
                 min_age=min_age,
                 max_age=max_age,
-                reverse=reverse,
+                asc=asc,
+                revert=revert,
                 include=include,
                 exclude=exclude,
                 limit=limit,
@@ -305,7 +315,7 @@ class Operations(CumulocityResource[Operation]):
                 before=before,
                 date_to=date_to,
                 min_age=min_age,
-                reverse=True,
+                revert=True,
                 page_size=1,
                 agentId=agent_id,
                 deviceId=device_id,

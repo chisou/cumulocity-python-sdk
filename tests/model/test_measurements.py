@@ -186,7 +186,7 @@ async def test_select_invalid_combinations(fun, args, errors):
     ({'series': 'SERIES'}, ['series=SERIES'], []),
     ({'series': ['A', 'B']}, ['series=A', 'series=B'], ['source', ',']),
     ({'aggregation': 'A'}, ['aggregationType=A'], ['series=']),
-    ({'reverse': True}, ['revert=true'], ['reverse']),
+    ({'asc': False}, ['revert=true'], ['reverse', 'asc']),
     ({'before': '2021-01-31', 'after': '2020-01-31'}, ['dateFrom=2020-01-31', 'dateTo=2021-01-31'], ['source', 'series=']),
     ({'date_from': '2020-01-31', 'date_to': '2021-01-31'}, ['dateFrom=2020-01-31', 'dateTo=2021-01-31'], ['date_to', 'date_from']),
 ])

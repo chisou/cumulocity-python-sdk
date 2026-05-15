@@ -13,6 +13,7 @@ from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
     json_property,
     datetime_property,
+    expression_implies_order,
     CumulocityResource,
     map_params,
     resolve_page_size,
@@ -497,7 +498,7 @@ class Inventory(CumulocityResource[MO]):
             exclude=exclude,
             as_values=as_values,
             workers=workers,
-            preserve_order=bool(order_by),
+            preserve_order=bool(order_by) or expression_implies_order(query) or expression_implies_order(expression),
         )
 
     def _collate_filter_params(
