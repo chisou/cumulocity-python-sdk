@@ -1,112 +1,140 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-import random
-from unittest.mock import Mock
-from urllib.parse import urlencode
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from pyc8y.model.model_base import CumulocityResource, map_params
-
-from util.testing_util import create_random_name
+from pyc8y.model.model_base import map_params
 
 
-@pytest.mark.parametrize("kwargs, expected", [
-    ({"type": "some_type"}, {"type": "some_type"}),
-    ({"source": "some_source"}, {"source": "some_source"}),
-], ids=[
-    "type",
-    "source",
-])
+td = timedelta
+dt = datetime
+UTC = timezone.utc
+
+
+@pytest.mark.parametrize(
+    "kwargs, expected",
+    [
+        # passthrough & camelCasing
+        ({"type": "X"},                                              [("type", "X")]),
+        ({"source": "S"},                                            [("source", "S")]),
+        ({"name": "N"},                                              [("name", "N")]),
+        ({"bulk_id": "B"},                                           [("bulkOperationId", "B")]),
+        ({"unknown_kwarg": "v"},                                     [("unknownKwarg", "v")]),
+        ({"pascalCase": "v"},                                        [("pascalCase", "v")]),
+
+        # named parameters that get renamed
+        ({"fragment": "f"},                                          [("fragmentType", "f")]),
+        ({"reverse": True},                                          [("revert", "true")]),
+
+        # date params: short forms renamed, long forms camelCased
+        ({"before": "2026-01-01T00:00:00+00:00"},                    [("dateTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"after":  "2026-01-01T00:00:00+00:00"},                    [("dateFrom", "2026-01-01T00:00:00.000Z")]),
+        ({"date_to":   "2026-01-01T00:00:00+00:00"},                 [("dateTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"date_from": "2026-01-01T00:00:00+00:00"},                 [("dateFrom", "2026-01-01T00:00:00.000Z")]),
+        ({"created_before": "2026-01-01T00:00:00+00:00"},            [("createdTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"created_after":  "2026-01-01T00:00:00+00:00"},            [("createdFrom", "2026-01-01T00:00:00.000Z")]),
+        ({"created_to":     "2026-01-01T00:00:00+00:00"},            [("createdTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"created_from":   "2026-01-01T00:00:00+00:00"},            [("createdFrom", "2026-01-01T00:00:00.000Z")]),
+        ({"updated_before": "2026-01-01T00:00:00+00:00"},            [("lastUpdatedTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"updated_after":  "2026-01-01T00:00:00+00:00"},            [("lastUpdatedFrom", "2026-01-01T00:00:00.000Z")]),
+        ({"last_updated_to":   "2026-01-01T00:00:00+00:00"},         [("lastUpdatedTo",   "2026-01-01T00:00:00.000Z")]),
+        ({"last_updated_from": "2026-01-01T00:00:00+00:00"},         [("lastUpdatedFrom", "2026-01-01T00:00:00.000Z")]),
+
+        # datetime objects get formatted to ISO with Z
+        ({"date_from": dt(2026, 1, 1, tzinfo=UTC)},                  [("dateFrom", "2026-01-01T00:00:00.000Z")]),
+
+        # value encoding
+        ({"reverse": False},                                         [("revert", "false")]),
+
+        # sequence expansion
+        ({"series": "A"},                                            [("series", "A")]),
+        ({"series": ["A", "B"]},                                     [("series", "A"), ("series", "B")]),
+        ({"aggregation_function": "min"},                            [("aggregationFunction", "min")]),
+        ({"aggregation_function": ["min", "max"]},                   [("aggregationFunction", "min"), ("aggregationFunction", "max")]),
+
+        # None values are dropped
+        ({"type": "X", "owner": None},                               [("type", "X")]),
+        ({},                                                         []),
+
+        # with_source_* require source but otherwise are not propagated
+        ({"source": "S", "with_source_devices": True},               [("source", "S")]),
+    ],
+    ids=[
+        "passthrough",
+        "source",
+        "name",
+        "bulk_id-renamed",
+        "kwarg-snake-to-camelCase",
+        "kwarg-already-camelCase",
+        "fragment→fragmentType",
+        "reverse→revert+bool",
+        "before→dateTo",
+        "after→dateFrom",
+        "date_to→dateTo",
+        "date_from→dateFrom",
+        "created_before→createdTo",
+        "created_after→createdFrom",
+        "created_to→createdTo",
+        "created_from→createdFrom",
+        "updated_before→lastUpdatedTo",
+        "updated_after→lastUpdatedFrom",
+        "last_updated_to→lastUpdatedTo",
+        "last_updated_from→lastUpdatedFrom",
+        "date_from-datetime-obj",
+        "bool-false-encoded",
+        "series-scalar",
+        "series-list",
+        "agg-fn-scalar",
+        "agg-fn-list",
+        "none-dropped",
+        "empty",
+        "with_source_devices-consumed",
+    ],
+)
 def test_map_params(kwargs, expected):
-    assert expected == map_params(**kwargs)
+    assert map_params(**kwargs) == expected
 
 
-def test_build_base_query():
-    """Verify that query parameters for object selection are mapped correctly."""
-    # pylint: disable=protected-access
-
-    # supported query parameters
-    base = create_random_name(2)
-    kwargs = {
-        # some of the below are mapped from python naming
-        'type': base + '_type',
-        'owner': base + '_owner',
-        'source': str(random.randint(1000, 9999)),
-        'fragment': base + '_fragment',
-        'status': base + '_status',
-        'severity': base + '_severity',
-        'resolved': 'True',
-        'before': base + '_before',
-        'after': base + '_after',
-        'created_before': base + '_created_after',
-        'created_after': base + '_created_after',
-        'updated_before': base + '_updated_after',
-        'updated_after': base + '_updated_after',
-        'reverse': True,
-        'page_size': random.randint(0, 10000),
-        # random parameters are supported as well and will be mapped 1:1
-        'pascalCase': True,
-        # snake_case parameters are supported as well and will be translated
-        'snake_case': 'value',
-    }
-
-    # mapped parameters (python name to API name)
-    mapping = {
-        'fragment': 'fragmentType',
-        'created_before': 'createdTo',
-        'created_after': 'createdFrom',
-        'updated_before': 'lastUpdatedTo',
-        'updated_after': 'lastUpdatedFrom',
-        'before': 'dateTo',
-        'after': 'dateFrom',
-        'reverse': 'revert',
-        'page_size': 'pageSize',
-        'snake_case': 'snakeCase',
-    }
-
-    # expected parameters, kwargs combined with mapping
-    expected_params = kwargs.copy()
-    for py_key, api_key in mapping.items():
-        expected_params[api_key] = expected_params.pop(py_key)
-        if isinstance(expected_params[api_key], bool):
-            expected_params[api_key] = str(expected_params[api_key]).lower()
-
-    # (1) init mock resource and build query
-    base_query = urlencode(map_params(**kwargs))
-
-    # -> all expected params are there
-    for key, value in expected_params.items():
-        assert f'{key}={str(value).lower() if isinstance(value, bool) else value}' in base_query
+@pytest.mark.parametrize(
+    "kwargs, match",
+    [
+        ({"min_age": td(hours=1), "before":  "T"},                   "min_age"),
+        ({"min_age": td(hours=1), "date_to": "T"},                   "min_age"),
+        ({"max_age": td(hours=1), "after":   "T"},                   "max_age"),
+        ({"max_age": td(hours=1), "date_from": "T"},                 "max_age"),
+        ({"created_from": "T", "created_after":  "T"},               "created"),
+        ({"created_to":   "T", "created_before": "T"},               "created"),
+        ({"last_updated_from": "T", "updated_after":  "T"},          "updated"),
+        ({"last_updated_to":   "T", "updated_before": "T"},          "updated"),
+        ({"with_source_devices": True},                              "source"),
+        ({"with_source_assets":  True},                              "source"),
+    ],
+    ids=[
+        "min_age-vs-before",
+        "min_age-vs-date_to",
+        "max_age-vs-after",
+        "max_age-vs-date_from",
+        "created_from-vs-created_after",
+        "created_to-vs-created_before",
+        "last_updated_from-vs-updated_after",
+        "last_updated_to-vs-updated_before",
+        "with_source_devices-without-source",
+        "with_source_assets-without-source",
+    ],
+)
+def test_map_params_rejects(kwargs, match):
+    with pytest.raises(ValueError, match=match):
+        map_params(**kwargs)
 
 
-@pytest.mark.parametrize('params, expected, not_expected', [
-    ({'expression': "X&Y='A''s B'"}, ["?X&Y='A''s B'"], []), # no encoding, this is handled in requests module
-    ({'expression': 'X', 'other': 'O'}, ['?X'], ['other', 'O']),
-    ({'reverse': True}, ['revert=true'], ['reverse']),
-    ({'series': 'A'}, ['series=A'], []),
-    ({'series': ['A','B']}, ['series=A', 'series=B'], [',']),
-    ({'series': ['A']}, ['series=A'], []),
-    ({'ids': [1, 2]}, ['ids=1%2C2'], []),
-    ({'before': 'BEFORE', 'after': 'AFTER'}, ['dateFrom=AFTER', 'dateTo=BEFORE'], ['source', 'series=']),
-    ({'date_from': 'FROM', 'date_to': 'TO'}, ['dateFrom=FROM', 'dateTo=TO'], ['date_to', 'date_from']),
-], ids=[
-    'expression',
-    'expression+',
-    'reverse',
-    'series',
-    'single series',
-    'multi series',
-    'ids',
-    'before+after',
-    'date_from+date_to',
-   ])
-def test_prepare_query(params, expected, not_expected):
-    """Verify that generic query preparation works as expected."""
-    # pylint: disable=protected-access
-    resource = CumulocityResource(Mock(), 'res')
-    url = resource._prepare_query(**params)
-    for e in expected:
-        assert e in url
-    for e in not_expected:
-        assert e not in url
+@pytest.mark.parametrize("kwarg, expected_key", [
+    ("min_age", "dateTo"),
+    ("max_age", "dateFrom"),
+])
+def test_map_params_age_coercion(monkeypatch, kwarg, expected_key):
+    """min_age/max_age are subtracted from `now()` and emitted as dateTo/dateFrom."""
+    frozen_now = dt(2026, 1, 1, tzinfo=UTC)
+    monkeypatch.setattr("pyc8y.model.model_base.now_datetime", lambda: frozen_now)
+    result = map_params(**{kwarg: td(hours=1)})
+    assert result == [(expected_key, "2025-12-31T23:00:00.000Z")]

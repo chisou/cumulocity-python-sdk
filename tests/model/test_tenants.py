@@ -33,7 +33,7 @@ async def test_select_params():
     api = Tenants(c8y)
     _ = [r async for r in api.select(parent='P', domain='D', company='C', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['parent'] == 'P'
     assert params['domain'] == 'D'
     assert params['company'] == 'C'
@@ -49,7 +49,8 @@ async def test_select_expression_overrides_filters():
 
     call_url = c8y.get.call_args[0][0]
     assert 'domain=D' in call_url
-    assert len(c8y.get.call_args[0]) == 1
+    # no params tuple when expression is used
+    assert not "params" in c8y.get.call_args.kwargs
 
 
 async def test_get_current(tenants):

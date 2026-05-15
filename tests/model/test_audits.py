@@ -34,7 +34,7 @@ async def test_select_params():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(type='Alarm', source='123', user='u@example.com', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['type'] == 'Alarm'
     assert params['source'] == '123'
     assert params['user'] == 'u@example.com'
@@ -48,7 +48,7 @@ async def test_select_by_application():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(application='myapp', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['application'] == 'myapp'
 
 
@@ -60,9 +60,10 @@ async def test_select_expression_overrides_filters():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(expression='type=Alarm', type='ignored', page_number=1)]
 
-    call_url = c8y.get.call_args[0][0]
+    call_url = c8y.get.call_args.args[0]
     assert 'type=Alarm' in call_url
-    assert len(c8y.get.call_args[0]) == 1
+    # no params tuple when expression is used
+    assert not "params" in c8y.get.call_args.kwargs
 
 
 async def test_select_date_params():
@@ -73,7 +74,7 @@ async def test_select_date_params():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(date_from='2020-01-01', date_to='2021-01-01', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert 'dateFrom' in params
     assert 'dateTo' in params
 
@@ -86,7 +87,7 @@ async def test_select_min_max_age():
     api = AuditRecords(c8y)
     _ = [r async for r in api.select(min_age=timedelta(days=3), max_age=timedelta(weeks=1), page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert 'dateFrom' in params
     assert 'dateTo' in params
 
@@ -99,7 +100,7 @@ async def test_get_count():
     count = await AuditRecords(c8y).get_count(type='Alarm', source='123', user='u@example.com')
 
     assert count == 7
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['type'] == 'Alarm'
     assert params['source'] == '123'
     assert params['user'] == 'u@example.com'
@@ -115,9 +116,10 @@ async def test_get_count_expression():
     count = await AuditRecords(c8y).get_count(expression='type=Alarm', type='ignored')
 
     assert count == 2
-    call_url = c8y.get.call_args[0][0]
+    call_url = c8y.get.call_args.args[0]
     assert 'type=Alarm' in call_url
-    assert len(c8y.get.call_args[0]) == 1  # no params tuple when expression is used
+    # no params tuple when expression is used
+    assert not "params" in c8y.get.call_args.kwargs
 
 
 async def test_get_count_application_filter():
@@ -128,5 +130,5 @@ async def test_get_count_application_filter():
     count = await AuditRecords(c8y).get_count(application='myapp')
 
     assert count == 5
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['application'] == 'myapp'

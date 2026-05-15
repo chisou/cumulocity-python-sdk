@@ -41,7 +41,7 @@ async def test_select_params():
         page_number=1,
     )]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['agentId'] == 'A'
     assert params['deviceId'] == 'D'
     assert params['bulkOperationId'] == 'B'
@@ -56,7 +56,7 @@ async def test_select_fragment_param():
     api = Operations(c8y)
     _ = [r async for r in api.select(fragment='c8y_Command', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert params['fragmentType'] == 'c8y_Command'
     assert 'fragment' not in params
 
@@ -69,9 +69,10 @@ async def test_select_expression_overrides_filters():
     api = Operations(c8y)
     _ = [r async for r in api.select(expression='status=PENDING', device_id='ignored', page_number=1)]
 
-    call_url = c8y.get.call_args[0][0]
+    call_url = c8y.get.call_args.args[0]
     assert 'status=PENDING' in call_url
-    assert len(c8y.get.call_args[0]) == 1
+    # no params tuple when expression is used
+    assert not "params" in c8y.get.call_args.kwargs
 
 
 async def test_select_date_params():
@@ -82,7 +83,7 @@ async def test_select_date_params():
     api = Operations(c8y)
     _ = [r async for r in api.select(date_to='2021-12-31', page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert 'dateTo' in params
 
 
@@ -95,7 +96,7 @@ async def test_select_min_max_age():
     api = Operations(c8y)
     _ = [r async for r in api.select(min_age=timedelta(days=3), max_age=timedelta(weeks=1), page_number=1)]
 
-    params = dict(c8y.get.call_args[0][1])
+    params = dict(c8y.get.call_args.kwargs["params"])
     assert 'dateFrom' in params
     assert 'dateTo' in params
 
@@ -108,7 +109,7 @@ async def test_delete_by_params():
     api = Operations(c8y)
     await api.delete_by(device_id='D', status=OperationStatus.FAILED)
 
-    params = dict(c8y.delete.call_args[1]['params'])
+    params = dict(c8y.delete.call_args.kwargs["params"])
     assert params['deviceId'] == 'D'
     assert params['status'] == 'FAILED'
 
