@@ -25,7 +25,7 @@ _sentinel = object()
 
 _clients: dict[tuple, CumulocityClient] = {}
 
-
+# TODO: add possibility to enable logging, ready for jupyter (is there maybe a jupyter logger?)
 def get_client(
     base_url: str | None = None,
     tenant_id: str | None = None,
@@ -158,6 +158,7 @@ def c8y_keys() -> set[str]:
     Returns: A set of environment variable names, starting with 'C8Y_'
     """
     return set(filter(lambda x: "C8Y_" in x, os.environ.keys()))
+
 
 def get_c8y_env(name: str, default: str | None = _sentinel) -> str | None:
     """Try to read a specific Cumulocity environment variable.
@@ -318,8 +319,8 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
     using the MULTITENANT mode.
 
     The SimpleCumulocityApp class is an enhanced version of the standard
-    CumulocityApi class. All Cumulocity functions can be used directly.
-    Additionally, it can be used to provide CumulocityApi instances for
+    `CumulocityClient` class. All Cumulocity functions can be used directly.
+    Additionally, it can be used to provide `CumulocityClient` instances for
     specific named users via the `get_user_instance` function.
     """
 
@@ -335,14 +336,14 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
         """Create a new tenant specific instance.
 
         Args:
-            application_key (str|None): An application key to include in
+            application_key (str): An application key to include in
                 all requests for tracking purposes; this will be read from
                 the environment (APPLICATION_KEY) if not defined.
             processing_mode (str);  Connection processing mode (see also
                 https://cumulocity.com/api/core/#processing-mode)
-            cache_size (int|None): The maximum number of cached user
+            cache_size (int): The maximum number of cached user
                 instances (if user instances are created at all).
-            cache_ttl (int|None): An maximum cache time for user
+            cache_ttl (int): An maximum cache time for user
                 instances (if user instances are created at all).
 
         Returns:
