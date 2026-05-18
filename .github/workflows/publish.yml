@@ -22,7 +22,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v8
         with:
           fetch-depth: 0  # hatch-vcs derives the version from the tag
       - name: Install uv
