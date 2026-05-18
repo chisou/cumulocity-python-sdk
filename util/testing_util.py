@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import inspect
 import os
-import random
-import re
 
 import coolname
 import dotenv

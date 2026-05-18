@@ -12,7 +12,7 @@ from typing import (
     Awaitable,
     Sequence,
     Protocol,
-    overload, Literal,
+    overload,
 )
 
 from pyc8y.rest import CumulocityRestClient, BatchError
@@ -27,14 +27,12 @@ from pyc8y.model.model_util import (
     to_datetime,
     to_pascal_case,
     now_datetime,
-    to_timestring,
-    now_timestring,
 )
 
 # trying to import various matchers that need external libraries
 try:
     from pyc8y.model.matcher import PydfMatcher as DefaultMatcher
-except ImportError as e:
+except ImportError:
     try:
         from pyc8y.model.matcher import JmesPathMatcher as DefaultMatcher
     except ImportError:

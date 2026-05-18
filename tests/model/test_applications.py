@@ -8,7 +8,7 @@ import pytest
 
 from pyc8y.auth import BasicAuth
 from pyc8y.client import CumulocityClient
-from pyc8y.model.application import Application, ApplicationSubscription, Applications
+from pyc8y.model.application import ApplicationSubscription, Applications
 
 from tests.utils import isolate_last_call_arg
 

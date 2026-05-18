@@ -1,42 +1,86 @@
-from pyc8y.model.alarm import Alarm, Alarms
-from pyc8y.model.application import Application, ApplicationSubscription, Applications
-from pyc8y.model.audit import Change, AuditRecord, AuditRecords
-from pyc8y.model.binary import Binary, Binaries
-from pyc8y.model.event import Event, Events
-from pyc8y.model.identity import ExternalId, Identity
-from pyc8y.model.managed_object import ObjectReference, ManagedObject, Device, DeviceGroup
-from pyc8y.model.inventory import Inventory, DeviceInventory, DeviceGroupInventory
-from pyc8y.model.measurement import (
-    Units,
-    Value,
-    Grams,
-    Kilograms,
-    Kelvin,
-    Celsius,
-    Meters,
-    Centimeters,
-    Millimeters,
-    Liters,
-    CubicMeters,
-    Count,
-    Percent,
-    grams,
-    kilograms,
-    kelvin,
-    celsius,
-    meters,
-    centimeters,
-    millimeters,
-    liters,
-    cubic_meters,
-    count,
-    percent,
-    SeriesSpec,
-    Series,
-    Measurement,
-    Measurements,
+from pyc8y.model.alarm import (
+    Alarm as Alarm,
+    Alarms as Alarms,
 )
-from pyc8y.model.notification2 import Subscription, Subscriptions, Tokens
-from pyc8y.model.operation import Operation, Operations, BulkOperation, BulkOperations
-from pyc8y.model.tenant_option import TenantOption, TenantOptions
-from pyc8y.model.tenants import Tenant, Tenants
+from pyc8y.model.application import (
+    Application as Application,
+    ApplicationSubscription as ApplicationSubscription,
+    Applications as Applications,
+)
+from pyc8y.model.audit import (
+    Change as Change,
+    AuditRecord as AuditRecord,
+    AuditRecords as AuditRecords,
+)
+from pyc8y.model.binary import (
+    Binary as Binary,
+    Binaries as Binaries,
+)
+from pyc8y.model.event import (
+    Event as Event,
+    Events as Events,
+)
+from pyc8y.model.identity import (
+    ExternalId as ExternalId,
+    Identity as Identity,
+)
+from pyc8y.model.managed_object import (
+    ObjectReference as ObjectReference,
+    ManagedObject as ManagedObject,
+    Device as Device,
+    DeviceGroup as DeviceGroup,
+)
+from pyc8y.model.inventory import (
+    Inventory as Inventory,
+    DeviceInventory as DeviceInventory,
+    DeviceGroupInventory as DeviceGroupInventory,
+)
+from pyc8y.model.measurement import (
+    Units as Units,
+    Value as Value,
+    Grams as Grams,
+    Kilograms as Kilograms,
+    Kelvin as Kelvin,
+    Celsius as Celsius,
+    Meters as Meters,
+    Centimeters as Centimeters,
+    Millimeters as Millimeters,
+    Liters as Liters,
+    CubicMeters as CubicMeters,
+    Count as Count,
+    Percent as Percent,
+    grams as grams,
+    kilograms as kilograms,
+    kelvin as kelvin,
+    celsius as celsius,
+    meters as meters,
+    centimeters as centimeters,
+    millimeters as millimeters,
+    liters as liters,
+    cubic_meters as cubic_meters,
+    count as count,
+    percent as percent,
+    SeriesSpec as SeriesSpec,
+    Series as Series,
+    Measurement as Measurement,
+    Measurements as Measurements,
+)
+from pyc8y.model.notification2 import (
+    Subscription as Subscription,
+    Subscriptions as Subscriptions,
+    Tokens as Tokens,
+)
+from pyc8y.model.operation import (
+    Operation as Operation,
+    Operations as Operations,
+    BulkOperation as BulkOperation,
+    BulkOperations as BulkOperations,
+)
+from pyc8y.model.tenant_option import (
+    TenantOption as TenantOption,
+    TenantOptions as TenantOptions,
+)
+from pyc8y.model.tenants import (
+    Tenant as Tenant,
+    Tenants as Tenants,
+)

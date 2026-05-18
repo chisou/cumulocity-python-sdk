@@ -53,7 +53,7 @@ async def test_select_expression_overrides_filters():
     call_url = c8y.get.call_args.args[0]
     assert 'context=mo' in call_url
     # no params tuple when expression is used
-    assert not "params" in c8y.get.call_args.kwargs
+    assert "params" not in c8y.get.call_args.kwargs
 
 
 async def test_get_count():
@@ -64,6 +64,7 @@ async def test_get_count():
     api = Subscriptions(c8y)
     count = await api.get_count(context='mo', source='S')
 
+    assert count == 3
     params = dict(c8y.get.call_args.kwargs["params"])
     assert params['context'] == 'mo'
     assert params['source'] == 'S'

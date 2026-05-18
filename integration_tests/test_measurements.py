@@ -251,7 +251,7 @@ async def test_collect_single_series(name, aggregated_series_result, unaggregate
         assert all(v is not None for v in values)
         # -> Values should all have the same type
         # pylint: disable=unidiomatic-typecheck
-        assert all(type(a) == type(b) for a, b in zip(values, values[1:]))
+        assert all(type(a) is type(b) for a, b in zip(values, values[1:]))
         # -> Values should be increasing continuously
         assert all(a<b for a,b in zip(values, values[1:]))
 

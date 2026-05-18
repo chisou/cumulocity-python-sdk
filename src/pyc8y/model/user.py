@@ -262,7 +262,7 @@ class UserGroups(CumulocityResource):
             )
             return [ref['group'] for ref in result['references']]
 
-        return super()._iterate(
+        return self._iterate(
             expression=expression,
             fetch_page=fetch_page if username else None,
             page_number=page_number,
@@ -1157,7 +1157,7 @@ class Users(CumulocityResource):
                 )
             return result['users']
 
-        return super()._iterate(
+        return self._iterate(
             expression=expression,
             fetch_page=fetch_page,
             page_number=page_number,

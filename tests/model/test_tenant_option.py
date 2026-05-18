@@ -57,7 +57,7 @@ async def test_get(sample_json):
         assert opt.key == sample_json['key']
     assert opt._key == sample_json['key']
     assert opt.value == sample_json['value']
-    c8y.get.assert_called_once_with(f"tenant/options/category/key")
+    c8y.get.assert_called_once_with("tenant/options/category/key")
 
 
 @pytest.mark.parametrize("sample_json", SAMPLES_JSON)

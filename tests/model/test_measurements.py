@@ -5,7 +5,7 @@ from contextlib import suppress
 from datetime import datetime, timedelta
 import json
 import os
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 from urllib.parse import unquote_plus, urlencode
 
 import pytest

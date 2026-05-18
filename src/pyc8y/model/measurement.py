@@ -4,9 +4,8 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator, Any
+from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator
 
-from pyc8y.base_util import is_sequence
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
@@ -950,7 +949,7 @@ class Measurements(CumulocityResource[Measurement]):
                 page_size=page_size,
                 **kwargs,
             )
-        return super()._iterate(
+        return self._iterate(
             expression=expression,
             params=params,
             page_number=page_number,

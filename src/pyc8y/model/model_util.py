@@ -2,7 +2,7 @@
 
 import re
 from datetime import datetime, timezone, timedelta
-from typing import Any, Sequence
+from typing import Any
 
 
 def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
@@ -43,7 +43,7 @@ def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedel
             minutes = int(parts[1])
             seconds = int(parts[2]) if len(parts) > 2 else 0
             return timedelta(hours=hours, minutes=minutes, seconds=seconds)
-        except ValueError as e:
+        except ValueError:
             raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
 
     # find first non-digit

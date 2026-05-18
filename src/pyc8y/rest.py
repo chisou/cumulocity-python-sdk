@@ -182,7 +182,7 @@ class CumulocityRestClient(object):
                     login_options = [x["type"] for x in (await response.json())["loginOptions"]]
                 else:
                     login_options = ["BASIC", "OAUTH2_INTERNAL"]
-                    logger.error(f"Unable to determine login options. Using default.")
+                    logger.error("Unable to determine login options. Using default.")
             logger.info(f"Available login options: {', '.join(login_options)}")
 
             # try OAuth internal (with/without 2nd factor)
@@ -190,7 +190,7 @@ class CumulocityRestClient(object):
                 if not username or not password:
                     logger.info("OAuth Internal authentication needs username/password. Skipping.")
                 else:
-                    logger.info(f"Attempting login using OAUTH2_INTERNAL ...")
+                    logger.info("Attempting login using OAUTH2_INTERNAL ...")
                     # include 2nd factor token if available
                     form_data = {"grant_type": "PASSWORD", "username": username, "password": password}
                     if tfa_token:
@@ -220,7 +220,7 @@ class CumulocityRestClient(object):
                 if not username or not password:
                     logger.info("Basic authentication needs username/password. Skipping.")
                 else:
-                    logger.info(f"Attempting login using Basic Authentication ...")
+                    logger.info("Attempting login using Basic Authentication ...")
                     auth = BasicAuth(username, password)
                     async with session.get(
                         build_url("tenant/currentTenant"),

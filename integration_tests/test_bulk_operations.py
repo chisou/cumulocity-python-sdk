@@ -5,7 +5,7 @@ import asyncio
 from pyc8y.client import CumulocityClient
 from pyc8y.model.managed_object import Device, DeviceGroup
 from pyc8y.model.matcher import field
-from pyc8y.model.operation import BulkOperation, Operation, BulkStatus, GeneralBulkStatus, OperationStatus
+from pyc8y.model.operation import BulkOperation, BulkStatus, GeneralBulkStatus, OperationStatus
 
 
 async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)

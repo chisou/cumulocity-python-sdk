@@ -1,7 +1,7 @@
 import warnings
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncGenerator, TypedDict, Unpack, AsyncIterator, Sequence, Self
+from typing import AsyncIterator, Sequence, Self
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher

@@ -1,14 +1,11 @@
 # Copyright (c) 2026 Christoph Souris
 
-# pylint: disable=redefined-outer-name, protected-access
-
 import logging
 import os
 import random
 import tempfile
 from datetime import timedelta
-from io import StringIO, BytesIO
-from typing import BinaryIO
+from io import BytesIO
 
 import pytest
 

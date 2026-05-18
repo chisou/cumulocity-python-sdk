@@ -235,10 +235,6 @@ async def fix_app_factory(logger, live_c8y: CumulocityClient):
             raise ValueError(f"Microservice application named '{name}' seems to be already registered.")
 
         # (2) Create application stub in Cumulocity
-        manifest_json = {
-            'settings': [{'defaultValue': '', 'key': x} for x in ('keyA', 'keyB')],
-            'settingsCategory': f"app-{name}",
-        }
         app = await Application(
             live_c8y,
             name=name,

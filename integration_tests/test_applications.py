@@ -5,7 +5,7 @@ import pytest
 
 from pyc8y.auth import BasicAuth
 from pyc8y.client import CumulocityClient
-from pyc8y.model import TenantOptions, TenantOption
+from pyc8y.model import TenantOption
 
 
 async def test_select_name(live_c8y: CumulocityClient):

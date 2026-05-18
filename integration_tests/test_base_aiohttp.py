@@ -2,7 +2,6 @@ import asyncio
 import os
 
 import dotenv
-from pytest_benchmark.plugin import benchmark
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.auth import BasicAuth

@@ -50,7 +50,7 @@ async def test_select_expression_overrides_filters():
     call_url = c8y.get.call_args[0][0]
     assert 'domain=D' in call_url
     # no params tuple when expression is used
-    assert not "params" in c8y.get.call_args.kwargs
+    assert "params" not in c8y.get.call_args.kwargs
 
 
 async def test_get_current(tenants):

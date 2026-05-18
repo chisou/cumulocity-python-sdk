@@ -19,8 +19,8 @@ def init(c):
     )
     print("Optional: device bootstrapping credentials (leave blank to skip).")
     bootstrap_tenant, bootstrap_user, bootstrap_password = (
-        input(f"Tenant (default: management):        "),
-        input(f"Username (default: devicebootstrap): "),
+        input("Tenant (default: management):        "),
+        input("Username (default: devicebootstrap): "),
         getpass("Password: "),
     )
 
@@ -84,7 +84,7 @@ def test(c, scope='tests', python=None, coverage=False):
         c.run(f"pytest -W ignore::DeprecationWarning {cov_option} {scope}")
 
     if coverage:
-        c.run(f"coverage html -d coverage --data-file .coverage")
+        c.run("coverage html -d coverage --data-file .coverage")
 
 
 @task

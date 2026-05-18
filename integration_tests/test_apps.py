@@ -105,7 +105,7 @@ async def test_get_user_instance_aiohttp_types(test_environment):
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
-    fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
+    fake_basic = build_auth_string(b64encode('t12345/user:<fake>'))
     c8y_user = await c8y.get_user_instance(
         headers=CIMultiDict({'Authorization': fake_basic}),
         cookies={'authorization': token},
@@ -135,7 +135,7 @@ async def test_get_user_instance_fastapi_types(test_environment):
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
-    fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
+    fake_basic = build_auth_string(b64encode('t12345/user:<fake>'))
     c8y_user = await c8y.get_user_instance(
         headers=StarletteHeaders(headers={'authorization': fake_basic}),
         cookies={'authorization': token},
@@ -165,7 +165,7 @@ async def test_get_user_instance_quart_types(test_environment):
     assert c8y_user.auth.token == token
 
     # OAI Secure pattern: fake Basic in header + JWT in cookie -> cookie wins
-    fake_basic = build_auth_string(b64encode(f't12345/user:<fake>'))
+    fake_basic = build_auth_string(b64encode('t12345/user:<fake>'))
     c8y_user = await c8y.get_user_instance(
         headers=WerkzeugHeaders([('Authorization', fake_basic)]),
         cookies={'authorization': token},

@@ -11,8 +11,6 @@ from pyc8y.base_util import encode_odata_query_value, ensure_sequence, unwrap_ar
 from pyc8y.model.managed_object import Availability, ManagedObject, Device, DeviceGroup
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
-    json_property,
-    datetime_property,
     expression_implies_order,
     CumulocityResource,
     map_params,
@@ -489,7 +487,7 @@ class Inventory(CumulocityResource[MO]):
             if not expression
             else {}
         )
-        return super()._iterate(
+        return self._iterate(
             expression=expression,
             params=params,
             page_number=page_number,

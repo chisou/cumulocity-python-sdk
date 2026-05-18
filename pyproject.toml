@@ -8,8 +8,8 @@ build-backend = "hatchling.build"
 [project]
 name = "pyc8y"
 dynamic = ["version"]
-authors = [{name="Christoph Souris", email="christoph.souris@gmail.com"}]
-description = "Python microservice and application client for the Cumulocity REST API using asyncio."
+authors = [{name="Christoph Souris", email="christoph.souris@anyhere.de"}]
+description = "Python microservice and application SDK for the Cumulocity REST API using asyncio."
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"
@@ -40,16 +40,32 @@ Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
 Issues = "https://github.com/Cumulocity-IoT/cumulocity-python-api/issues"
 Documentation = "https://cumulocity-python-api.readthedocs.io/en/latest/"
 
-[tool.black]
+[dependency-groups]
+dev = [
+    "coolname",
+    "deepdiff",
+    "fastapi",
+    "inputimeout",
+    "PyJWT",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-benchmark",
+    "pytest-cov",
+    "python-dotenv",
+    "ruff",
+    "starlette",
+    "tenacity",
+    "ujson",
+    "uvicorn",
+    "werkzeug",
+]
+
+[tool.ruff]
 line-length = 120
+target-version = "py311"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["pyc8y"]
-packages = ["pyc8y"]
-
-[tool.hatch.build.targets.editable]
-only-include = ["pyc8y"]
-packages = ["pyc8y"]
+packages = ["src/pyc8y"]
 
 [tool.hatch.version]
 source = "vcs"
