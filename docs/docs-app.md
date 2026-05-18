@@ -11,3 +11,6 @@
         members:
             - SimpleCumulocityApp
             - MultiTenantCumulocityApp
+            - get_client
+
+

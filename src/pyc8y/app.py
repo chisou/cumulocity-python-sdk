@@ -31,7 +31,7 @@ def get_client(
     tenant_id: str | None = None,
     username: str | None = None,
     password: str | None = None,
-):
+) -> CumulocityClient:
     """Get a ready to use CumulocityClient instance for use in interactive
     sessions.
 

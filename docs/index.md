@@ -25,7 +25,7 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 [→ Events][pyc8y.model.Events]<br>
 [→ Alarms][pyc8y.model.Alarms]<br>
 [→ Users][pyc8y.model.Users]<br>
-[→ GlobalRoles][pyc8y.model.GlobalRoles]<br>
+[→ UserGroups][pyc8y.model.UserGroups]<br>
 [→ InventoryRoles][pyc8y.model.InventoryRoles]<br>
 [→ Subscriptions][pyc8y.model.Subscriptions]<br>
 [→ Tokens][pyc8y.model.Tokens]<br>
@@ -51,12 +51,10 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 [→ Series][pyc8y.model.Series]<br>
 [→ Subscription][pyc8y.model.Subscription]<br>
 [→ Availability][pyc8y.model.Availability]<br>
-[→ Fragment][pyc8y.model.Fragment]<br>
-[→ NamedObject][pyc8y.model.NamedObject]<br>
 [→ User][pyc8y.model.User]<br>
 [→ CurrentUser][pyc8y.model.CurrentUser]<br>
 [→ TfaSettings][pyc8y.model.TfaSettings]<br>
-[→ GlobalRole][pyc8y.model.GlobalRole]<br>
+[→ UserGroup][pyc8y.model.UserGroup]<br>
 [→ Permission][pyc8y.model.Permission]<br>
 [→ ReadPermission][pyc8y.model.ReadPermission]<br>
 [→ WritePermission][pyc8y.model.WritePermission]<br>
@@ -64,7 +62,6 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 [→ Operation][pyc8y.model.Operation]<br>
 [→ BulkOperation][pyc8y.model.BulkOperation]<br>
 [→ Application][pyc8y.model.Application]<br>
-[→ ApplicationSetting][pyc8y.model.ApplicationSetting]<br>
 [→ ApplicationSubscription][pyc8y.model.ApplicationSubscription]<br>
 [→ TenantOption][pyc8y.model.TenantOption]<br>
 [→ AuditRecord][pyc8y.model.AuditRecord]<br>
@@ -85,10 +82,5 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
 [→ Kilograms][pyc8y.model.Kilograms]<br>
 [→ Liters][pyc8y.model.Liters]<br>
 [→ Meters][pyc8y.model.Meters]<br>
-[→ Percentage][pyc8y.model.Percentage]<br>
+[→ Percent][pyc8y.model.Percent]<br>
 [→ Value][pyc8y.model.Value]<br>
-
-
-## Auxiliary Tools
-
-{% include "intro-aux.md" %}

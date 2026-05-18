@@ -11,5 +11,5 @@
         members:
             - CumulocityClient
             - CumulocityRestClient
-            - CumulocityDeviceRegistry
+            - DeviceRegistryClient
 

@@ -1,4 +1,4 @@
-site_name: Cumulocity Python API Docs
+site_name: Cumulocity Python SDK Docs
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 
 theme:
@@ -34,8 +34,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Application Helpers: docs-app.md
-  - REST API Connectors: docs-base.md
+  - SDK Clients: docs-base.md
   - Main API classes: docs-main.md
   - Object model classes: docs-model.md
   - Measurement extensions: docs-measurements.md
-  - Auxiliary Tools: docs-aux.md

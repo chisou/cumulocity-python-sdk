@@ -26,6 +26,7 @@ from pyc8y.model.identity import (
 )
 from pyc8y.model.managed_object import (
     ObjectReference as ObjectReference,
+    Availability as Availability,
     ManagedObject as ManagedObject,
     Device as Device,
     DeviceGroup as DeviceGroup,
@@ -83,4 +84,17 @@ from pyc8y.model.tenant_option import (
 from pyc8y.model.tenants import (
     Tenant as Tenant,
     Tenants as Tenants,
+)
+from pyc8y.model.user import (
+    TfaSettings as TfaSettings,
+    UserGroup as UserGroup,
+    UserGroups as UserGroups,
+    Permission as Permission,
+    ReadPermission as ReadPermission,
+    WritePermission as WritePermission,
+    AnyPermission as AnyPermission,
+    InventoryRoles as InventoryRoles,
+    User as User,
+    CurrentUser as CurrentUser,
+    Users as Users,
 )

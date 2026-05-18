@@ -51,6 +51,9 @@
   and converted to run async callbacks. It can be created from `MultiTenantCumulocityApp` using the `create_listener`
   function. 
 
+Percentage -> Percent
+
+
 #### Minor changes
 
 * All ID are now required to be `string`s. Integers are no longer supported.

@@ -11,13 +11,24 @@
         members:
             - Units
             - Celsius
+            - celsius
             - Centimeters
+            - centimeters
             - Count
+            - count
             - CubicMeters
+            - cubic_meters
             - Grams
+            - grams
             - Kelvin
+            - kelvin
             - Kilograms
+            - kilograms
             - Liters
+            - liters
             - Meters
-            - Percentage
+            - meters
+            - Percent
+            - percent
             - Value
+            - value

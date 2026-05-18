@@ -5,4 +5,6 @@ from pyc8y.app import (
     MultiTenantCumulocityApp as MultiTenantCumulocityApp,
     get_client as get_client,
 )
+from pyc8y.client import CumulocityClient as CumulocityClient
+from pyc8y.registry import DeviceRegistryClient as DeviceRegistryClient
 from pyc8y.rest import CumulocityRestClient as CumulocityRestClient

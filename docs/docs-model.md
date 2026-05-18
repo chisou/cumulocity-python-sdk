@@ -24,6 +24,8 @@
             - NamedObject
             - User
             - CurrentUser
+            - UserGroup
+            - UserGroups
             - TfaSettings
             - GlobalRole
             - Permission

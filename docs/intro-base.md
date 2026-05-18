@@ -10,7 +10,7 @@ contexts like `inventory`, `users`, and `measurements`. Each of these
 contexts is documented in detail within the
 `main-api-classes` section.
 
-The [CumulocityDeviceRegistry][pyc8y.CumulocityDeviceRegistry] class
+The [DeviceRegistryClient][pyc8y.DeviceRegistryClient] class
 provides an additional entry point for devices, wrapping the entire
 bootstrap mechanism. See also the [Device integration
 documentation](https://cumulocity.com/guides/device-sdk/rest/#device-integration)

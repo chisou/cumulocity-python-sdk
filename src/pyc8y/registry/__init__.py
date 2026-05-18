@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-from pyc8y import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_util import coerce_timedelta
 
 
