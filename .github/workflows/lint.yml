@@ -7,9 +7,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v6.0.26
     - name: Install uv
-      uses: astral-sh/setup-uv@v8
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         python-version: '3.11'
     - name: Run ruff
