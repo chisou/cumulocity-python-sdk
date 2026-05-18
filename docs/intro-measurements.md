@@ -1,4 +1,4 @@
-The **Cumulocity Python API**'s measurements API (see also classes
+The **Cumulocity Python SDK**'s measurements API (see also classes
 `Measurements` and
 `Measurement`) includes the following
 additions to allow easy creation of standard measurement values

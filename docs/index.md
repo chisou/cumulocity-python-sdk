@@ -1,7 +1,7 @@
-The Cumulocity Python API (`pyc8y`) module is a pure Python implementation
-of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>).
+The `pyc8y` (Cumulocity Python SDK) module is a pure Python implementation
+of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>) based on asyncio.
 
-[→ Getting started with the Cumulocity Python API](getting-started.md)
+[→ Getting started with the Cumulocity Python SDK](getting-started.md)
 
 ## REST API Connector
 

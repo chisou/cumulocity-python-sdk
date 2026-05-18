@@ -1,7 +1,7 @@
-# Getting started with the Cumulocity Python API
+# Getting started with the Cumulocity Python SDK
 
 In this article, we want to give you a step-by-step introduction to the
-possibilities of the Cumulocity Python API, the `pyc8y` module. We
+possibilities of the Cumulocity Python SDK, the `pyc8y` module. We
 will create a simple application, read device metadata, and create and
 investigate alarms.
 
@@ -18,13 +18,13 @@ I also assume that you have some basic understanding of the Python
 programming language, running Python applications and the Pip package
 manager.
 
-Also, the Cumulocity Python API is closely aligned to the Cumulocity
+Also, the Cumulocity Python SDK is closely aligned to the Cumulocity
 REST API. So, a fair understanding of RESTful API is definitely helpful,
 but not a requirement.
 
-## A brief introduction into the Cumulocity Python API
+## A brief introduction into the Cumulocity Python SDK
 
-The Cumulocity Python API library aims to be the standard Python library
+The Cumulocity Python SDK library aims to be the standard Python library
 for Cumulocity IoT application development. It is intended to be used
 for standalone applications and microservices.
 
@@ -47,13 +47,13 @@ is closely aligned to the concepts of the standard [Cumulocity REST
 API](https://cumulocity.com/api/core/). We won't hide the data model
 details, won't perform additional requests in the background, and alike.
 
-So, while working with the Cumulocity Python API you will also
+So, while working with the Cumulocity Python SDK you will also
 understand how to work with the standard REST API. You will always know
 exactly what's going on. You will always be able to perform a direct
 REST query for edge cases - the API provides a set of nice access points
 just for that.
 
-The Cumulocity Python API is not an official API provisioned by the
+The Cumulocity Python SDK is not an official API provisioned by the
 Cumulocity GmbH. It's an open source project ([hosted on
 GitHub](https://github.com/Cumulocity-IoT/cumulocity-python-api)),
 maintained by the Cumulocity GmbH consultants and other Cumulocity
@@ -227,7 +227,7 @@ structure can be attached to any database object as custom fragments
 (see also: [Cumulocity IoT's domain model](https://cumulocity.com/guides/concepts/domain-model/#fragments)).
 
 Likewise, we can simply provide additional properties as custom
-fragments after the standard parameters in the Cumulocity Python API:
+fragments after the standard parameters in the Cumulocity Python SDK:
 
 ``` python
 test_alarm = Alarm(
@@ -278,7 +278,7 @@ for a in c8y.alarms.select(source=device_id):
 Like before, when we looped through the devices, we use a `select`
 function to loop through objects. Note that we are working with the
 `alarms` instead of the `device_inventory` resource this time. The
-Cumulocity Python API defines multiple of these resources that all
+Cumulocity Python SDK defines multiple of these resources that all
 behave in the same way.
 
 You can see a lot of additional features of the API as well. First of
@@ -307,7 +307,7 @@ be raised (i.e. created) again, when it was previously acknowledged and
 cleared. We can do this in the UI (feel free to do that right now!) or
 we can do this using Python.
 
-Updating via the Cumulocity Python API is particularly easy. Let ups
+Updating via the Cumulocity Python SDK is particularly easy. Let ups
 loop through all alarms of our device and clear them:
 
 ``` python
@@ -378,7 +378,7 @@ automatically. Neat, right?
 
 Hopefully you had fun following this quick start guide and you got
 interested in learning more. Please feel free to experiment! We hope
-that we were able to show that the Cumulocity Python API makes
+that we were able to show that the Cumulocity Python SDK makes
 development for Cumulocity IoT as easy as it can possibly be.
 
 Some hints where to go next:
@@ -392,4 +392,4 @@ Some hints where to go next:
   object-oriented API
 
 If you are interested in participating in the further development of the
-Cumulocity Python API, please join our [GitHub community](https://github.com/Cumulocity-IoT/cumulocity-python-api).
+Cumulocity Python SDK, please join our [GitHub community](https://github.com/Cumulocity-IoT/cumulocity-python-api).

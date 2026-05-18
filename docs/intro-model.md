@@ -1,4 +1,4 @@
-The **Cumulocity Python API**'s object model provides object-oriented
+The **Cumulocity Python SDK**'s object model provides object-oriented
 access to the Cumulocity REST API. Use it to create and modify single
 objects within the Database.
 
