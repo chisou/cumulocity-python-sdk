@@ -1,0 +1,39 @@
+# Publishes pyc8y to PyPI via Trusted Publishing (OIDC) when a v* tag is pushed.
+# Setup:
+#   - PyPI: https://pypi.org/manage/account/publishing/ -> Add a pending publisher
+#     (project=pyc8y, repo=this repo, workflow=publish.yml, environment=pypi)
+#   - GitHub: Settings -> Environments -> create "pypi"
+
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # hatch-vcs derives the version from the tag
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install Python 3.13
+        run: uv python install 3.13
+      - name: Build
+        run: uv build
+      - name: Smoke test (wheel)
+        run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+      - name: Smoke test (source distribution)
+        run: uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
+      - name: Publish
+        run: uv publish
