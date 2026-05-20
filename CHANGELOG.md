@@ -51,7 +51,8 @@
   and converted to run async callbacks. It can be created from `MultiTenantCumulocityApp` using the `create_listener`
   function. 
 
-Percentage -> Percent
+* The `Percentage` helper class was renamed to `Percent`. While at it, multiple builder _functions_ have been defined,
+  e.g. `percent`, `meters`, and alike.
 
 
 #### Minor changes
