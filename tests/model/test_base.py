@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from unittest.mock import AsyncMock, MagicMock
 
@@ -315,3 +316,131 @@ async def test_iteration():
 
     # check expectation
     assert result_ids == list(range(expected))
+
+
+def _make_paged_resource(all_items, page_size):
+    """Build a CumulocityResource backed by an in-memory list of items.
+
+    The fake `_fetch_page` returns the slice `[page_size*(page-1):page_size*page]`
+    for `page >= 1`, mimicking the C8y pagination contract (empty list past end).
+    """
+    res = CumulocityResource(MagicMock())
+    res._object_type = CumulocityObject
+
+    async def fetch_page(page, **_):
+        return all_items[page_size * (page - 1): page_size * page]
+
+    res._fetch_page = AsyncMock(side_effect=fetch_page)
+    return res
+
+
+async def test_iterate_concurrent_unbounded_returns_all_items():
+    """workers>1 + limit=None: every item is yielded across full pages and partials."""
+    page_size = 10
+    num_all = 95  # 9 full pages + a partial (5 items on page 10)
+    all_items = [{'i': i} for i in range(num_all)]
+
+    res = _make_paged_resource(all_items, page_size)
+
+    result_ids = []
+    async for x in res._iterate(
+        expression=None, params=None, page_number=None, limit=None,
+        include=None, exclude=None, workers=5, preserve_order=False,
+    ):
+        result_ids.append(x._source_json['i'])
+
+    assert sorted(result_ids) == list(range(num_all))
+
+
+async def test_iterate_concurrent_with_limit():
+    """workers>1 + limit=N: outer loop terminates exactly at limit."""
+    page_size = 10
+    num_all = 100
+    limit = 25
+    all_items = [{'i': i} for i in range(num_all)]
+
+    res = _make_paged_resource(all_items, page_size)
+
+    result_ids = []
+    async for x in res._iterate(
+        expression=None, params=None, page_number=None, limit=limit,
+        include=None, exclude=None, workers=5, preserve_order=False,
+    ):
+        result_ids.append(x._source_json['i'])
+
+    assert len(result_ids) == limit
+
+
+async def test_iterate_single_worker_sequential():
+    """workers<=1: sequential streaming path."""
+    page_size = 10
+    num_all = 35
+    all_items = [{'i': i} for i in range(num_all)]
+
+    res = _make_paged_resource(all_items, page_size)
+
+    result_ids = []
+    async for x in res._iterate(
+        expression=None, params=None, page_number=None, limit=None,
+        include=None, exclude=None, workers=1, preserve_order=False,
+    ):
+        result_ids.append(x._source_json['i'])
+
+    assert result_ids == list(range(num_all))
+
+
+async def test_stream_pages_unordered_no_data_loss_when_empties_race_ahead():
+    """Regression: empties used to short-circuit a FIRST_COMPLETED batch and
+    drop sibling valid pages. With the fix, an empty page only stops the
+    *launching* of new tasks — the current batch is fully drained and all
+    remaining in-flight valid pages are still yielded."""
+    page_size = 10
+    valid_pages = 8  # pages 1..8 have data; page 9+ return empty
+    all_items = [{'i': i} for i in range(page_size * valid_pages)]
+
+    async def fetch_page(page, **_):
+        items = all_items[page_size * (page - 1): page_size * page]
+        # Valid pages take measurably longer than empties so empties past the
+        # end routinely land in `done` together with still-running valid pages.
+        if items:
+            await asyncio.sleep(0.01)
+        return items
+
+    res = CumulocityResource(MagicMock())
+    res._object_type = CumulocityObject
+
+    yielded: list[dict] = []
+    async for page in res._stream_pages_unordered(
+        fetch_page, start_page=1, workers=20, expression=None, params=None,
+    ):
+        if page:
+            yielded.extend(page)
+
+    assert sorted(p['i'] for p in yielded) == [p['i'] for p in all_items]
+
+
+async def test_stream_pages_ordered_preserves_launch_order():
+    """Ordered streamer yields pages in launch order even when later pages
+    finish first."""
+    page_size = 10
+    total_pages = 6
+    all_items = [{'i': i} for i in range(page_size * total_pages)]
+
+    async def fetch_page(page, **_):
+        items = all_items[page_size * (page - 1): page_size * page]
+        if items:
+            # invert delays: earliest pages are slowest
+            await asyncio.sleep(0.005 * (total_pages - page))
+        return items
+
+    res = CumulocityResource(MagicMock())
+    res._object_type = CumulocityObject
+
+    yielded_ids: list[int] = []
+    async for page in res._stream_pages(
+        fetch_page, start_page=1, workers=4, expression=None, params=None,
+    ):
+        if page:
+            yielded_ids.extend(p['i'] for p in page)
+
+    assert yielded_ids == [p['i'] for p in all_items]

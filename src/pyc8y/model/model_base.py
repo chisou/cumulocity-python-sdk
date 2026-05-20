@@ -688,9 +688,17 @@ class CumulocityResource(Generic[CO]):
         Same sliding window as `_stream_pages`, but yields whichever fetch
         finishes first. Use when the caller will sort results downstream
         (or doesn't care about order).
+
+        Termination: once any in-flight task returns an empty page, stop
+        launching new fetches. The remaining batch is fully drained — valid
+        pages from the same completion batch are still yielded — and any
+        tasks still pending after that are cancelled by `finally`. Up to
+        `workers` speculative requests may have been launched past
+        end-of-data; their results are discarded.
         """
         current = start_page
         in_flight: set[asyncio.Task] = set()
+        stop_launching = False
 
         def launch():
             nonlocal current
@@ -707,10 +715,13 @@ class CumulocityResource(Generic[CO]):
                 for task in done:
                     in_flight.discard(task)
                     page = task.result()
-                    yield page
                     if not page:
-                        return
-                    launch()
+                        stop_launching = True
+                    else:
+                        yield page
+                if not stop_launching:
+                    for _ in done:
+                        launch()
         finally:
             for t in in_flight:
                 t.cancel()
