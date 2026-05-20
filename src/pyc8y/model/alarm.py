@@ -18,7 +18,7 @@ from pyc8y.model.model_base import (
 from pyc8y.types import AlarmMeta
 
 
-class Severity(StrEnum):
+class AlarmSeverity(StrEnum):
     """Alarm severity levels."""
 
     MAJOR = "MAJOR"
@@ -27,7 +27,7 @@ class Severity(StrEnum):
     WARNING = "WARNING"
 
 
-class Status(StrEnum):
+class AlarmStatus(StrEnum):
     """Alarm statuses."""
 
     ACTIVE = "ACTIVE"
@@ -54,8 +54,8 @@ class Alarm(CumulocityObject):
         time: str | datetime | None = None,
         source: str | None = None,
         text: str | None = None,
-        status: Status | str | None = None,
-        severity: Severity | str | None = None,
+        status: AlarmStatus | str | None = None,
+        severity: AlarmSeverity | str | None = None,
         **kwargs,
     ):
         super().__init__(c8y, **kwargs)

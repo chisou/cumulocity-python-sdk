@@ -189,7 +189,7 @@ The `Alarm` class can be imported from the `pyc8y.model` package. We
 also import the standard `datetime` class to time the alarm properly:
 
 ``` python
-from pyc8y.model import Alarm, AlarmStatus  
+from pyc8y.model import Alarm, AlarmSeverity, AlarmStatus  
 from datetime import datetime, timezone
 ```
 
@@ -221,7 +221,7 @@ test_alarm = Alarm(
       time=alarm_time,
       source=device_id,
       text=f"Test alarm at {alarm_time}",
-      severity=Alarm.Severity.WARNING)
+      severity=AlarmSeverity.WARNING)
 
 await c8y.alarms.create(test_alarm)
 ```
@@ -250,7 +250,7 @@ test_alarm = Alarm(
       time=alarm_time,
       source=device_id,
       text=f"Test alarm at {alarm_time}",
-      severity=Alarm.Severity.WARNING,
+      severity=AlarmSeverity.WARNING,
       # custom fragments below
       cx_CustomData={'foo': 'bar', 'data': {'is_important': True}})
 ```
@@ -333,8 +333,8 @@ Updating via the Cumulocity Python SDK is particularly easy. Let ups
 loop through all alarms of our device and clear them:
 
 ``` python
-for a in await c8y.alarms.select(source=device_id, status=Alarm.Status.ACTIVE):
-    a.status = Alarm.Status.CLEARED
+for a in await c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE):
+    a.status = AlarmStatus.CLEARED
     await a.update()
     print(f"Alarm #{a.id} cleared.")
 ```
@@ -342,13 +342,13 @@ for a in await c8y.alarms.select(source=device_id, status=Alarm.Status.ACTIVE):
 But! With async you can do all this in parallel:
 ``` python
 async def clear_alarm(alarm):
-  alarm.status = Alarm.Status.CLEARED
+  alarm.status = AlarmStatus.CLEARED
   await alarm.update()
   print(f"Alarm #{alarm.id} cleared.")
 
 await asyncio.gather(*[
   clear_alarm(a)
-  for a in await c8y.alarms.select(source=device_id, status=Alarm.Status.ACTIVE)
+  for a in await c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE)
  ]) 
 ```
 
@@ -390,7 +390,7 @@ You might think that you could have updated our alarm directly without
 the loop like this:
 
 ``` python
-test_alarm.status = Alarm.Status.CLEARED
+test_alarm.status = AlarmStatus.CLEARED
 await test_alarm.update()   # this does not work
 ```
 
@@ -404,7 +404,7 @@ server:
 
 ``` python
 alarm = await c8y.alarms.get('<id>')
-alarm.status = Alarm.Status.CLEARED
+alarm.status = AlarmStatus.CLEARED
 await alarm.update()
 ```
 
@@ -421,7 +421,7 @@ alarm = Alarm.from_json(
     {'id': '<id>', 'type': 'cx_TestAlarm', 'source': {'id': device_id}},
     c8y=c8y,
 )
-alarm.status = Alarm.Status.CLEARED
+alarm.status = AlarmStatus.CLEARED
 await alarm.update()
 ```
 

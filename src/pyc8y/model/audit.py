@@ -47,7 +47,7 @@ class Change(JsonObject):
             self.type = type
 
 
-class Severity(StrEnum):
+class AuditSeverity(StrEnum):
     """Audit severity levels."""
 
     MAJOR = "MAJOR"
@@ -57,7 +57,7 @@ class Severity(StrEnum):
     INFORMATION = "information"  # for whatever reason, lowercase is correct
 
 
-class Type(StrEnum):
+class AuditType(StrEnum):
     """Audit record source types."""
 
     ALARM = "Alarm"

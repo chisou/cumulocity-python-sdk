@@ -22,7 +22,7 @@ from pyc8y.model import (
     Operation,
     Value,
 )
-from pyc8y.model.alarm import Severity
+from pyc8y.model.alarm import AlarmSeverity
 from pyc8y.notification2 import Listener, QueueListener, Subscription
 from pyc8y.notification2.listener import Message
 from tests.utils import assert_in_any, assert_no_failures
@@ -170,7 +170,7 @@ async def test_api_filters(live_c8y: CumulocityClient, sample_object, api_filter
         e_id = (await Event(live_c8y, type="c8y_TestEvent", source=mo.id, time=now, text="text").create()).id
         a_id = (
             await Alarm(
-                live_c8y, type="c8y_TestAlarm", source=mo.id, time=now, text="text", severity=Severity.WARNING
+                live_c8y, type="c8y_TestAlarm", source=mo.id, time=now, text="text", severity=AlarmSeverity.WARNING
             ).create()
         ).id
         o_id = (await Operation(live_c8y, device_id=mo.id, c8y_Operation={}).create()).id

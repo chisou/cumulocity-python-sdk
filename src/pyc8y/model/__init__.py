@@ -1,6 +1,8 @@
 from pyc8y.model.alarm import (
     Alarm as Alarm,
     Alarms as Alarms,
+    AlarmSeverity as AlarmSeverity,
+    AlarmStatus as AlarmStatus,
 )
 from pyc8y.model.application import (
     Application as Application,
@@ -11,6 +13,8 @@ from pyc8y.model.audit import (
     Change as Change,
     AuditRecord as AuditRecord,
     AuditRecords as AuditRecords,
+    AuditSeverity as AuditSeverity,
+    AuditType as AuditType,
 )
 from pyc8y.model.binary import (
     Binary as Binary,

@@ -2,7 +2,7 @@
 
 import pytest
 
-from pyc8y.model.audit import AuditRecord, Type, Severity, Change
+from pyc8y.model.audit import AuditRecord, AuditType, AuditSeverity, Change
 
 from tests.model.conftest import load_sample_file
 
@@ -50,12 +50,12 @@ def test_parsing(sample_json):
 def test_formatting():
     """Verify that to_json formatting works for a full AuditRecord."""
     record = AuditRecord(
-        type=Type.ALARM,
+        type=AuditType.ALARM,
         time='2023-03-23T22:33:44.555Z',
         source='source-id',
         activity='audit activity',
         text='audit text',
-        severity=Severity.INFORMATION,
+        severity=AuditSeverity.INFORMATION,
         application='some application',
         user='some@cumulocity.com',
         changes=[
@@ -67,9 +67,9 @@ def test_formatting():
 
     record_json = record.json
 
-    assert record_json['type'] == Type.ALARM
+    assert record_json['type'] == AuditType.ALARM
     assert record_json['source'] == {'id': 'source-id'}
-    assert record_json['severity'] == Severity.INFORMATION
+    assert record_json['severity'] == AuditSeverity.INFORMATION
     assert record_json['activity'] == 'audit activity'
     assert record_json['text'] == 'audit text'
     assert record_json['application'] == 'some application'

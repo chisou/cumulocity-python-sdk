@@ -3,7 +3,7 @@
 from datetime import timedelta, datetime, timezone
 
 from pyc8y.client import CumulocityClient
-from pyc8y.model.audit import AuditRecord, Severity
+from pyc8y.model.audit import AuditRecord, AuditSeverity
 from pyc8y.model.managed_object import Device
 
 from util.testing_util import create_random_name
@@ -21,7 +21,7 @@ async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (
         type=f'{name}_type',
         source=session_device.id,
         time='now',
-        severity=Severity.INFORMATION,
+        severity=AuditSeverity.INFORMATION,
         activity=f'{name} activity',
         text=f'detailed {name} text',
         application=f'{name}_app',
