@@ -1,7 +1,6 @@
-The **Cumulocity Python SDK** (`pyc8y` module) is designed to be
-particularly useful for developing Cumulocity microservices. For this,
-the module provides two helper classes that take care of microservice
-specific authentication.
+The SDK is designed to be particularly useful for developing Cumulocity
+microservices. For this, the module provides two helper classes that take
+care of microservice specific authentication.
 
 The [SimpleCumulocityApp][pyc8y.SimpleCumulocityApp] class should be
 used for single tenant microservices. It automatically reads the

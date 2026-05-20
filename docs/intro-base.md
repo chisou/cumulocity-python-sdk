@@ -1,6 +1,5 @@
-The **Cumulocity Python API** (`pyc8y` module) provides a convenience
-wrapper around the standard Cumulocity REST API (see also the [OpenAPI
-documentation](https://cumulocity.com/api/core/)).
+The SDK module provides a convenience wrapper around the standard Cumulocity
+REST API (see also the [OpenAPI documentation](https://cumulocity.com/api/core/)).
 
 The [CumulocityRestClient][pyc8y.CumulocityRestClient] class provides the
 fundamental wrapping around authentication and basic `get`, `post`, 
