@@ -12,7 +12,7 @@ from deepdiff import DeepDiff
 import pytest
 
 from pyc8y.model.model_base import CumulocityObject, CumulocityResource, resolve_page_size
-from pyc8y.model.model_util import as_record, as_tuple, get_by_path
+from pyc8y.model.model_util import as_record, as_tuple, get_by
 
 
 @pytest.mark.parametrize("value", ["new_value", "", True, False, 0, -1, 12, [1, 2, 3], [], {"a": 1}, {"a": {"b": 1}}, {}, None])
@@ -53,10 +53,10 @@ def test_set(mode, path, value):
     updated_json = obj._staged_json
 
     # -> new value is set in JSON
-    assert get_by_path(new_json, path) == value
+    assert get_by(new_json, path) == value
 
     # -> in updated JSON as well
-    assert get_by_path(updated_json, path) == value
+    assert get_by(updated_json, path) == value
 
     # -> rest of source is not part of update JSON
     level0 = path.split(".")[0]
@@ -84,9 +84,9 @@ def test_set(mode, path, value):
     ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'm', None, 3),
     ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'a.d', 4, 4),
 ])
-def test_get_by_path(json, path, default, expected):
+def test_get_by(json, path, default, expected):
     """Verify that get by path works as expected."""
-    assert get_by_path(json, path, default) == expected
+    assert get_by(json, path, default) == expected
 
 
 @pytest.mark.parametrize("limit, page_size, include, exclude, expected_page_size", [
@@ -112,9 +112,6 @@ def test_resolve_page_size(limit, page_size, include, exclude, expected_page_siz
 
 
 @pytest.mark.parametrize("paths, expected", [
-    ('x', None),
-    ('a', 1),
-    (('x', '-'), '-'),
     (['x'], (None,)),
     (['a'], (1,)),
     (['bb.b1'], (True,)),
@@ -133,9 +130,6 @@ def test_resolve_page_size(limit, page_size, include, exclude, expected_page_siz
     (['a', ('bb.b3', '-'), 'ccc.c2'], (1, '-', [1, 2, 3])),
 
 ], ids=[
-    'single_none',
-    'single_int',
-    'single_default',
     'none',
     'int',
     'nested_True',

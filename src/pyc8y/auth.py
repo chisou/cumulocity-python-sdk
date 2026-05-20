@@ -18,9 +18,10 @@ class JWT:
         self._body: dict | None = None
 
     @property
-    def payload(self):
+    def payload(self) -> dict:
         """Return the JWT payload as JSON document."""
-        if not self._body:
+        body = self._body
+        if body is None:
             jwt_parts = self.token.split(b".")
             if len(jwt_parts) != 3:
                 raise ValueError("Unexpected token format (Invalid number of parts, not an JWT?).")
@@ -28,9 +29,10 @@ class JWT:
             # characters which are ignored if they are not necessary.
             # See: https://gist.github.com/perrygeo/ee7c65bb1541ff6ac770,
             # https://stackoverflow.com/questions/2941995
-            body = jwt_parts[1] + b"=="
-            self._body = json.loads(base64.b64decode(body))
-        return self._body
+            padded = jwt_parts[1] + b"=="
+            body = json.loads(base64.b64decode(padded))
+            self._body = body
+        return body
 
     @property
     def username(self):
@@ -54,7 +56,7 @@ class JWT:
         """
         return self.payload["exp"] - time.time()
 
-    def is_valid(self, min_seconds: int = None):
+    def is_valid(self, min_seconds: int | None = None):
         """Check whether the token is valid.
 
         Args:

@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 
-def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime | None:
+def coerce_datetime(value: str | datetime | None, name: str| None = None) -> datetime | None:
     """Ensure a proper datetime object."""
 
     def param_name():
@@ -27,7 +27,7 @@ def coerce_datetime(value: str | datetime | None, name: str = None) -> datetime 
 
 
 # TODO: Bit unelegant that it might return None, no? Small if around for each invocation?
-def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedelta | None:
+def coerce_timedelta(value: str | timedelta | None, name: str | None = None) -> timedelta | None:
     def param_name():
         return f" ({name})" if name else ""
 
@@ -66,7 +66,7 @@ def coerce_timedelta(value: str | timedelta | None, name: str = None) -> timedel
     raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
 
 
-def coerce_timestring(value: str | datetime | None, name: str = None) -> str | None:
+def coerce_timestring(value: str | datetime | None, name: str | None = None) -> str | None:
     """Ensure that a given timestring reflects a proper, timezone aware date/time.
     A static string 'now' will be converted to the current datetime in UTC."""
 
@@ -107,7 +107,7 @@ def expand_dotted(kwargs):
     return result
 
 
-def get_by_path(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:
+def get_by(dictionary: dict, path: str, default: Any = None, fail: bool = False) -> Any:
     """Select a nested value from a dictionary by path-like expression
     (dot notation).
 
@@ -156,17 +156,12 @@ def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
         number of elements in the tuple matches the length of the `paths`
         argument.
     """
-    if isinstance(paths, list):
-        return tuple(
-            get_by_path(
-                data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
-            )
-            for path in paths
+    return tuple(
+        get_by(
+            data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
         )
-    assert isinstance(paths, (tuple, str))
-    path = paths[0] if isinstance(paths, tuple) else paths
-    default = paths[1] if isinstance(paths, tuple) else None
-    return get_by_path(data, path, default)
+        for path in paths
+    )
 
 
 def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
@@ -183,7 +178,7 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         The extracted values (or defaults it specified) as dictionary.
     """
     return {
-        key: get_by_path(
+        key: get_by(
             data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
         )
         for key, path in mapping.items()

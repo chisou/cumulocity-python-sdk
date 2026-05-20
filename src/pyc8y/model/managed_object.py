@@ -110,7 +110,7 @@ class ManagedObject(CumulocityObject):
     _meta = InventoryMeta
 
     def __init__(
-        self, c8y: CumulocityRestClient = None, type: str = None, name: str = None, owner: str = None, **kwargs
+        self, c8y: CumulocityRestClient | None = None, type: str | None = None, name: str | None = None, owner: str | None = None, **kwargs
     ):
         """Create a new ManagedObject instance.
 
@@ -376,7 +376,7 @@ class Device(ManagedObject):
     """
 
     def __init__(
-        self, c8y: CumulocityRestClient = None, type: str = None, name: str = None, owner: str = None, **kwargs
+        self, c8y: CumulocityRestClient | None = None, type: str | None = None, name: str | None = None, owner: str | None = None, **kwargs
     ):  # noqa
         """Create a new Device instance.
 
@@ -469,7 +469,7 @@ class DeviceGroup(ManagedObject):
     ROOT_TYPE = "c8y_DeviceGroup"  # TODO: -> types.py?
     CHILD_TYPE = "c8y_DeviceSubGroup"
 
-    def __init__(self, c8y=None, root: bool = False, name: str = None, owner: str = None, **kwargs):
+    def __init__(self, c8y=None, root: bool = False, name: str | None = None, owner: str | None = None, **kwargs):
         """Build a new DeviceGroup object.
 
         The `type` of a device group will always be either `c8y_DeviceGroup`
@@ -495,7 +495,7 @@ class DeviceGroup(ManagedObject):
         super().__init__(c8y=c8y, type=self.ROOT_TYPE if root else self.CHILD_TYPE, name=name, owner=owner, **kwargs)
         self._staged_json["c8y_IsDeviceGroup"] = {}
 
-    async def create_child(self, name: str, owner: str = None, **kwargs) -> Self:
+    async def create_child(self, name: str, owner: str | None = None, **kwargs) -> Self:
         """Create and assign a child group.
 
         This change is written to the database immediately.

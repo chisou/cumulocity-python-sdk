@@ -23,7 +23,7 @@ from pyc8y.model.model_util import (
     coerce_timedelta,
     coerce_timestring,
     expand_dotted,
-    get_by_path,
+    get_by,
     to_datetime,
     to_pascal_case,
     now_datetime,
@@ -47,6 +47,14 @@ CO = TypeVar("CO", bound="CumulocityObject")
 T = TypeVar("T")
 
 
+def _extract_as_values(json: dict, as_values: AsValuesSpec) -> Any:
+    """Apply the collection-level `as_values` semantics: scalar in → scalar
+    out, sequence in → tuple out."""
+    if isinstance(as_values, list):
+        return as_tuple(json, as_values)
+    if isinstance(as_values, tuple):
+        return get_by(json, as_values[0], as_values[1])
+    return get_by(json, as_values)
 
 
 class json_property(Generic[T]):
@@ -325,10 +333,10 @@ class CumulocityObject:
         return path in self
 
     def __getitem__(self, path) -> Any:
-        return get_by_path(self.json, path, fail=True)
+        return get_by(self.json, path, fail=True)
 
     def get(self, path, default: Any = None) -> Any:
-        return get_by_path(self.json, path, default=default)
+        return get_by(self.json, path, default=default)
 
     # def __getattr__(self, name: str):
     #     """ Get the value of a custom fragment.
@@ -405,7 +413,7 @@ class CumulocityObject:
         return self
 
     def as_tuple(self, *paths: str | tuple[str, Any]) -> tuple:
-        return as_tuple(self.json, *paths)
+        return as_tuple(self.json, list(paths))
 
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         return as_record(self.json, mapping)
@@ -548,27 +556,6 @@ class CumulocityResource(Generic[CO]):
             c8y=self.c8y,  # inject c8y instance
         )
 
-    @overload
-    async def _get_last(self, expression: str | None, params: dict | Sequence[tuple[str, Any]] | None = None ) -> CO | None: ...
-    @overload
-    async def _get_last(self,
-            as_values: str | tuple[str, Any] | None = None
-    ) -> Any | None: ...
-    @overload
-    async def _get_last(
-            self,
-            expression: str | None,
-            params: dict | Sequence[tuple[str, Any]] | None = None,
-            as_values: list | None = None,
-    ) -> list[Any] | None: ...
-    @overload
-    async def _get_last(
-        self,
-        expression: str | None,
-        params: dict | Sequence[tuple[str, Any]] | None = None,
-        as_values: AsValuesSpec | None = None,
-    ) -> CO | None:
-        ...
     async def _get_last(
         self,
         expression: str | None,
@@ -585,7 +572,7 @@ class CumulocityResource(Generic[CO]):
         if not results:
             return None
         if as_values:
-            return as_tuple(results[0], as_values)
+            return _extract_as_values(results[0], as_values)
         return self._object_type.from_json(results[0], c8y=self.c8y)
 
     async def _get_count(self, expression: str | None, params: Sequence[tuple[str, str]] | None) -> int:
@@ -652,7 +639,10 @@ class CumulocityResource(Generic[CO]):
             for json in obj_jsons:
                 if limit and num_results >= limit:
                     return
-                yield as_tuple(json, as_values) if as_values else self._object_type.from_json(json, c8y=self.c8y)
+                if as_values:
+                    yield _extract_as_values(json, as_values)
+                else:
+                    yield self._object_type.from_json(json, c8y=self.c8y)
                 num_results += 1
             if page_number:
                 return
@@ -794,6 +784,7 @@ class CumulocityResource(Generic[CO]):
         paths = [c if isinstance(c, str) else c[1] for c in columns]
         col_data: dict[str, list] = {n: [] for n in names}
 
+        # we simply assume that the select function will be defined
         async for obj in self.select(*args, workers=workers, **kwargs):
             for name, path in zip(names, paths):
                 col_data[name].append(obj.get(path))
@@ -838,8 +829,8 @@ class CumulocityResource(Generic[CO]):
 def resolve_page_size(
     page_size: int | None,
     limit: int | None,
-    include: object = None,
-    exclude: object = None,
+    include: object | None = None,
+    exclude: object | None = None,
 ) -> int:
     """Resolve the effective page size for a paged query.
 

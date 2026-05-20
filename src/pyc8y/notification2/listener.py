@@ -64,8 +64,8 @@ class Listener(object):
             self,
             c8y: CumulocityClient,
             subscription_name: str,
-            subscriber_name: str = None,
-            consumer_name: str = None,
+            subscriber_name: str | None = None,
+            consumer_name: str | None = None,
             shared: bool = False,
             auto_ack: bool = True,
             auto_unsubscribe: bool = True,
@@ -242,7 +242,8 @@ class Listener(object):
 
     def stop(self):
         """Signal the listener to be stopped."""
-        self._task.cancel()  # raise CancelledError in listen task
+        if self._task is not None:
+            self._task.cancel()  # raise CancelledError in listen task
 
     async def wait(self, timeout=None):
         """Wait for the listener task to finish.
@@ -264,10 +265,11 @@ class Listener(object):
         See also https://cumulocity.com/api/core/#section/Overview/Consumers-and-tokens
         """
         try:
-            parsed_token = JWT(self._current_token)
-            if parsed_token.get_valid_seconds() < 60:
-                self._current_token = await self._create_token()
-            await self.c8y.tokens.unsubscribe(self._current_token)
+            token = self._current_token or await self._create_token()
+            if JWT(token).get_valid_seconds() < 60:
+                token = await self._create_token()
+            self._current_token = token
+            await self.c8y.tokens.unsubscribe(token)
             self._log.info("Subscriber %s unsubscribed.", self.subscriber_name)
         except ValueError:
             if not self.shared:
@@ -295,7 +297,7 @@ class Listener(object):
         await self._connection.send_str(payload)
         self._log.debug("Message sent: %s", payload)
 
-    async def ack(self, msg_id: str = None, payload: str = None):
+    async def ack(self, msg_id: str| None = None, payload: str = None):
         """Acknowledge a Notification 2.0 message.
 
         Either a valid Notification 2.0 message ID or payload needs to be
@@ -325,11 +327,11 @@ class QueueListener(object):
             self,
             c8y: CumulocityClient,
             subscription_name: str,
-            subscriber_name: str = None,
-            consumer_name: str = None,
+            subscriber_name: str | None = None,
+            consumer_name: str | None = None,
             shared: bool = False,
             auto_unsubscribe: bool = True,
-            queue: asyncio.Queue = None,
+            queue: asyncio.Queue | None = None,
     ):
         """Create a new QueueListener.
 

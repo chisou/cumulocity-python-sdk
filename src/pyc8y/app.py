@@ -21,12 +21,13 @@ from pyc8y.rest import Auth, UnauthorizedError, MissingTfaError, HttpError, Cumu
 
 log = logging.getLogger(__name__)
 
-_sentinel = object()
+_undefined = object()  # sentinel to distinguish None from undefined parameters
 
 _clients: dict[tuple, CumulocityClient] = {}
 
+
 # TODO: add possibility to enable logging, ready for jupyter (is there maybe a jupyter logger?)
-def get_client(
+async def get_client(
     base_url: str | None = None,
     tenant_id: str | None = None,
     username: str | None = None,
@@ -39,13 +40,8 @@ def get_client(
     when not explicitly provided, and falls back to interactive prompts for
     anything still missing.
 
-    Supports both direct await and async context manager usage:
-
     ```python
     c8y = await get_client()
-
-    async with get_client() as c8y:
-        ...
     ```
 
     Args:
@@ -61,95 +57,72 @@ def get_client(
     tenant_id = tenant_id or os.environ.get("C8Y_TENANT")
     username = username or os.environ.get("C8Y_USER")
     password = password or os.environ.get("C8Y_PASSWORD")
+    auth = None
 
-    async def _get_client() -> CumulocityClient:
-        nonlocal base_url, tenant_id, username, password
-        auth = None
+    def read_variable(env_name: str, prompt: str | None = None, secret: bool = False) -> str | None:
+        if env_name in os.environ:
+            return os.environ[env_name]
+        if not prompt:
+            return None
+        return getpass.getpass(prompt) if secret else input(prompt)
 
-        def read_variable(env_name: str, prompt: str = None, secret: bool = False) -> str | None:
-            if env_name in os.environ:
-                return os.environ[env_name]
-            if not prompt:
-                return None
-            return getpass.getpass(prompt) if secret else input(prompt)
+    # (1) resolve what we can from a token in the environment
+    token = os.environ.get("C8Y_TOKEN")
+    if token:
+        jwt = JWT(token)
+        base_url = base_url or jwt.get_claim("aud")
+        tenant_id = tenant_id or jwt.get_claim("ten")
+        username = username or jwt.get_claim("sub")
+        exp = int(jwt.get_claim("exp"))
+        if time.time() <= (exp - 60 * 60):
+            auth = BearerAuth(token)
+        else:
+            print("Access token found but invalidated as it was almost expired.")
 
-        # (1) resolve what we can from a token in the environment
-        token = os.environ.get("C8Y_TOKEN")
-        if token:
-            jwt = JWT(token)
-            base_url = base_url or jwt.get_claim("aud")
-            tenant_id = tenant_id or jwt.get_claim("ten")
-            username = username or jwt.get_claim("sub")
-            exp = int(jwt.get_claim("exp"))
-            if time.time() <= (exp - 60 * 60):
-                auth = BearerAuth(token)
-            else:
-                print("Access token found but invalidated as it was almost expired.")
+    # (2) resolve remaining parameters (interactively if needed)
+    base_url = base_url or read_variable("C8Y_BASEURL", "Please enter the Cumulocity base URL or hostname:")
+    tenant_id = tenant_id or read_variable("C8Y_TENANT", "Please enter the Cumulocity tenant ID:")
+    username = username or read_variable("C8Y_USER", "Please enter the Cumulocity username:")
+    if base_url and not urlparse(base_url).scheme:
+        base_url = f"https://{base_url}"
+    assert base_url and tenant_id and username
 
-        # (2) resolve remaining parameters (interactively if needed)
-        base_url = base_url or read_variable("C8Y_BASEURL", "Please enter the Cumulocity base URL or hostname:")
-        tenant_id = tenant_id or read_variable("C8Y_TENANT", "Please enter the Cumulocity tenant ID:")
-        username = username or read_variable("C8Y_USER", "Please enter the Cumulocity username:")
-        if base_url and not urlparse(base_url).scheme:
-            base_url = f"https://{base_url}"
-        assert base_url and tenant_id and username
+    # (3) return cached client if one exists for these parameters
+    client_key = (base_url, tenant_id, username)
+    if client_key in _clients:
+        return _clients[client_key]
 
-        # (3) return cached client if one exists for these parameters
-        client_key = (base_url, tenant_id, username)
-        if client_key in _clients:
-            return _clients[client_key]
+    # (4) authenticate if still needed
+    if not auth:
+        needs_tfa = False
+        while not auth:
+            pw = password or read_variable("C8Y_PASSWORD", "Please enter the Cumulocity password:", secret=True)
+            if not pw:
+                raise UnauthorizedError("No password provided. Authentication failed.")
+            tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
 
-        # (4) authenticate if still needed
-        if not auth:
-            needs_tfa = False
-            while not auth:
-                pw = password or read_variable("C8Y_PASSWORD", "Please enter the Cumulocity password:", secret=True)
-                if not pw:
-                    raise UnauthorizedError("No password provided. Authentication failed.")
-                tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
+            try:
+                auth, _ = await CumulocityRestClient.authenticate(
+                    base_url=base_url,
+                    tenant_id=tenant_id,
+                    username=username,
+                    password=pw,
+                    tfa_token=tfa_code,
+                )
+            except MissingTfaError:
+                needs_tfa = True
+            except HttpError:
+                print(f"Invalid username or password (URL: {base_url}, User: {username}).")
+                password = None
 
-                try:
-                    auth, _ = await CumulocityRestClient.authenticate(
-                        base_url=base_url,
-                        tenant_id=tenant_id,
-                        username=username,
-                        password=pw,
-                        tfa_token=tfa_code,
-                    )
-                except MissingTfaError:
-                    needs_tfa = True
-                except HttpError:
-                    print(f"Invalid username or password (URL: {base_url}, User: {username}).")
-                    password = None
-
-        # (5) init client and write to cache
-        client = CumulocityClient(
-            base_url=base_url,
-            tenant_id=tenant_id,
-            auth=auth,
-        )
-        _clients[client_key] = client
-        return client
-
-    class Connection:
-        def __init__(self, coro):
-            self._coro = coro
-            self._client: CumulocityClient | None = None
-
-        def __await__(self):
-            return self._coro.__await__()
-
-        async def __aenter__(self) -> CumulocityClient:
-            self._client = await self._coro
-            assert self._client
-            await self._client.__aenter__()
-            return self._client
-
-        async def __aexit__(self, *args):
-            if self._client:
-                await self._client.__aexit__(*args)
-
-    return Connection(_get_client())
+    # (5) init client and write to cache
+    client = CumulocityClient(
+        base_url=base_url,
+        tenant_id=tenant_id,
+        auth=auth,
+    )
+    _clients[client_key] = client
+    return client
 
 
 def c8y_keys() -> set[str]:
@@ -160,7 +133,7 @@ def c8y_keys() -> set[str]:
     return set(filter(lambda x: "C8Y_" in x, os.environ.keys()))
 
 
-def get_c8y_env(name: str, default: str | None = _sentinel) -> str | None:
+def get_c8y_env(name: str, default: str | None = _undefined) -> str | None:  # type: ignore[assignment]
     """Try to read a specific Cumulocity environment variable.
 
     Args:
@@ -176,7 +149,7 @@ def get_c8y_env(name: str, default: str | None = _sentinel) -> str | None:
     try:
         return os.environ[name]
     except KeyError as e:
-        if default is not _sentinel:
+        if default is not _undefined:
             return default
         keys = ", ".join(c8y_keys()) or "none"
         raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
@@ -197,7 +170,7 @@ class _CumulocityAppBase(ABC):
         """This must be defined by the implementing classes."""
 
     async def get_user_instance(
-        self, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None
+        self, headers: Mapping[str, str] | None = None, cookies: Mapping[str, str] | None = None
     ) -> CumulocityClient:
         """Return a user-specific CumulocityApi instance.
 
@@ -226,7 +199,7 @@ class _CumulocityAppBase(ABC):
             self.user_instances[auth_info] = instance
             return instance
 
-    async def clear_user_cache(self, username: str = None):
+    async def clear_user_cache(self, username: str | None = None):
         """Manually clean the user sessions cache.
 
         Args:
@@ -260,7 +233,7 @@ class _CumulocityAppBase(ABC):
         await self.close()
 
     @staticmethod
-    def _get_auth_header(headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None) -> str:
+    def _get_auth_header(headers: Mapping[str, str] | None = None, cookies: Mapping[str, str] | None = None) -> str:
         """Extract the authorization information from headers and cookies."""
         headers = headers or {}
         cookies = cookies or {}
@@ -285,7 +258,7 @@ class _CumulocityAppBase(ABC):
         raise KeyError(f"Unable to resolve Authorization information. Found keys: {keys}.")
 
     @staticmethod
-    def _get_env(name: str, default: str | None = _sentinel) -> str | None:
+    def _get_env(name: str, default: str | None = _undefined) -> str | None:  # type: ignore[assignment]
         """Try to read a specific Cumulocity environment variable.
 
         Args:
@@ -301,7 +274,7 @@ class _CumulocityAppBase(ABC):
         try:
             return os.environ[name]
         except KeyError as e:
-            if default is not _sentinel:
+            if default is not _undefined:
                 return default
             keys = ", ".join(c8y_keys()) or "none"
             raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
@@ -413,8 +386,8 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     def __init__(
         self,
-        application_key: str = None,
-        processing_mode: str = None,
+        application_key: str | None = None,
+        processing_mode: str | None = None,
         cache_size: int = 100,
         cache_ttl: int = 3600,
         connection_limit: int = 100,
@@ -463,16 +436,19 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         """Lazily create the shared TCPConnector. Must be called from an
         async context (aiohttp connectors bind to the running loop).
         """
-        if self._connector is None:
+        connector = self._connector
+        if connector is None:
             async with self._connector_lock:
-                if self._connector is None:
+                connector = self._connector
+                if connector is None:
                     ssl_context = ssl.create_default_context(cafile=certifi.where())
-                    self._connector = aiohttp.TCPConnector(
+                    connector = aiohttp.TCPConnector(
                         ssl=ssl_context,
                         limit=self._connection_limit,
                         limit_per_host=self._connection_limit_per_host,
                     )
-        return self._connector
+                    self._connector = connector
+        return connector
 
     async def _get_tenant_auth(self, tenant_id: str) -> Auth:
         """Cached access to auth information of subscribed tenants."""
@@ -517,7 +493,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 
     def create_listener(
             self,
-            callback: Callable[[set[str]], None] = None,
+            callback: Callable[[set[str]], None] | None = None,
             sequential: bool = False,
             polling_interval: float = 3600,
             startup_delay: float = 60,
@@ -549,8 +525,8 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
     @classmethod
     def _create_bootstrap_instance(
         cls,
-        application_key: str = None,
-        processing_mode: str = None,
+        application_key: str | None = None,
+        processing_mode: str | None = None,
         connector_factory=None,
     ) -> CumulocityClient:
         """Build the bootstrap instance from the environment."""
@@ -593,7 +569,10 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         )
 
     async def get_tenant_instance(
-        self, tenant_id: str = None, headers: Mapping[str, str] = None, cookies: Mapping[str, str] = None
+            self,
+            tenant_id: str | None = None,
+            headers: Mapping[str, str]  | None= None,
+            cookies: Mapping[str, str] | None = None,
     ) -> CumulocityClient:
         """Provide access to a tenant-specific instance in a multi-tenant
         application setup.
@@ -656,7 +635,7 @@ class SubscriptionListener:
     def __init__(
         self,
         app: MultiTenantCumulocityApp,
-        callback: Callable[[set[str]], None] = None,
+        callback: Callable[[set[str]], None] | None = None,
         sequential: bool = False,
         polling_interval: float = 3600,
         startup_delay: float = 60,
@@ -808,8 +787,9 @@ class SubscriptionListener:
         Returns:
             The created asyncio Task.
         """
-        self._listen_task = asyncio.create_task(self.listen(), name=self._instance_name)
-        return self._listen_task  # type: ignore (never None)
+        task = asyncio.create_task(self.listen(), name=self._instance_name)
+        self._listen_task = task
+        return task
 
     def stop(self):
         """Signal the listener to stop.

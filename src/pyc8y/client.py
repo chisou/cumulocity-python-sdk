@@ -32,8 +32,8 @@ class CumulocityClient(CumulocityRestClient):
         base_url: str,
         tenant_id: str,
         auth: Auth,
-        application_key: str = None,
-        processing_mode: str = None,
+        application_key: str | None = None,
+        processing_mode: str | None = None,
         connector_factory: Callable[[], Awaitable[aiohttp.BaseConnector]] | None = None,
     ):
         super().__init__(
