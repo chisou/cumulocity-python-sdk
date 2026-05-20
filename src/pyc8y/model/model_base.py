@@ -1,12 +1,12 @@
 import asyncio
 from collections import deque
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import (
     Any,
     Generic,
     TypeVar,
     Self,
-    Mapping,
     Callable,
     AsyncIterator,
     Awaitable,
@@ -48,8 +48,8 @@ T = TypeVar("T")
 
 
 def _extract_as_values(json: dict, as_values: AsValuesSpec) -> Any:
-    """Apply the collection-level `as_values` semantics: scalar in → scalar
-    out, sequence in → tuple out."""
+    """Apply the collection-level `as_values` semantics: scalar in - scalar
+    out, sequence in - tuple out."""
     if isinstance(as_values, list):
         return as_tuple(json, as_values)
     if isinstance(as_values, tuple):
@@ -253,7 +253,7 @@ class JsonObject(dict):
         return self
 
  
-class CumulocityObject:
+class CumulocityObject(Mapping):
     """Base class for all Cumulocity database objects."""
 
     _meta: ResourceMeta
@@ -262,6 +262,12 @@ class CumulocityObject:
         self.c8y = c8y
         self._source_json: dict = {}
         self._staged_json: dict = expand_dotted(kwargs)
+
+    def __iter__(self):
+        return iter(self.json)
+
+    def __len__(self) -> int:
+        return len(self.json)
 
     @property
     def json(self) -> dict:
@@ -337,38 +343,6 @@ class CumulocityObject:
 
     def get(self, path, default: Any = None) -> Any:
         return get_by(self.json, path, default=default)
-
-    # def __getattr__(self, name: str):
-    #     """ Get the value of a custom fragment.
-    #
-    #     Depending on the definition the value can be a scalar or a
-    #     complex structure (modeled as nested dictionary).
-    #
-    #     Args:
-    #         name (str): Name of the custom fragment.
-    #     """
-    #     # check in update JSON
-    #     pascal_name = to_pascal_case(name)
-    #     if name in self._update_json or pascal_name in self._update_json:
-    #         value = self._update_json.get(name, self._update_json[pascal_name])
-    #         if isinstance(value, Mapping):
-    #             return AttrDict(value, None)
-    #
-    #     if self._staged_json:
-    #         if name in self._staged_json or pascal_name in self._staged_json:
-    #             return self._staged_json.get(name, self._staged_json[pascal_name])  # already AttrDict
-    #
-    #     if name in self._source_json or pascal_name in self._source_json:
-    #         value = self._source_json.get(name, self._source_json[pascal_name])
-    #     else:
-    #         raise AttributeError(f"No such attribute: {name} (or {pascal_name})")
-    #     if isinstance(value, Mapping):
-    #         def unstage():
-    #             self._update_json[name] = self._staged_json[name]._d   # pylint: disable=protected-access
-    #         value = AttrDict(deepcopy(value), unstage)
-    #         self._staged_json[name] = value
-    #
-    #     return value
 
     def _set(self, path: str, value: Any, fail: bool):
         # TODO: print the "current" path in error messages for easier debugging
