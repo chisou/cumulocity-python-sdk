@@ -95,8 +95,8 @@ class CumulocityRestClient(object):
         base_url: str,
         tenant_id: str,
         auth: Auth,
-        application_key: str = None,
-        processing_mode: str = None,
+        application_key: str | None = None,
+        processing_mode: str | None = None,
         connector_factory: "Callable[[], Awaitable[aiohttp.BaseConnector]] | None" = None,
     ):
         self.base_url = base_url.rstrip("/") + "/"
@@ -154,7 +154,7 @@ class CumulocityRestClient(object):
         tenant_id: str,
         username: str,
         password: str,
-        tfa_token: str = None,
+        tfa_token: str | None = None,
     ) -> tuple[Auth, str | None]:
         """Authenticate a user using OAI Secure login method.
 
@@ -206,11 +206,11 @@ class CumulocityRestClient(object):
                         # login failed, checking known reasons
                         response_json = orjson.loads(await response.text() or "") or {}
                         if response.status == 401:
-                            message = response_json.get("message", None)
+                            message:str|None = response_json.get("message", None)
                             # 1st request might fail due to missing TFA code
                             if message and any(x in message for x in ["TOTP", "TFA"]):
                                 raise MissingTfaError(HttpMethod.POST, str(response.url), message)
-                            raise UnauthorizedError(HttpMethod.POST, str(response.url), message)
+                            raise UnauthorizedError(HttpMethod.POST, str(response.url), str(message))
                         # this should never happen
                         message = response_json.get("message", "Invalid request!")
                         raise HttpError(HttpMethod.POST, str(response.url), response.status, message)
@@ -280,7 +280,7 @@ class CumulocityRestClient(object):
             method=method,
             url=resource,
             params=params,
-            data=orjson.dumps(json) if json is not None else None,
+                data=orjson.dumps(json) if json is not None else None,
             headers=additional_headers,
         ) as r:
             if logger.isEnabledFor(logging.ERROR):
@@ -314,7 +314,7 @@ class CumulocityRestClient(object):
         self,
         resource: str,
         *,
-        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] | None = None,
         accept: str | None = "application/json",
     ) -> dict:
         return await self.request("GET", resource, params or (), None, accept=accept)
@@ -323,8 +323,8 @@ class CumulocityRestClient(object):
         self,
         resource: str,
         *,
-        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
-        json: dict = None,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] | None = None,
+        json: dict | None = None,
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
@@ -334,8 +334,8 @@ class CumulocityRestClient(object):
         self,
         resource: str,
         *,
-        params: Mapping[str, Any] | Sequence[tuple[str, Any]] = None,
-        json: dict = None,
+        params: Mapping[str, Any] | Sequence[tuple[str, Any]] | None = None,
+        json: dict | None = None,
         accept: str | None = "application/json",
         content_type: str | None = None,
     ) -> dict:
