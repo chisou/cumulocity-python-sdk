@@ -1,3 +1,4 @@
+# ruff: noqa: F401  -- imports themselves are the test
 """Smoke test run against the built wheel/sdist in CI.
 
 Verifies that the installed package is importable and exposes its
@@ -24,4 +25,7 @@ from pyc8y.model import (
 )
 from pyc8y.notification2 import Listener, QueueListener
 
-print(f"pyc8y {pyc8y.__name__} smoke test OK")
+assert pyc8y.__version__ and pyc8y.__version__ != "0.0.0+unknown", (
+    f"unexpected version: {pyc8y.__version__!r}"
+)
+print(f"pyc8y {pyc8y.__version__} smoke test OK")
