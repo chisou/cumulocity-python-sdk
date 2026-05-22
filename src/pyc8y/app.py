@@ -3,6 +3,7 @@
 import asyncio
 import getpass
 import ssl
+import sys
 import time
 from abc import abstractmethod, ABC
 import logging
@@ -27,13 +28,44 @@ _undefined = object()  # sentinel to distinguish None from undefined parameters
 _clients: dict[tuple, CumulocityClient] = {}
 
 
-# TODO: add possibility to enable logging, ready for jupyter (is there maybe a jupyter logger?)
+class _FancyFormatter(logging.Formatter):
+    CONFIG = {
+        logging.INFO: ("", "⏺"),
+        logging.WARNING: ("\033[33m", "▲"),
+        logging.ERROR: ("\033[31m", "✖"),
+        logging.CRITICAL: ("\033[41m", "⚡"),
+    }
+    DEFAULT =  ("\033[37m", "•")
+    RESET = '\033[0m'
+    def format(self, record):
+        config = self.CONFIG.get(record.levelno, self.DEFAULT)
+        log_fmt = f"{config[0]}{config[1]}  %(name)-20s  %(message)s{self.RESET}"
+        return logging.Formatter(log_fmt).format(record)
+
+
+def _configure_logging(level: int | str) -> None:
+    numeric = level if isinstance(level, int) else getattr(logging, level.upper())
+    if numeric < logging.WARNING:
+        logging.getLogger("pyc8y").setLevel(level)
+    else:
+        logging.getLogger().setLevel(level)
+    root = logging.getLogger()
+    for h in list(root.handlers):
+        if getattr(h, "_pyc8y_handler", False):
+            root.removeHandler(h)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(_FancyFormatter())
+    handler._pyc8y_handler = True
+    root.addHandler(handler)
+
+
 async def get_client(
     base_url: str | None = None,
     tenant_id: str | None = None,
     username: str | None = None,
     password: str | None = None,
     max_concurrent: int | None = None,
+    log_level: int | str | None = None,
 ) -> CumulocityClient:
     """Get a ready to use CumulocityClient instance for use in interactive
     sessions.
@@ -52,10 +84,19 @@ async def get_client(
         username (str):  Username; reads C8Y_USER if omitted.
         password (str):  Password; reads C8Y_PASSWORD if omitted.
         max_concurrent (int):  Maximum number of concurrent tasks.
+        log_level (int|str):  If set, installs a colorized stdout handler
+            on the root logger. Looser-than-default levels (DEBUG, INFO)
+            are applied to the `pyc8y` logger only, so third-party libs
+            stay quiet; stricter-than-default levels (ERROR, CRITICAL) are
+            applied to the root logger to dampen everything. Enable other
+            namespaces on demand with e.g.
+            `logging.getLogger("aiohttp").setLevel(logging.DEBUG)`.
 
     ¹ See also the go-c8y-cli (https://goc8ycli.netlify.app/docs/concepts/sessions/#continuous-integration-usage-environment-variables)
     and Cumulocity microservice bootstrap (https://cumulocity.com/docs/microservice-sdk/general-aspects/#microservice-bootstrap)
     """
+    if log_level is not None:
+        _configure_logging(log_level)
     semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent else None
     base_url = base_url or os.environ.get("C8Y_BASEURL")
     tenant_id = tenant_id or os.environ.get("C8Y_TENANT")
