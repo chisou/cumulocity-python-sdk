@@ -35,10 +35,10 @@ filters = ["python-dict-display-filter", "jmespath", "jsonpath-ng"]
 pandas = ["pandas"]
 
 [project.urls]
-Homepage = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
-Source = "https://github.com/Cumulocity-IoT/cumulocity-python-api"
-Issues = "https://github.com/Cumulocity-IoT/cumulocity-python-api/issues"
-Documentation = "https://cumulocity-python-api.readthedocs.io/en/latest/"
+Homepage = "https://github.com/chisou/cumulocity-python-sdk"
+Source = "https://github.com/chisou/cumulocity-python-sdk"
+Issues = "https://github.com/chisou/cumulocity-python-sdk/issues"
+Documentation = "https://cumulocity-python-sdk.readthedocs.io/en/latest/"
 
 [dependency-groups]
 dev = [
