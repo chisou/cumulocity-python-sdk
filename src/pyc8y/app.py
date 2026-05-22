@@ -8,7 +8,6 @@ from abc import abstractmethod, ABC
 import logging
 import os
 from asyncio import Semaphore
-from contextlib import nullcontext
 from typing import Callable, Mapping, Self
 from urllib.parse import urlparse
 

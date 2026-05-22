@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
+
 from asyncio import Semaphore
-from contextlib import nullcontext
 from typing import Awaitable, Callable
 
 import aiohttp

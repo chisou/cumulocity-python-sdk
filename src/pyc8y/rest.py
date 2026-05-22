@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
-import asyncio
+
 import logging
 import os
 import ssl
