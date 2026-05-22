@@ -7,6 +7,8 @@ import time
 from abc import abstractmethod, ABC
 import logging
 import os
+from asyncio import Semaphore
+from contextlib import nullcontext
 from typing import Callable, Mapping, Self
 from urllib.parse import urlparse
 
@@ -32,6 +34,7 @@ async def get_client(
     tenant_id: str | None = None,
     username: str | None = None,
     password: str | None = None,
+    max_concurrent: int | None = None,
 ) -> CumulocityClient:
     """Get a ready to use CumulocityClient instance for use in interactive
     sessions.
@@ -49,10 +52,12 @@ async def get_client(
         tenant_id (str):  Tenant ID; reads C8Y_TENANT if omitted.
         username (str):  Username; reads C8Y_USER if omitted.
         password (str):  Password; reads C8Y_PASSWORD if omitted.
+        max_concurrent (int):  Maximum number of concurrent tasks.
 
     ¹ See also the go-c8y-cli (https://goc8ycli.netlify.app/docs/concepts/sessions/#continuous-integration-usage-environment-variables)
     and Cumulocity microservice bootstrap (https://cumulocity.com/docs/microservice-sdk/general-aspects/#microservice-bootstrap)
     """
+    semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent else None
     base_url = base_url or os.environ.get("C8Y_BASEURL")
     tenant_id = tenant_id or os.environ.get("C8Y_TENANT")
     username = username or os.environ.get("C8Y_USER")
@@ -120,6 +125,7 @@ async def get_client(
         base_url=base_url,
         tenant_id=tenant_id,
         auth=auth,
+        semaphore=semaphore,
     )
     _clients[client_key] = client
     return client
@@ -305,6 +311,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
             processing_mode: str | None = None,
             cache_size: int = 100,
             cache_ttl: int = 3600,
+            max_concurrent: int | None = None,
     ):
         """Create a new tenant specific instance.
 
@@ -318,10 +325,13 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
                 instances (if user instances are created at all).
             cache_ttl (int): An maximum cache time for user
                 instances (if user instances are created at all).
+            max_concurrent (int): The maximum number of concurrent
+                tasks handed down to the underlying tenant.
 
         Returns:
             A new CumulocityApp instance
         """
+        self._semaphore = Semaphore(max_concurrent) if max_concurrent else None
         baseurl = self._get_env("C8Y_BASEURL")
         tenant_id = self._get_env("C8Y_TENANT")
         # authentication is either token or username/password
@@ -345,6 +355,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
             auth=auth,
             application_key=application_key,
             processing_mode=processing_mode,
+            semaphore=self._semaphore,
         )
 
     def _build_user_instance(self, auth) -> CumulocityClient:
@@ -356,6 +367,7 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
             auth=auth,
             application_key=self.application_key,
             processing_mode=self.processing_mode,
+            semaphore=self._semaphore,
         )
 
     async def close(self):
@@ -392,6 +404,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         cache_ttl: int = 3600,
         connection_limit: int = 100,
         connection_limit_per_host: int = 0,
+        max_concurrent: int | None = None,
     ):
         """Create a new instance.
 
@@ -411,6 +424,8 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             connection_limit_per_host (int): Maximum simultaneous
                 connections to a single host; `0` means unlimited
                 (bounded only by `connection_limit`).
+            max_concurrent (int): The maximum number of concurrent
+                tasks across all subscribed tenants.
 
         Returns:
             A new MultiTenantCumulocityApp instance
@@ -424,10 +439,12 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         self._connection_limit_per_host = connection_limit_per_host
         self._connector: aiohttp.BaseConnector | None = None
         self._connector_lock = asyncio.Lock()
+        self._semaphore = Semaphore(max_concurrent) if max_concurrent else None
         self.bootstrap_instance = self._create_bootstrap_instance(
             application_key=self.application_key,
             processing_mode=self.processing_mode,
             connector_factory=self._get_connector,
+            semaphore=self._semaphore,
         )
         self._subscribed_auths = TTLCache(maxsize=cache_size, ttl=cache_ttl)
         self._tenant_instances = TTLCache(maxsize=cache_size, ttl=cache_ttl)
@@ -528,6 +545,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         application_key: str | None = None,
         processing_mode: str | None = None,
         connector_factory=None,
+        semaphore: Semaphore | None = None,
     ) -> CumulocityClient:
         """Build the bootstrap instance from the environment."""
         base_url = cls._get_env("C8Y_BASEURL")
@@ -542,6 +560,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             application_key=application_key,
             processing_mode=processing_mode,
             connector_factory=connector_factory,
+            semaphore=semaphore,
         )
 
     async def _create_tenant_instance(self, tenant_id: str) -> CumulocityClient:
@@ -554,6 +573,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             application_key=self.application_key,
             processing_mode=self.processing_mode,
             connector_factory=self._get_connector,
+            semaphore=self._semaphore,
         )
 
     def _build_user_instance(self, auth) -> CumulocityClient:
@@ -566,6 +586,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             application_key=self.application_key,
             processing_mode=self.processing_mode,
             connector_factory=self._get_connector,
+            semaphore=self._semaphore,
         )
 
     async def get_tenant_instance(

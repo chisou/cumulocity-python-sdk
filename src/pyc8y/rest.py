@@ -1,9 +1,11 @@
 # Copyright (c) 2026 Christoph Souris
-
+import asyncio
 import logging
 import os
 import ssl
+from asyncio import Semaphore
 from collections import Counter
+from contextlib import nullcontext
 from enum import StrEnum
 from pathlib import Path
 from typing import Awaitable, BinaryIO, Callable, Self, Sequence, Any, Mapping
@@ -98,6 +100,7 @@ class CumulocityRestClient(object):
         application_key: str | None = None,
         processing_mode: str | None = None,
         connector_factory: "Callable[[], Awaitable[aiohttp.BaseConnector]] | None" = None,
+        semaphore: Semaphore | None = None,
     ):
         self.base_url = base_url.rstrip("/") + "/"
         self.tenant_id = tenant_id
@@ -106,6 +109,7 @@ class CumulocityRestClient(object):
         self.processing_mode = processing_mode
         self._connector_factory = connector_factory
         self._session = None
+        self._semaphore = semaphore if semaphore is not None else nullcontext()
 
     async def __aenter__(self) -> Self:
         _ = await self.session  # ensure session is created
@@ -276,39 +280,40 @@ class CumulocityRestClient(object):
             additional_headers["Accept"] = accept
         if content_type is not None:
             additional_headers["Content-Type"] = content_type
-        async with session.request(
-            method=method,
-            url=resource,
-            params=params,
+        async with self._semaphore:
+            async with session.request(
+                method=method,
+                url=resource,
+                params=params,
                 data=orjson.dumps(json) if json is not None else None,
-            headers=additional_headers,
-        ) as r:
-            if logger.isEnabledFor(logging.ERROR):
-                if params:
-                    param_tuples = params.items() if isinstance(params, dict) else params
-                logger.debug(
-                    "%s %s %s %s %s",
-                    method,
-                    r.status,
-                    resource,
-                    "-" if not params else ", ".join(f"{k}={v}" for k, v in param_tuples),
-                    "-" if not json else orjson.dumps(json),
-                )
-            if r.status == 401:
-                raise UnauthorizedError(method, resource, message=(await r.json())["message"])
-            if r.status == 403:
-                raise AccessDeniedError(method, resource, message=(await r.json())["message"])
-            if r.status == 404:
-                raise KeyError(f"No such object: {resource}")
-            if 500 <= r.status <= 599:
-                raise ValueError(f"Invalid {method} request. Status: {r.status}, Response:\n {await r.text()}")
-            if r.status not in (200, 201, 202, 204):
-                raise ValueError(
-                    f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}"
-                )
-            if r.status in (200, 201) and r.content_length != 0:
-                return orjson.loads(await r.read())
-            return {}
+                headers=additional_headers,
+            ) as r:
+                if logger.isEnabledFor(logging.ERROR):
+                    if params:
+                        param_tuples = params.items() if isinstance(params, dict) else params
+                    logger.debug(
+                        "%s %s %s %s %s",
+                        method,
+                        r.status,
+                        resource,
+                        "-" if not params else ", ".join(f"{k}={v}" for k, v in param_tuples),
+                        "-" if not json else orjson.dumps(json),
+                    )
+                if r.status == 401:
+                    raise UnauthorizedError(method, resource, message=(await r.json())["message"])
+                if r.status == 403:
+                    raise AccessDeniedError(method, resource, message=(await r.json())["message"])
+                if r.status == 404:
+                    raise KeyError(f"No such object: {resource}")
+                if 500 <= r.status <= 599:
+                    raise ValueError(f"Invalid {method} request. Status: {r.status}, Response:\n {await r.text()}")
+                if r.status not in (200, 201, 202, 204):
+                    raise ValueError(
+                        f"Unable to perform {method} request. Status: {r.status}, Response:\n {await r.text()}"
+                    )
+                if r.status in (200, 201) and r.content_length != 0:
+                    return orjson.loads(await r.read())
+                return {}
 
     async def get(
         self,

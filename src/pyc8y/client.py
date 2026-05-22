@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
-
+from asyncio import Semaphore
+from contextlib import nullcontext
 from typing import Awaitable, Callable
 
 import aiohttp
@@ -35,10 +36,16 @@ class CumulocityClient(CumulocityRestClient):
         application_key: str | None = None,
         processing_mode: str | None = None,
         connector_factory: Callable[[], Awaitable[aiohttp.BaseConnector]] | None = None,
+        semaphore: Semaphore | None = None,
     ):
         super().__init__(
-            base_url, tenant_id, auth, application_key, processing_mode,
+            base_url=base_url,
+            tenant_id=tenant_id,
+            auth=auth,
+            application_key=application_key,
+            processing_mode=processing_mode,
             connector_factory=connector_factory,
+            semaphore=semaphore,
         )
         self.alarms = Alarms(self)
         self.applications = Applications(self)
