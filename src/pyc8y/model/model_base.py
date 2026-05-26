@@ -764,13 +764,15 @@ class CumulocityResource(Generic[CO]):
             import pandas as pd
         except ImportError as e:
             raise ImportError("pandas is required. Install with: pip install pyc8y[pandas]") from e
+        if not hasattr(self, "select"):
+            raise NotImplementedError(f"{type(self).__name__} does not implement select(...)")
 
         names = [c if isinstance(c, str) else c[0] for c in columns]
         paths = [c if isinstance(c, str) else c[1] for c in columns]
         col_data: dict[str, list] = {n: [] for n in names}
 
-        # we simply assume that the select function will be defined
-        async for obj in self.select(*args, workers=workers, **kwargs):
+        select = getattr(self, "select")
+        async for obj in select(*args, workers=workers, **kwargs):
             for name, path in zip(names, paths):
                 col_data[name].append(obj.get(path))
         return pd.DataFrame(col_data)
