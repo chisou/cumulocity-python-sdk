@@ -31,9 +31,9 @@ _clients: dict[tuple, CumulocityClient] = {}
 class _FancyFormatter(logging.Formatter):
     CONFIG = {
         logging.INFO: ("", "⏺"),
-        logging.WARNING: ("\033[33m", "▲"),
-        logging.ERROR: ("\033[31m", "✖"),
-        logging.CRITICAL: ("\033[41m", "⚡"),
+        logging.WARNING: ("\033[33m", "⚠️"),
+        logging.ERROR: ("\033[31m", "❌"),
+        logging.CRITICAL: ("\033[41m", "🚨"),
     }
     DEFAULT =  ("\033[37m", "•")
     RESET = '\033[0m'
