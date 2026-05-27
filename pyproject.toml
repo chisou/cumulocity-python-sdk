@@ -2,15 +2,15 @@
 requires = [
     "hatchling",
     "hatch-vcs",
+    "hatch-fancy-pypi-readme",
 ]
 build-backend = "hatchling.build"
 
 [project]
 name = "pyc8y"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 authors = [{name="Christoph Souris", email="christoph.souris@anyhere.de"}]
 description = "Python microservice and application SDK for the Cumulocity REST API using asyncio."
-readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"
 classifiers = [
@@ -69,3 +69,13 @@ packages = ["src/pyc8y"]
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '>\s*\[!IMPORTANT\]'
+replacement = '> 🚨 **Important**'
