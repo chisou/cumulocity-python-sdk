@@ -337,7 +337,6 @@ class CumulocityObject(Mapping):
         return get_by(self.json, path, default=default)
 
     def _set(self, path: str, value: Any, fail: bool):
-        # TODO: print the "current" path in error messages for easier debugging
         keys = path.split(".")
 
         if len(keys) == 1:  # no path to drill down to -> direct assignment
@@ -350,19 +349,32 @@ class CumulocityObject(Mapping):
         else:
             staged = self._staged_json[keys[0]]
         current = staged
+        current_key = keys[0]
 
-        for i, key in enumerate(keys[1:-1]):
+        for key in keys[1:-1]:
             if not isinstance(current, Mapping):
-                raise ValueError(f"Can't traverse into path: {path}")
+                if fail:
+                    raise KeyError(f"Unable to access '{path}': '{current_key}' is not a dict")
+                raise ValueError(f"Cannot set '{path}': '{current_key}' is not a dict")
             if key in current:
                 current = current[key]
+                current_key = key
                 continue
             if fail:
                 if to_pascal_case(key) in current:
-                    raise KeyError(f"Unable to find '{path}' in object JSON. Did you mean '{to_pascal_case(key)}'?")
-                raise KeyError(f"Unable to find '{path}' in object JSON.")
+                    raise KeyError(
+                        f"Unable to access '{path}': '{key}' is missing — "
+                        f"did you mean '{to_pascal_case(key)}'?"
+                    )
+                raise KeyError(f"Unable to access '{path}': '{key}' is missing")
             current[key] = {}
             current = current[key]
+            current_key = key
+
+        if not isinstance(current, Mapping):
+            if fail:
+                raise KeyError(f"Unable to access '{path}': '{current_key}' is not a dict")
+            raise ValueError(f"Cannot set '{path}': '{current_key}' is not a dict")
 
         current[keys[-1]] = value
         self._staged_json[keys[0]] = staged

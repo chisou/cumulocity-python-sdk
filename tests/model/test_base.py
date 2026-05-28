@@ -78,6 +78,56 @@ def test_set(mode, path, value):
         assert len(diff) == 1
 
 
+def test_setitem_raises_keyerror_when_intermediate_not_a_dict():
+    """obj[path] = v must raise KeyError when an intermediate exists but is
+    not a dict. The message must name the full path and the offending segment."""
+    obj = CumulocityObjectWithId.from_json({"a": {"b": "string"}})
+
+    # immediate parent of the leaf is non-dict
+    with pytest.raises(KeyError) as exc:
+        obj["a.b.c"] = 10
+    assert "'a.b.c'" in str(exc.value)
+    assert "'b' is not a dict" in str(exc.value)
+
+    # non-dict intermediate further up
+    with pytest.raises(KeyError) as exc:
+        obj["a.b.c.d"] = 10
+    assert "'a.b.c.d'" in str(exc.value)
+    assert "'b' is not a dict" in str(exc.value)
+
+
+def test_setitem_raises_keyerror_when_intermediate_missing():
+    """obj[path] = v must raise KeyError when an intermediate dict is missing."""
+    obj = CumulocityObjectWithId.from_json({"a": {"x": 1}})
+    with pytest.raises(KeyError) as exc:
+        obj["a.b.c"] = 10
+    assert "'a.b.c'" in str(exc.value)
+    assert "'b' is missing" in str(exc.value)
+
+
+def test_set_raises_valueerror_when_intermediate_not_a_dict():
+    """obj.set(path, v) must raise ValueError when an intermediate exists but
+    is not a dict — it refuses to clobber a non-dict with {}."""
+    obj = CumulocityObjectWithId.from_json({"a": {"b": "string"}})
+
+    with pytest.raises(ValueError) as exc:
+        obj.set("a.b.c", 10)
+    assert "'a.b.c'" in str(exc.value)
+    assert "'b' is not a dict" in str(exc.value)
+
+    with pytest.raises(ValueError) as exc:
+        obj.set("a.b.c.d", 10)
+    assert "'a.b.c.d'" in str(exc.value)
+    assert "'b' is not a dict" in str(exc.value)
+
+
+def test_set_creates_missing_intermediates():
+    """obj.set(path, v) must create missing intermediate dicts on the way down."""
+    obj = CumulocityObjectWithId.from_json({"a": {"x": 1}})
+    obj.set("a.b.c", 10)
+    assert obj._staged_json == {"a": {"x": 1, "b": {"c": 10}}}
+
+
 @pytest.mark.parametrize("json, path, default, expected", [
     ({}, "some", None, None),
     ({'a': 1}, 'a', 'x', 1),
