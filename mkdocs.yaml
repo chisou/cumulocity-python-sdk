@@ -17,7 +17,8 @@ plugins:
         python:
           options:
             filters:
-              - "!^_"          # keep public
+              - "!^_"          # hide underscore-prefixed by default
+              - "^__init__$"   # but keep constructors (last match wins)
             show_if_no_docstring: true
             show_source: false
             show_bases: false
@@ -29,6 +30,11 @@ plugins:
 markdown_extensions:
   - toc:
       toc_depth: 2
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences
 
 nav:
   - Home: index.md
