@@ -1,4 +1,3 @@
-# Copyright (c) 2025 Cumulocity GmbH
 # Copyright (c) 2026 Christoph Souris
 
 # pylint: disable=protected-access
@@ -12,8 +11,12 @@ from unittest.mock import AsyncMock, MagicMock
 from deepdiff import DeepDiff
 import pytest
 
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, resolve_page_size
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, WithId, resolve_page_size
 from pyc8y.model.model_util import as_record, as_tuple, get_by
+
+
+class CumulocityObjectWithId(WithId, CumulocityObject):
+    """Concrete CumulocityObject subclass for tests that need instantiation."""
 
 
 @pytest.mark.parametrize("value", ["new_value", "", True, False, 0, -1, 12, [1, 2, 3], [], {"a": 1}, {"a": {"b": 1}}, {}, None])
@@ -43,7 +46,7 @@ def test_set(mode, path, value):
         "fragmentA": {"key": "value"},
         "fragmentB": {"key1": "value1", "key2": "value2"},
     }
-    obj = CumulocityObject.from_json(deepcopy(source_json))
+    obj = CumulocityObjectWithId.from_json(deepcopy(source_json))
 
     if mode == "function":
         obj.set(path, value)
@@ -241,7 +244,7 @@ def test_object_parsing():
     }
 
     # parsing the object JSON into a new object instance
-    parsed_obj = CumulocityObject.from_json(obj_json)
+    parsed_obj = CumulocityObjectWithId.from_json(obj_json)
 
     # -> all standard properties are set
     assert parsed_obj.id == obj_json['id']
@@ -260,7 +263,7 @@ def test_object_instantiation_and_formatting():
 
     # 1) when using the constructor and standard functions, the
     # write access is not recorded (it is in pyc8y's model — kwargs are staged)
-    obj = CumulocityObject(
+    obj = CumulocityObjectWithId(
         field='field value',
         fixed_field=123,
         simple=True,
@@ -299,7 +302,7 @@ async def test_iteration():
 
     # create class under test
     res = CumulocityResource(MagicMock())
-    res._object_type = CumulocityObject
+    res._object_type = CumulocityObjectWithId
     res._fetch_page = AsyncMock(side_effect=fetch_page)
 
     # iterate over results
@@ -325,7 +328,7 @@ def _make_paged_resource(all_items, page_size):
     for `page >= 1`, mimicking the C8y pagination contract (empty list past end).
     """
     res = CumulocityResource(MagicMock())
-    res._object_type = CumulocityObject
+    res._object_type = CumulocityObjectWithId
 
     async def fetch_page(page, **_):
         return all_items[page_size * (page - 1): page_size * page]
@@ -407,7 +410,7 @@ async def test_stream_pages_unordered_no_data_loss_when_empties_race_ahead():
         return items
 
     res = CumulocityResource(MagicMock())
-    res._object_type = CumulocityObject
+    res._object_type = CumulocityObjectWithId
 
     yielded: list[dict] = []
     async for page in res._stream_pages_unordered(
@@ -434,7 +437,7 @@ async def test_stream_pages_ordered_preserves_launch_order():
         return items
 
     res = CumulocityResource(MagicMock())
-    res._object_type = CumulocityObject
+    res._object_type = CumulocityObjectWithId
 
     yielded_ids: list[int] = []
     async for page in res._stream_pages(

@@ -32,7 +32,7 @@ def test_parsing():
     user = User.from_json(user_json)
 
     # 2) verify that all parsed fields match the file counterpart
-    assert user.id == user_json['id']
+    assert not hasattr(user, 'id')
     assert user.username == user_json['userName']
     assert user.email == user_json['email']
     assert user.enabled == user_json['enabled']
@@ -56,7 +56,7 @@ def test_current_parsing():
 
     # 2) verify that all parsed fields match the file counterpart
     #    including fields from abstract base class
-    assert user.id == user_json['id']
+    assert not hasattr(user, 'id')
     assert user.username == user_json['userName']
     assert user.email == user_json['email']
 

@@ -10,6 +10,7 @@ from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
     JsonObject,
+    WithId,
     json_property,
     datetime_property,
     id_property,
@@ -82,7 +83,7 @@ class AuditType(StrEnum):
     USER_AUTHENTICATION = "UserAuthentication"
 
 
-class AuditRecord(CumulocityObject):
+class AuditRecord(WithId, CumulocityObject):
     """Represents an Audit Record object within Cumulocity.
 
     Instances of this class are returned by functions of the corresponding

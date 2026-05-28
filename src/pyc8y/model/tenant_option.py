@@ -76,6 +76,10 @@ class TenantOption(CumulocityObject):
         """
         return await self._create()
 
+    def _assert_key(self):
+        if not self.category or not self.key:
+            raise ValueError("Both option category and key must be set to allow direct object access.")
+
     async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
 
@@ -88,8 +92,7 @@ class TenantOption(CumulocityObject):
             a fresh instance.
         """
         self._assert_c8y()
-        if not self.category or not self.key:
-            raise ValueError("Both option category and key must be set to allow direct object access.")
+        self._assert_key()
         result_json = await self.c8y.put(
             resource=build_value_resource(self.category, self._key),
             json={"value": self.value},
@@ -113,8 +116,7 @@ class TenantOption(CumulocityObject):
     async def delete(self) -> None:
         """Remove the option from the database."""
         self._assert_c8y()
-        if not self.category or not self.key:
-            raise ValueError("Both option category and key must be set to allow direct object access.")
+        self._assert_key()
         await self.c8y.delete(build_value_resource(self.category, self._key))
 
 

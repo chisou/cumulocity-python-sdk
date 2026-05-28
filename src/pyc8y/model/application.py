@@ -6,12 +6,12 @@ import aiohttp
 
 from pyc8y.base_util import first
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, JsonObject, json_property, map_params, resolve_page_size
+from pyc8y.model.model_base import CumulocityObject, CumulocityResource, JsonObject, WithId, json_property, map_params, resolve_page_size
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.types import ApplicationMeta, FileSpec, MimeType
 
 
-class Application(CumulocityObject):
+class Application(WithId, CumulocityObject):
     """Represent an instance of an application object in Cumulocity.
 
     Instances of this class are returned by functions of the corresponding

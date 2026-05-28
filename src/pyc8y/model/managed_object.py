@@ -8,6 +8,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     JsonObject,
+    WithId,
     json_property,
     time_property,
     datetime_property,
@@ -67,42 +68,11 @@ class Availability(JsonObject):
         return int(self.interval.split(" ", 1)[0])
 
 
-class ManagedObject(CumulocityObject):
+class ManagedObject(WithId, CumulocityObject):
     """Represent a managed object within the database.
 
     Instances of this class are returned by functions of the corresponding
     Inventory API. Use this class to create new or update managed objects.
-
-    Within Cumulocity a managed object is used to hold virtually any
-    *additional* (apart from measurements, events and alarms) information.
-    This custom information is modelled in *fragments*, named elements
-    of any structure.
-
-    Fragments are modelled as standard Python fields and can be accessed
-    directly if the names & structures are known:
-
-        x = mo.c8y_CustomFragment.values.x
-
-    Managed objects can be changed and such updates are written as
-    *differences* to the database. The API does the tracking of these
-    differences automatically - just use the ManagedObject class like
-    any other Python class.
-
-        mo.owner = 'admin@cumulocity.com'
-        mo.c8y_CustomFragment.region = 'EMEA'
-        mo.add_fragment('c8y_CustomValue', value=12, uom='units')
-
-    Note: This does not work if a fragment is actually a field, not a
-    structure own its own. A direct assignment to such a value fragment,
-    like
-
-        mo.c8y_CustomReferences = [1, 2, 3]
-
-    is currently not supported nicely as it will not be recognised as an
-    update. A manual update flagging is required:
-
-        mo.c8y_CustomReferences = [1, 2, 3]
-        mo.flag_update('c8y_CustomReferences')
 
     See also https://cumulocity.com/guides/reference/inventory/#managed-object
     """

@@ -1,4 +1,5 @@
 import asyncio
+from abc import abstractmethod
 from collections import deque
 from collections.abc import Mapping
 from copy import deepcopy
@@ -279,15 +280,6 @@ class CumulocityObject(Mapping):
         return self._source_json | self._staged_json
 
     @property
-    def id(self):
-        # id can never come from update
-        return self._source_json.get("id", None)
-
-    @property
-    def object_path(self) -> str:
-        return self._meta.build_object_path(self.id)
-
-    @property
     def resource_path(self) -> str:
         return self._meta.resource_path
 
@@ -477,8 +469,27 @@ class CumulocityObject(Mapping):
         if not self.c8y:
             raise ValueError("Cumulocity connection reference must be set to allow direct database access.")
 
+    @abstractmethod
     def _assert_key(self):
-        """Assert that a model object has a database key (e.g. a Cumulocity ID)."""
+        """Assert that a model object has a database key."""
+
+
+class WithId:
+    """Mixin for objects with a simple database ID."""
+
+    _source_json: dict   # declare only, this is defined in CumulocityObject
+    _meta: ResourceMeta   # declare only, this is defined in CumulocityObject
+
+    @property
+    def id(self):
+        # id can never come from update
+        return self._source_json.get("id", None)
+
+    @property
+    def object_path(self) -> str:
+        return self._meta.build_object_path(self.id)
+
+    def _assert_key(self):
         if not self.id:
             raise ValueError("The object ID must be set to allow direct object access.")
 

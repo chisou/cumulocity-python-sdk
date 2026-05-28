@@ -10,6 +10,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    WithId,
     json_property,
     map_params,
     resolve_page_size,
@@ -17,7 +18,7 @@ from pyc8y.model.model_base import (
 from pyc8y.types import SubscriptionMeta
 
 
-class Subscription(CumulocityObject):
+class Subscription(WithId, CumulocityObject):
     """Represents a Notification 2.0 subscription within the database.
 
     Instances of this class are returned by functions of the corresponding

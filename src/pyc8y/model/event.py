@@ -5,6 +5,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    WithId,
     json_property,
     datetime_property,
     expression_implies_order,
@@ -17,7 +18,7 @@ from pyc8y.model.matcher import JsonMatcher
 from pyc8y.types import EventMeta, FileSpec
 
 
-class Event(CumulocityObject):
+class Event(WithId, CumulocityObject):
     """Represent an instance of an event object in Cumulocity.
 
     Instances of this class are returned by functions of the corresponding

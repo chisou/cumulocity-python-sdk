@@ -7,6 +7,7 @@ from pyc8y.model.application import Application
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    WithId,
     json_property,
     datetime_property,
     map_params,
@@ -16,7 +17,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.types import TenantMeta
 
 
-class Tenant(CumulocityObject):
+class Tenant(WithId, CumulocityObject):
     """Represents a tenant within the database.
 
     Instances of this class are returned by functions of the corresponding

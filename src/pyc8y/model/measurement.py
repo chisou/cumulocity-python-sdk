@@ -10,6 +10,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    WithId,
     json_property,
     id_property,
     time_property,
@@ -572,7 +573,7 @@ class Series(dict):
         return pd.Series(values, index=index, name=self._encode_name(series))
 
 
-class Measurement(CumulocityObject):
+class Measurement(WithId, CumulocityObject):
     _meta = MeasurementMeta
 
     def __init__(

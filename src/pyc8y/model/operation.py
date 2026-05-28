@@ -11,6 +11,7 @@ from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
+    WithId,
     json_property,
     datetime_property,
     expression_implies_order,
@@ -32,7 +33,7 @@ class OperationStatus(StrEnum):
     FAILED = "FAILED"
 
 
-class Operation(CumulocityObject):
+class Operation(WithId, CumulocityObject):
     """Represents an instance of an operation object in Cumulocity.
 
     Instances of this class are returned by functions of the corresponding
@@ -458,7 +459,7 @@ class GeneralBulkStatus(StrEnum):
     COMPLETED_WITH_FAILURES = "COMPLETED WITH FAILURES"
 
 
-class BulkOperation(CumulocityObject):
+class BulkOperation(WithId, CumulocityObject):
     """Represents an instance of a bulk operation object in Cumulocity.
 
     Instances of this class are returned by functions of the corresponding

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from pyc8y.model.managed_object import ManagedObject
 from pyc8y.auth import BasicAuth
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.model.model_base import CumulocityObject, json_property, time_property, datetime_property, \
+from pyc8y.model.model_base import CumulocityObject, WithId, json_property, time_property, datetime_property, \
     CumulocityResource, JsonObject, references_property, map_params, resolve_page_size, run_batched, ensure_ids
 from pyc8y.types import UserMeta, CurrentUserMeta, UserGroupMeta, InventoryRoleMeta
 
@@ -26,7 +26,7 @@ class TfaSettings(JsonObject):
     last_request_datetime = datetime_property('lastTfaRequestTime')
 
 
-class UserGroup(CumulocityObject):
+class UserGroup(WithId, CumulocityObject):
     """Represents a Group object ("Global Role") within Cumulocity.
 
     Notes:
@@ -566,7 +566,7 @@ class AnyPermission(Permission):
         super().__init__(level=Permission.Level.ANY, scope=scope, type=type)
 
 
-class InventoryRole(CumulocityObject):
+class InventoryRole(WithId, CumulocityObject):
     """Represents an inventory role within Cumulocity.
 
     Inventory roles define a set of permissions scoped to specific managed
@@ -627,7 +627,7 @@ class InventoryRole(CumulocityObject):
         await self._delete()
 
 
-class InventoryRoleAssignment(CumulocityObject):
+class InventoryRoleAssignment(WithId, CumulocityObject):
     """Represents a user's inventory role assignment for a managed object.
 
     See also: https://cumulocity.com/api/core/#tag/Inventory-Roles

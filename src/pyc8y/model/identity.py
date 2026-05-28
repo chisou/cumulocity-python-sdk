@@ -59,6 +59,10 @@ class ExternalId(CumulocityObject):
         assert self.external_type is not None
         return _build_object_path(self.external_id, self.external_type)
 
+    def _assert_key(self):
+        if not self.external_id or not self.external_type:
+            raise ValueError("Both external_id and external_type must be set to allow direct object access.")
+
     async def create(self) -> Self:
         """Store the external ID in the database.
 

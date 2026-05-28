@@ -7,6 +7,7 @@ from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
     CumulocityObject,
+    WithId,
     json_property,
     datetime_property,
     id_property,
@@ -35,7 +36,7 @@ class AlarmStatus(StrEnum):
     CLEARED = "CLEARED"
 
 
-class Alarm(CumulocityObject):
+class Alarm(WithId, CumulocityObject):
     """Represent an instance of an event object in Cumulocity.
 
     Instances of this class are returned by functions of the corresponding
