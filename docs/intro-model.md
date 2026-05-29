@@ -2,7 +2,7 @@ The **Cumulocity Python SDK**'s object model provides object-oriented
 access to the Cumulocity REST API. Use it to create and modify single
 objects within the Database.
 
-## Object-oriented database access
+### Object-oriented database access
 
 The object model define functions for direct, object-oriented database access:
 
@@ -26,7 +26,7 @@ await obj.delete()
 Note: These objects can also be used directly within the
 [Main API classes](docs-main.md) to modify data in bulk.
 
-## Direct JSON data access
+### Direct JSON data access
 
 The object model instances are essentially enriched JSON-like objects and
 can be used like standard nested dictionaries:

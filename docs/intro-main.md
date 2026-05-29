@@ -5,7 +5,7 @@ bulk.
 See also the [Object model](docs-model.md) section for object creation and
 object-oriented access in general.
 
-## Querying the database
+### Querying the database
 
 The main API classes can be used to read individual objects by their
 respective key, usually the Cumulocity object ID:
@@ -71,7 +71,7 @@ REST API expression:
 c8y.inventory.get_all("q=$filter=name eq 'M01' $orderby=lastUpdated")
 ```
 
-## High-performance throughput
+### High-performance throughput
 
 The SDK features an _async first_ design with IO concurrency and high
 throughput in mind. Hence, all query functions can be executed in
@@ -106,7 +106,7 @@ async for values in c8y.inventory.select(
     print(f"#{values[0]} '{values[1]}', last updated: {values[2]}")
 ```
 
-## Object manipulation and bulk processing
+### Object manipulation and bulk processing
 
 The main API classes can also be used to directly manipulate the database
 without the need to pull object instances:
