@@ -94,11 +94,13 @@ class Listener(object):
         self.auto_ack = auto_ack
         self.auto_unsubscribe = auto_unsubscribe
         self.signed_token = True
-        self.token_validity = 1440
-        self.ping_interval = 60
-        self.retry_interval = 0.1
-        self.retry_rate = 1.5
-        self.retry_max_delay = 30
+        # these are no constructor arguments, but allowed to change
+        self.connect_timeout: int | None = None
+        self.token_validity: float = 1440
+        self.ping_interval: float = 60
+        self.retry_interval: float = 0.1
+        self.retry_rate: float = 1.5
+        self.retry_max_delay: float = 30
 
         self._task = None
         self._connection = None
@@ -123,6 +125,10 @@ class Listener(object):
         return token
 
     async def _create_connection(self) -> aiohttp.ClientWebSocketResponse:
+        """Raises:
+            aiohttp.ClientError: if the connection cannot be established.
+            asyncio.TimeoutError: If the ws connection cannot be opened in time.
+        """
         self._current_token = await self._create_token()
         # if shared, consumer names should be unique
         consumer = self.consumer_name  # user's choice is used
@@ -134,7 +140,10 @@ class Listener(object):
             consumer=consumer if self.shared else None,
         )
         session = await self.c8y.session
-        connection = await session.ws_connect(uri, heartbeat=self.ping_interval)
+        connection = await asyncio.wait_for(
+            session.ws_connect(uri, heartbeat=self.ping_interval),
+            timeout=self.connect_timeout
+        )
         self._log.info(
             "Websocket connection established for subscription %s, %s.",
             self.subscription_name,
@@ -205,11 +214,11 @@ class Listener(object):
             except aiohttp.ClientConnectorSSLError as e:
                 self._log.error("SSL connection failed: %s", e, exc_info=e)
                 raise
-            except aiohttp.ClientError as e:
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 self._log.info("Websocket connection failed: %s", e)
                 connection_retry += 1
                 backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
-                with contextlib.suppress(TimeoutError):
+                with contextlib.suppress(TimeoutError):  # timeout is expected when not stopped
                     await asyncio.wait_for(
                         self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay)
                     )
@@ -241,9 +250,11 @@ class Listener(object):
         return asyncio.create_task(self.listen(callback))
 
     def stop(self):
-        """Signal the listener to be stopped."""
+        """Stop the listener."""
+        self._stop_event.set()
+        # still cancel the task to interrupt the blocking receive
         if self._task is not None:
-            self._task.cancel()  # raise CancelledError in listen task
+            self._task.cancel()
 
     async def wait(self, timeout=None):
         """Wait for the listener task to finish.
@@ -297,7 +308,7 @@ class Listener(object):
         await self._connection.send_str(payload)
         self._log.debug("Message sent: %s", payload)
 
-    async def ack(self, msg_id: str| None = None, payload: str = None):
+    async def ack(self, msg_id: str | None = None, payload: str | None = None):
         """Acknowledge a Notification 2.0 message.
 
         Either a valid Notification 2.0 message ID or payload needs to be
@@ -316,7 +327,9 @@ class Listener(object):
               acknowledge a processed message
         """
         msg_id = msg_id or payload.splitlines()[0]
-        await self.send(msg_id)
+        # only attempt to ack if still connected (might not when stopping)
+        if self._is_connected.is_set():
+            await self.send(msg_id)
 
 
 class QueueListener(object):
