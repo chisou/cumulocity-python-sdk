@@ -330,7 +330,8 @@ class Listener(object):
         # only attempt to ack if still connected (might not when stopping)
         if self._is_connected.is_set():
             await self.send(msg_id)
-
+        else:
+            self._log.warning("Message %s not acknowledged (connection lost).", msg_id)
 
 class QueueListener(object):
     """Listener implementation that pushes notification messages into an
