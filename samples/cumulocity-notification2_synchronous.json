@@ -1,7 +1,0 @@
-{
-  "isolation": "PER_TENANT",
-  "requiredRoles": [
-    "ROLE_INVENTORY_ADMIN",
-    "ROLE_NOTIFICATION_2_ADMIN"
-  ]
-}
