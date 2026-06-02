@@ -167,6 +167,21 @@ class ManagedObject(WithId, CumulocityObject):
         """
         return await self._update(copy)
 
+    async def apply(self, json: dict, copy: bool = False) -> Self:
+        """Apply a JSON model to this object.
+
+        Args:
+            json (dict):  A JSON document to apply
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The updated ManagedObject. By default, this is `self`; if `copy=True`,
+            a fresh instance.
+
+        """
+        return await self._apply(json, copy)
+
     async def apply_to(self, other_id: str) -> Self:
         """Apply the details of this object to another object in the database.
 

@@ -421,11 +421,15 @@ class CumulocityObject(Mapping):
         Returns:
             A fresh object representing the updated state within the database.
         """
+        return await self._apply(self._staged_json, copy=copy)
+
+    async def _apply(self, json: dict, copy: bool = False) -> Self:
+        """Apply the object within the database."""
         self._assert_c8y()
         self._assert_key()
         object_json = await self.c8y.put(
             self.object_path,
-            json=self._staged_json,
+            json=json,
             accept=self._meta.object_mime_type,
             content_type=self._meta.object_mime_type,
         )
