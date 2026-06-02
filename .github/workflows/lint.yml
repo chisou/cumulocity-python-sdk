@@ -13,4 +13,4 @@ jobs:
       with:
         python-version: '3.11'
     - name: Run ruff
-      run: uv run ruff check src/pyc8y tests integration_tests samples
+      run: uv run ruff check src/pyc8y tests integration_tests

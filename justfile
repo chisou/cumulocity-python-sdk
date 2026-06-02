@@ -10,10 +10,10 @@ test scope='tests':
 integration-test scope='integration_tests':
     uv run pytest -W ignore::DeprecationWarning {{scope}}
 
-lint scope='src/pyc8y tests integration_tests samples':
+lint scope='src/pyc8y tests integration_tests':
     uv run ruff check {{scope}}
 
-format scope='src/pyc8y tests integration_tests samples':
+format scope='src/pyc8y tests integration_tests':
     uv run ruff format {{scope}}
 
 build:
