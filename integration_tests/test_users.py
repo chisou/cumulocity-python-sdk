@@ -26,7 +26,7 @@ async def test_crud(live_c8y: CumulocityClient):
     user = User(c8y=live_c8y, username=username, email=email, enabled=True)
     created_user = await user.create()
     try:
-        assert created_user.id == username
+        assert created_user.username == username
         assert created_user.password_strength == "GREEN"
         assert created_user.require_password_reset
         assert created_user.tfa_enabled is False
@@ -55,7 +55,7 @@ async def test_select_by_name(live_c8y: CumulocityClient, safe_create):
         users.append(user)
 
     selected = await live_c8y.users.get_all(username=prefix)
-    assert {x.id for x in selected} == {x.id for x in users}
+    assert {x.username for x in selected} == {x.username for x in users}
 
 
 async def test_select(live_c8y: CumulocityClient):

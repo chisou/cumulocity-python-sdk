@@ -161,7 +161,7 @@ async def fix_module_factory(logger, live_c8y: CumulocityClient, request):
             new_obj.c8y = live_c8y
         created_obj = await new_obj.create()
         test_node = request.module.__name__
-        logger.info(f"Created {created_obj.__class__.__name__} object #{created_obj.id} in module {test_node}.")
+        logger.info(f"Created {created_obj.__class__.__name__} object #{created_obj.get('id', 'n/a')} in module {test_node}.")
         created.append((created_obj, test_node))
         return created_obj
 
@@ -170,9 +170,9 @@ async def fix_module_factory(logger, live_c8y: CumulocityClient, request):
     for obj, node in created:
         try:
             await obj.delete()
-            logger.info(f"Removed {obj.__class__.__name__} #{obj.id} from module {node}.")
+            logger.info(f"Removed {obj.__class__.__name__} #{obj.get('id', 'n/a')} from module {node}.")
         except KeyError:
-            logger.warning(f"{obj.__class__.__name__} object #{obj.id} (module {node}) could not be removed (not found).")
+            logger.warning(f"{obj.__class__.__name__} object #{obj.get('id', 'n/a')} (module {node}) could not be removed (not found).")
 
 
 @pytest.fixture(scope="module", name="session_factory")
