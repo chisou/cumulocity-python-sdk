@@ -2,9 +2,10 @@
 
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, NamedTuple
 
 from pyc8y.base_util import unwrap_args
+from pyc8y.model.model_util import to_datetime
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.inventory import Device
 from pyc8y.model.matcher import JsonMatcher
@@ -31,6 +32,15 @@ class OperationStatus(StrEnum):
     EXECUTING = "EXECUTING"
     SUCCESSFUL = "SUCCESSFUL"
     FAILED = "FAILED"
+
+
+class OperationStatusChange(NamedTuple):
+    """Operation status change."""
+    time: str
+    status: OperationStatus
+    @property
+    def datetime(self) -> datetime:
+        return to_datetime(self.time)
 
 
 class Operation(WithId, CumulocityObject):
@@ -64,6 +74,37 @@ class Operation(WithId, CumulocityObject):
     creation_time = json_property("creationTime", read_only=True)
     creation_datetime = datetime_property("creationTime")
 
+    def resolve_type(self) -> str | None:
+        """Try to resolve the operation type using a simple heuristic.
+
+        The operation's type is assumed to be the name of an _underscore_
+        fragment, e.g. c8y_Command or c8y_Restart. It is assumed that such
+        fragment is unambiguous. If no such fragment is found, the first
+        non-standard fragment is returned or None if there is none.
+
+        Returns:
+            The heuristically determined operation type.
+        """
+        candidate = next(filter(lambda x: "_" in x, self.keys()), None)
+        if candidate is not None:
+            return candidate
+        def fits_criteria(x):
+            return (x not in {"self", "id", "bulkOperationId", "creationTime", "status", "description", "delivery"}
+                    and not x.startswith("device"))
+        return next(filter(fits_criteria, self.keys()), None)
+
+    def get_status_changes(self) -> list[OperationStatusChange]:
+        """Retrieve the operation status changes as simple list.
+
+        Returns:
+            A list of OperationStatusChange objects as defined in the
+            object's JSON (`delivery.log`).
+        """
+        return [
+            OperationStatusChange(x["time"], x["status"])
+            for x in self.get("delivery.log", [])
+        ]
+
     async def create(self) -> Self:
         """Store the Operation within the database.
 
@@ -80,7 +121,7 @@ class Operation(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Operation. By default this is `self`; if `copy=True`,
+            The updated Operation. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)

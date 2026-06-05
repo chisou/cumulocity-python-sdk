@@ -26,7 +26,29 @@ def test_parsing(operation_json):
 
     assert isinstance(op.creation_datetime, datetime)
 
-    assert op['c8y_Command']['text'] == operation_json['c8y_Command']['text']
+    assert op.get('c8y_Command.text') == operation_json['c8y_Command']['text']
+
+    changes = op.get_status_changes()
+    assert len(changes) == 7
+    assert [x.status for x in changes] == ["PENDING", "SEND", "PENDING", "SEND", "DELIVERED", "PENDING", "SEND"]
+    assert changes[0].datetime == datetime.fromisoformat(operation_json["delivery"]["log"][0]["time"])
+
+
+@pytest.mark.parametrize(
+    "keys, expected",
+    [
+        (["c8y_Command"], "c8y_Command"),
+        (["cx_Operation"], "cx_Operation"),
+        (["something"], "something"),
+        (["something", "cx_Command"], "cx_Command"),
+    ]
+)
+def test_resolve_type(keys, expected):
+    """Verify that resolving an Operation type works as expected."""
+    json = load_sample_file("operation.json")
+    del json["c8y_Command"]
+    json.update({k: {} for k in keys})
+    assert Operation.from_json(json).resolve_type() == expected
 
 
 @pytest.fixture

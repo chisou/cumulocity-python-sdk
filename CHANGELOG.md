@@ -14,6 +14,9 @@
 * Added the `expression` parameter to all query-like functions (`select`, `get_all`, `delete_by`, ...) for consistency. 
 
 * Added `send_to` function to Operations API to send an operation to a collection of devices.
+ 
+* Added auxiliary functions `resolve_type`, to heuristically determine the key fragment of an operation, and 
+  `get_status_changes`, to obtain the operation's status changes from its delivery log, to the Operation model class.
 
 * Added functions `get_tenant_options` and `get_current_tenant_options` to Applications API.
 
@@ -53,6 +56,9 @@
 
 * The `Percentage` helper class was renamed to `Percent`. While at it, multiple builder _functions_ have been defined,
   e.g. `percent`, `meters`, and alike.
+
+* The nested constants classes like `Alarm.Status`, `Alarm.Severity`, `Operation.Status` etc. have been promoted to 
+  top-level classes `AlarmStatus`, `AlarmSeverity`, `OperationStatus`, respectively. 
 
 
 #### Minor changes

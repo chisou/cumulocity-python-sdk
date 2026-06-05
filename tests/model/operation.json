@@ -8,5 +8,16 @@
 	"c8y_Command": {
 		"text": "service ftpd stop"
 	},
-	"description": "Operation description"
+	"description": "Operation description",
+	"delivery": {
+		"log": [
+			{"time": "2025-12-08T06:40:54.326Z", "status": "PENDING"},
+			{"time": "2025-12-08T06:41:18.738Z", "status": "SEND"},
+			{"time": "2025-12-08T06:44:43.473Z", "status": "PENDING"},
+			{"time": "2025-12-08T06:44:43.754Z", "status": "SEND"},
+			{"time": "2025-12-08T06:44:44.178Z", "status": "DELIVERED"},
+			{"time": "2026-01-11T05:39:46.158Z", "status": "PENDING"},
+			{"time": "2026-01-11T05:39:46.189Z", "status": "SEND"}
+		]
+	}
 }
