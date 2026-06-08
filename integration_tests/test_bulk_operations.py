@@ -5,7 +5,7 @@ import asyncio
 from pyc8y.client import CumulocityClient
 from pyc8y.model.managed_object import Device, DeviceGroup
 from pyc8y.model.matcher import field
-from pyc8y.model.operation import BulkOperation, BulkStatus, GeneralBulkStatus, OperationStatus
+from pyc8y.model.operation import BulkOperation, BulkOperationStatus, BulkOperationGeneralStatus, OperationStatus
 
 
 async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa (case)
@@ -46,8 +46,8 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
         # (3) initially the status should be EXECUTING/COMPLETED as all
         #     child operations should have been created but not completed
         bulk = await live_c8y.bulk_operations.get(bulk.id)
-        assert bulk.general_status == GeneralBulkStatus.EXECUTING
-        assert bulk.status == BulkStatus.COMPLETED
+        assert bulk.general_status == BulkOperationGeneralStatus.EXECUTING
+        assert bulk.status == BulkOperationStatus.COMPLETED
         assert bulk['progress']['all'] == 1
         assert bulk['progress']['pending'] == 1
 
@@ -62,8 +62,8 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
         # (6) bulk operation should now reflect the failure
         bulk = await live_c8y.bulk_operations.get(bulk.id)
         assert bulk.general_status in [
-            GeneralBulkStatus.COMPLETED_WITH_FAILURES,
-            GeneralBulkStatus.FAILED,
+            BulkOperationGeneralStatus.COMPLETED_WITH_FAILURES,
+            BulkOperationGeneralStatus.FAILED,
         ]
         assert bulk['progress']['all'] == 1
         assert bulk['progress']['failed'] == 1

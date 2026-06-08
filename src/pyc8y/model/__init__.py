@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Christoph Souris
+
 from pyc8y.model.alarm import (
     Alarm as Alarm,
     Alarms as Alarms,
@@ -78,8 +80,12 @@ from pyc8y.model.notification2 import (
 from pyc8y.model.operation import (
     Operation as Operation,
     Operations as Operations,
+    OperationStatus as OperationStatus,
+    OperationStatusChange as OperationStatusChange,
     BulkOperation as BulkOperation,
     BulkOperations as BulkOperations,
+    BulkOperationStatus as BulkOperationStatus,
+    BulkOperationGeneralStatus as BulkOperationGeneralStatus,
 )
 from pyc8y.model.tenant_option import (
     TenantOption as TenantOption,

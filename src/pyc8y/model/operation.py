@@ -478,7 +478,7 @@ class Operations(CumulocityResource[Operation]):
         await self._update(*operations, workers=workers)
 
 
-class BulkStatus(StrEnum):
+class BulkOperationStatus(StrEnum):
     """Bulk Operation statuses."""
 
     ACTIVE = "ACTIVE"
@@ -487,7 +487,7 @@ class BulkStatus(StrEnum):
     DELETED = "DELETED"
 
 
-class GeneralBulkStatus(StrEnum):
+class BulkOperationGeneralStatus(StrEnum):
     """Bulk Operation general statuses."""
 
     SCHEDULED = "PENDING"

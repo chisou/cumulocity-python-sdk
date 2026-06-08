@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyc8y.model.operation import BulkOperation, BulkOperations, BulkStatus, GeneralBulkStatus
+from pyc8y.model.operation import BulkOperation, BulkOperations, BulkOperationStatus, BulkOperationGeneralStatus
 
 from tests.model.conftest import load_sample_file
 
@@ -59,13 +59,13 @@ def test_formatting():
 
 def test_status_constants():
     """Verify BulkOperation status and general status constants."""
-    assert BulkStatus.ACTIVE == 'ACTIVE'
-    assert BulkStatus.COMPLETED == 'COMPLETED'
-    assert BulkStatus.IN_PROGRESS == 'IN_PROGRESS'
+    assert BulkOperationStatus.ACTIVE == 'ACTIVE'
+    assert BulkOperationStatus.COMPLETED == 'COMPLETED'
+    assert BulkOperationStatus.IN_PROGRESS == 'IN_PROGRESS'
 
-    assert GeneralBulkStatus.EXECUTING == 'EXECUTING'
-    assert GeneralBulkStatus.SUCCESSFUL == 'SUCCESSFUL'
-    assert GeneralBulkStatus.FAILED == 'FAILED'
+    assert BulkOperationGeneralStatus.EXECUTING == 'EXECUTING'
+    assert BulkOperationGeneralStatus.SUCCESSFUL == 'SUCCESSFUL'
+    assert BulkOperationGeneralStatus.FAILED == 'FAILED'
 
 
 async def test_get_all():
