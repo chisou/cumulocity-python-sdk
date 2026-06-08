@@ -97,7 +97,6 @@ async def get_client(
     """
     if log_level is not None:
         _configure_logging(log_level)
-    semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent else None
     base_url = base_url or os.environ.get("C8Y_BASEURL")
     tenant_id = tenant_id or os.environ.get("C8Y_TENANT")
     username = username or os.environ.get("C8Y_USER")
@@ -133,7 +132,7 @@ async def get_client(
     assert base_url and tenant_id and username
 
     # (3) return cached client if one exists for these parameters
-    client_key = (base_url, tenant_id, username)
+    client_key = (base_url, tenant_id, username, max_concurrent)
     if client_key in _clients:
         return _clients[client_key]
 
@@ -165,7 +164,7 @@ async def get_client(
         base_url=base_url,
         tenant_id=tenant_id,
         auth=auth,
-        semaphore=semaphore,
+        semaphore=asyncio.Semaphore(max_concurrent) if max_concurrent else None,
     )
     _clients[client_key] = client
     return client
