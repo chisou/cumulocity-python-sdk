@@ -68,6 +68,7 @@ class Operation(WithId, CumulocityObject):
         self.description = description
         self.status = status
 
+    bulk_operation_id = json_property("bulkOperationId")
     device_id = json_property("deviceId")
     description = json_property("description")
     status = json_property("status")
