@@ -11,9 +11,16 @@
 * Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, ...) and bulk operations
   (`create`, `update`, `apply_to`, `delete`, ...) to automatically perform the activities unordered and in parallel.
 
+* Created a new `get_client` function in `pyc8y` to obtain a client intended for interactive sessions (e.g. using 
+  Jupyter). It supports standard Cumulocity session environment variables and a global pretty-printing logging handler. 
+
+* Added a `max_concurrent` parameter to `SimpleCumulocityApp` and `MultiTenantCumulocityApp` as well as `get_client`
+  to automatically limit the number of concurrent REST queries across all coroutines.
+
 * Added the `expression` parameter to all query-like functions (`select`, `get_all`, `delete_by`, ...) for consistency. 
 
-* Added `send_to` function to Operations API to send an operation to a collection of devices.
+* Added `send_to` function to Operations API to send an operation to a collection of devices for increased developer
+  experience.
  
 * Added auxiliary functions `resolve_type`, to heuristically determine the key fragment of an operation, and 
   `get_status_changes`, to obtain the operation's status changes from its delivery log, to the Operation model class.
