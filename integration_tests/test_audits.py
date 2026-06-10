@@ -5,14 +5,8 @@ from datetime import timedelta, datetime, timezone
 import pytest
 
 from pyc8y.client import CumulocityClient
-from pyc8y.model.alarm import Alarm
-from pyc8y.model.application import Application
-from pyc8y.model.audit import AuditRecord, AuditSeverity, AuditType
-from pyc8y.model.event import Event
-from pyc8y.model.managed_object import Device, ManagedObject
-from pyc8y.model.operation import Operation, BulkOperation
-from pyc8y.model.tenant_option import TenantOption
-from pyc8y.model.user import User, UserGroup, InventoryRole
+from pyc8y.model.audit import AuditRecord, AuditSeverity
+from pyc8y.model.managed_object import Device
 
 from util.testing_util import create_random_name
 
