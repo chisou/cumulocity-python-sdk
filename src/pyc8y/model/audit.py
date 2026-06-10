@@ -435,8 +435,6 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             type = AuditType.OPERATION
         elif isinstance(obj, BulkOperation):
             type = AuditType.BULKOPERATION
-        elif isinstance(obj, TenantOption):
-            type = AuditType.OPTION
         elif isinstance(obj, UserGroup):
             type = AuditType.GROUP
         elif isinstance(obj, User):

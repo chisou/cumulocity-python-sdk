@@ -76,7 +76,6 @@ async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (
     ("ManagedObject", lambda c8y: c8y.inventory.get_all(limit=1)),
     ("Operation", lambda c8y: c8y.operations.get_all(limit=1)),
     ("BulkOperation", lambda c8y: c8y.bulk_operations.get_all(limit=1)),
-    ("TenantOption", lambda c8y: c8y.tenant_options.get_all(limit=1)),
     ("UserGroup", lambda c8y: c8y.user_groups.get_all(limit=1)),
 ])
 async def test_get_all_for_object_types(live_c8y: CumulocityClient, obj_type: str, getter):  # noqa (case)
