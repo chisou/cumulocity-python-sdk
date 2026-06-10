@@ -24,7 +24,6 @@ from pyc8y.model.event import Event
 from pyc8y.model.user import User, UserGroup, InventoryRole
 from pyc8y.model.managed_object import ManagedObject
 from pyc8y.model.operation import Operation, BulkOperation
-from pyc8y.model.tenant_option import TenantOption
 from pyc8y.types import AuditRecordMeta
 
 
