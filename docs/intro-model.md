@@ -1,10 +1,10 @@
 The **Cumulocity Python SDK**'s object model provides object-oriented
 access to the Cumulocity REST API. Use it to create and modify single
-objects within the Database.
+objects within the database.
 
 ### Object-oriented database access
 
-The object model define functions for direct, object-oriented database access:
+The object model defines functions for direct, object-oriented database access:
 
 ```Python
 # Create an object in the database and use it
@@ -40,7 +40,7 @@ For convenience the SDK supports dot-notation for the `[]` operator:
 
 ```python
 the_value = obj["my_Fragment.value"]  # read nested value
-obj["my_Fragment.value"] = new_Value  # set nested value
+obj["my_Fragment.value"] = new_value  # set nested value
 ```
 
 Likewise, the `.get` and `.set` functions:
@@ -50,10 +50,10 @@ the_value = obj.get("my_Fragment.value", default=42)  # read nested value
 obj.set("my_Fragment.value", 42)  # set a nested value
 ```
 
-which also protect against missing keys _along the path_. 
+which also protect against missing keys _along the path_.
 
 Many Cumulocity objects define _standard_ properties, e.g. `id`, `type`, 
-`name` and `creationTime`. These fields can _additionally_ also read
+`name` and `creationTime`. These fields can _additionally_ also be read
 (and set if allowed) through explicit class properties:
 
 ```python

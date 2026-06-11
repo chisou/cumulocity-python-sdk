@@ -28,7 +28,7 @@ feature-equivalent `select` function works as a generator for streaming
 access. Both functions perform automatic paging if necessary.
 
 The returned objects are instances of the [Object model](docs-model.md) and the
-functions are properly typed, so the results can conveniently used 
+functions are properly typed, so the results can conveniently be used 
 directly as-is:
 
 ```python

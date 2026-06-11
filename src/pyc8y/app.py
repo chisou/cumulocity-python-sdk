@@ -326,7 +326,7 @@ class _CumulocityAppBase(ABC):
 
 
 class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
-    """Application-like Cumulocity API.
+    """Simple Cumulocity application wrapper.
 
     The SimpleCumulocityApp class is intended to be used as base within
     a single-tenant microservice hosted on Cumulocity. It evaluates the
@@ -336,10 +336,11 @@ class SimpleCumulocityApp(_CumulocityAppBase, CumulocityClient):
     PER_TENANT authentication mode only. It will not function in environments
     using the MULTITENANT mode.
 
-    The SimpleCumulocityApp class is an enhanced version of the standard
-    `CumulocityClient` class. All Cumulocity functions can be used directly.
-    Additionally, it can be used to provide `CumulocityClient` instances for
-    specific named users via the `get_user_instance` function.
+    The `SimpleCumulocityApp` class is an enhanced version of the standard
+    `CumulocityClient` class. All Cumulocity functions can be used directly
+    within the microservice's scope. For user-scoped access (i.e. when users
+    directly access the microservice) the `get_user_instance` function can
+    be used to obtain user specific instances. They are automatically cached.
     """
 
     _log = logging.getLogger(__name__)
@@ -428,9 +429,18 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
     PER_TENANT environments.
 
     The MultiTenantCumulocityApp class serves as a factory. It provides
-    access to tenant-specific CumulocityApi instances via the
-    `get_tenant_instance` function. A special bootstrap CumulocityApi
-    instance is available via the `bootstrap_instance` property.
+    access to tenant-scoped CumulocityClient instances via the
+    `get_tenant_instance` function. For user-scoped access (i.e. when users
+    directly access the microservice) the `get_user_instance` function can
+    be used to obtain user specific instances. All created instances are
+    automatically cached.
+
+    A special bootstrap CumulocityApi instance is available via the
+    `bootstrap_instance` property.
+
+    See also the `SubscriptionListener` class which can be used to
+    conveniently listen for tenants subscribing/unsubscribing from a
+    multi-tenant microservice.
     """
 
     _log = logging.getLogger(__name__)
@@ -684,7 +694,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
 class SubscriptionListener:
     """Multi-tenant subscription listener.
 
-    Polls the MultiTenantCumulocityApp for subscriber changes and invokes
+    Polls a MultiTenantCumulocityApp for subscriber changes and invokes
     registered callbacks when tenants subscribe or unsubscribe.
 
     Note: Not thread-safe, expected to run in async code.
