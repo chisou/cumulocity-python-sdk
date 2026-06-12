@@ -31,6 +31,9 @@
 
 * Added functions `get_tenant_options` and `get_current_tenant_options` to Applications API.
 
+* Added functions `select_for` and `get_all_for` to the AuditRecords API to read records for a particular database
+  object for better developer experience.
+  
 * Added support for the tenant statistics API.
 
 ### Breaking changes

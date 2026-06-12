@@ -2,6 +2,8 @@
 
 from datetime import timedelta, datetime, timezone
 
+import pytest
+
 from pyc8y.client import CumulocityClient
 from pyc8y.model.audit import AuditRecord, AuditSeverity
 from pyc8y.model.managed_object import Device
@@ -65,3 +67,41 @@ async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (
     )
     assert len(records) >= 1
     assert record.id in [r.id for r in records]
+
+
+@pytest.mark.parametrize("obj_type,getter", [
+    ("Alarm", lambda c8y: c8y.alarms.get_all(limit=1)),
+    ("Application", lambda c8y: c8y.applications.get_all(limit=1)),
+    ("Event", lambda c8y: c8y.events.get_all(limit=1)),
+    ("ManagedObject", lambda c8y: c8y.inventory.get_all(limit=1)),
+    ("Operation", lambda c8y: c8y.operations.get_all(limit=1)),
+    ("BulkOperation", lambda c8y: c8y.bulk_operations.get_all(limit=1)),
+    ("UserGroup", lambda c8y: c8y.user_groups.get_all(limit=1)),
+])
+async def test_get_all_for_object_types(live_c8y: CumulocityClient, obj_type: str, getter):  # noqa (case)
+    """Verify that get_all_for retrieves audit records for various object types."""
+
+    # (1) fetch a random object of the specified type
+    objects = await getter(live_c8y)
+    if not objects:
+        pytest.skip(f"No {obj_type} objects found in test environment")
+    obj = objects[0]
+
+    # (1) retrieve audit records for this object
+    # -> there should always be records
+    records = await live_c8y.audit_records.get_all_for(obj)
+    assert isinstance(records, list)
+    assert all(isinstance(r, AuditRecord) for r in records)
+
+    # (2) verify source of records
+    assert all(
+        r.type == obj_type
+        for r in records
+    )
+    if records:
+        if obj_type == "TenantOption":
+            # TenantOption records use a different source format
+            pass
+        else:
+            expected_source = obj.get("id")
+            assert all(r.source == expected_source for r in records)

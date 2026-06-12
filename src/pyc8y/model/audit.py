@@ -18,6 +18,12 @@ from pyc8y.model.model_base import (
     map_params,
     resolve_page_size,
 )
+from pyc8y.model.alarm import Alarm
+from pyc8y.model.application import Application
+from pyc8y.model.event import Event
+from pyc8y.model.user import User, UserGroup, InventoryRole
+from pyc8y.model.managed_object import ManagedObject
+from pyc8y.model.operation import Operation, BulkOperation
 from pyc8y.types import AuditRecordMeta
 
 
@@ -359,6 +365,146 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             else ()
         )
         return await self._get_count(expression=expression, params=params)
+
+    def select_for(
+            self,
+            obj: CumulocityObject,
+            *,
+            application: str | None = None,
+            user: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: str | timedelta | None = None,
+            max_age: str | timedelta | None = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            limit: int | None = 5,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            workers: int | None = None,
+            **kwargs,
+    ) -> AsyncIterator[AuditRecord]:
+        """Query the database for audit records related to a specific object
+        and iterate over the results.
+
+        This function is implemented in a lazy fashion - results will only be
+        fetched from the database as long as there is a consumer for them.
+
+        Args:
+            obj (CumulocityObject):  An existing object within the database,
+                e.g. an Operation, Event, Device, etc.
+            application (str):  Application from which the audit was carried out
+            user (str):  The user who carried out the activity
+            before (str|datetime):  Only records before this date
+            after (str|datetime):  Only records after this date
+            date_from (str|datetime):  Same as `after`
+            date_to (str|datetime):  Same as `before`
+            min_age (timedelta|str):  Minimum age for selected records
+            max_age (timedelta|str):  Maximum age for selected records
+            include (str|JsonMatcher):  Client-side inclusion filter
+            exclude (str|JsonMatcher):  Client-side exclusion filter
+            limit (int | None):  Maximum number of results. Default is 5 to support
+                quick Jupyter-style exploration; pass `None` to fetch all matching.
+            page_size (int | None):  Number of records read per request. If None
+                (default), inferred from `limit` and whether client-side filters are
+                set.
+            page_number (int):  Pull a specific page only
+            as_values:  Extract values at JSON paths as tuples
+            workers (int):  Number of parallel page-fetch workers
+
+        Returns:
+            AsyncIterator of AuditRecord objects
+        """
+        source = obj.get("id", None)
+        type = ""
+        if isinstance(obj, Alarm):
+            type = AuditType.ALARM
+        elif isinstance(obj, Application):
+            type = AuditType.APPLICATION
+        elif isinstance(obj, Event):
+            type = AuditType.EVENT
+        elif isinstance(obj, InventoryRole):
+            type = AuditType.INVENTORYROLE
+        elif isinstance(obj, ManagedObject):
+            type = AuditType.INVENTORY
+        elif isinstance(obj, Operation):
+            type = AuditType.OPERATION
+        elif isinstance(obj, BulkOperation):
+            type = AuditType.BULKOPERATION
+        elif isinstance(obj, UserGroup):
+            type = AuditType.GROUP
+        elif isinstance(obj, User):
+            source = obj.username
+            type = AuditType.USER
+        else:
+            raise ValueError(f"Unsupported object type {obj.__class__.__name__}.")
+        return self.select(
+            source=source,
+            type=type,
+            application=application,
+            user=user,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            include=include,
+            exclude=exclude,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+            **kwargs,
+        )
+
+    async def get_all_for(
+            self,
+            obj: CumulocityObject,
+            *,
+            application: str | None = None,
+            user: str | None = None,
+            before: str | datetime | None = None,
+            after: str | datetime | None = None,
+            date_from: str | datetime | None = None,
+            date_to: str | datetime | None = None,
+            min_age: str | timedelta | None = None,
+            max_age: str | timedelta | None = None,
+            include: str | JsonMatcher | None = None,
+            exclude: str | JsonMatcher | None = None,
+            limit: int | None = 5,
+            page_size: int | None = None,
+            page_number: int | None = None,
+            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            workers: int | None = None,
+            **kwargs,
+    ) -> list[AuditRecord]:
+        return [
+            x
+            async for x in self.select_for(
+                obj,
+                application=application,
+                user=user,
+                before=before,
+                after=after,
+                date_from=date_from,
+                date_to=date_to,
+                min_age=min_age,
+                max_age=max_age,
+                include=include,
+                exclude=exclude,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+                **kwargs,
+            )
+        ]
 
     async def create(self, *records: AuditRecord, workers: int | None = None) -> None:
         """Create audit record objects within the database.
