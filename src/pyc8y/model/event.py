@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import AsyncIterator, Self, Sequence
 
-from pyc8y.rest import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient, FileDownload
 from pyc8y.model.model_base import (
     CumulocityObject,
     CumulocityResource,
@@ -105,11 +105,11 @@ class Event(WithId, CumulocityObject):
         self._assert_key()
         return await self.c8y.put_file(self.attachment_path, file=file, content_type=content_type)
 
-    async def download_attachment(self) -> bytes:
+    async def download_attachment(self) -> FileDownload:
         """Read the binary attachment.
 
         Returns:
-            The event's binary attachment as bytes.
+            A FileDownload with the attachment content and filename.
         """
         self._assert_c8y()
         self._assert_key()
@@ -655,14 +655,14 @@ class Events(CumulocityResource[Event]):
         """
         return await self.c8y.put_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
 
-    async def download_attachment(self, event_id: str) -> bytes:
+    async def download_attachment(self, event_id: str) -> FileDownload:
         """Read a binary attachment of an event.
 
         Args:
             event_id (str):  The database ID of the event
 
         Returns:
-            The event's binary attachment as bytes.
+            A FileDownload with the attachment content and filename.
         """
         return await self.c8y.get_file(self.build_attachment_path(event_id))
 
