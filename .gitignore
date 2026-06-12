@@ -1,6 +1,7 @@
 .idea*
 .vscode*
 .pytest*
+.run
 __pycache__
 dist*
 build*
