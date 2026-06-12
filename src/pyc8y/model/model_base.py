@@ -243,7 +243,8 @@ class JsonObject(dict):
     """Base class for JSON structures, wrapping standard dicts.
 
     This implementation features virtual `_json` and `_staged_json`
-    attributes which enables use of the property helpers.
+    attributes which enables use of the property helpers, as well as
+    dot-notation read access via `[]` and `.get`.
     """
     @property
     def json(self) -> dict:
@@ -252,6 +253,18 @@ class JsonObject(dict):
     @property
     def _staged_json(self) -> dict:
         return self
+
+    # Need this wrapper to be able to deal with JsonObject
+    # generically in CumulocityResource instances
+    @classmethod
+    def from_json(cls, json: dict, **_) -> Self:
+        return cls(json)
+
+    def __getitem__(self, path) -> Any:
+        return get_by(self, path, fail=True)
+
+    def get(self, path, default: Any = None) -> Any:
+        return get_by(self, path, default=default)
 
  
 class CumulocityObject(Mapping):

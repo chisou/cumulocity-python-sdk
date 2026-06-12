@@ -184,13 +184,13 @@ async def test_CRUD_attachments(live_c8y: CumulocityClient, session_device: Devi
     assert event.has_attachment()
 
     # download and verify
-    assert await event.download_attachment() == random_text_1
+    assert (await event.download_attachment()).content == random_text_1
 
     # update attachment via file-like object
     await event.update_attachment(file=BytesIO(random_text_2))
 
     # verify change
-    assert await event.download_attachment() == random_text_2
+    assert (await event.download_attachment()).content == random_text_2
 
     # remove attachment
     await event.delete_attachment()
@@ -217,13 +217,13 @@ async def test_CRUD_attachments_2(live_c8y: CumulocityClient, session_device: De
 
     # refresh and verify
     event = await live_c8y.events.get(event.id)
-    assert await live_c8y.events.download_attachment(event.id) == random_text_1
+    assert (await live_c8y.events.download_attachment(event.id)).content == random_text_1
 
     # update attachment via file-like object
     await live_c8y.events.update_attachment(event.id, file=BytesIO(random_text_2))
 
     # verify change
-    assert await live_c8y.events.download_attachment(event.id) == random_text_2
+    assert (await live_c8y.events.download_attachment(event.id)).content == random_text_2
 
     # remove attachment
     await live_c8y.events.delete_attachment(event.id)

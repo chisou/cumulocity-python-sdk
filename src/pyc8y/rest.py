@@ -5,16 +5,22 @@ import os
 import ssl
 from asyncio import Semaphore
 from collections import Counter
-from contextlib import nullcontext
+from contextlib import asynccontextmanager, nullcontext
 from enum import StrEnum
 from pathlib import Path
-from typing import Awaitable, BinaryIO, Callable, Self, Sequence, Any, Mapping
+from typing import Awaitable, BinaryIO, Callable, NamedTuple, Self, Sequence, Any, Mapping
 
 import aiohttp
 import certifi
 import orjson
 
 from pyc8y.auth import Auth, BasicAuth, BearerAuth
+
+
+class FileDownload(NamedTuple):
+    """Result of a binary file download."""
+    content: bytes
+    filename: str | None
 
 logger = logging.getLogger(__name__)
 
@@ -464,7 +470,7 @@ class CumulocityRestClient(object):
         else:
             return await put(file)
 
-    async def get_file(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> bytes:
+    async def get_file(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None) -> FileDownload:
         """Download a binary file.
 
         Args:
@@ -472,7 +478,7 @@ class CumulocityRestClient(object):
             params (dict|Sequence[tuple]): Additional request parameters
 
         Returns:
-            The file content as bytes.
+            A FileDownload tuple of file content bytes and filename (from Content-Disposition, if present).
 
         Raises:
             KeyError:  if the resource is not found (404)
@@ -490,7 +496,45 @@ class CumulocityRestClient(object):
                 raise ValueError(f"Invalid GET request. Status: {r.status}, Response:\n {await r.text()}")
             if r.status != 200:
                 raise ValueError(f"Unable to perform GET request. Status: {r.status}, Response:\n {await r.text()}")
-            return await r.read()
+            cd = r.content_disposition
+            filename = cd.filename if cd is not None else None
+            return FileDownload(content=await r.read(), filename=filename)
+
+    @asynccontextmanager
+    async def stream_file(self, resource: str, params: dict | Sequence[tuple[str, str]] | None = None):
+        """Stream a binary file without loading it fully into memory.
+
+        Args:
+            resource (str):  The resource path.
+            params (dict|Sequence[tuple]): Additional request parameters
+
+        Yields:
+            aiohttp.StreamReader: The response content stream.
+
+        Raises:
+            KeyError:  if the resource is not found (404)
+            ValueError:  if the request cannot be processed (5xx or unexpected status)
+
+        Example::
+
+            async with client.stream_file("/inventory/binaries/123") as content:
+                async with aiofiles.open("file.bin", "wb") as f:
+                    async for chunk in content.iter_chunked(65536):
+                        await f.write(chunk)
+        """
+        session = await self.session
+        async with session.get(url=resource, params=params) as r:
+            if r.status == 401:
+                raise UnauthorizedError("GET", resource, message=(await r.json())["message"])
+            if r.status == 403:
+                raise AccessDeniedError("GET", resource, message=(await r.json())["message"])
+            if r.status == 404:
+                raise KeyError(f"No such object: {resource}")
+            if 500 <= r.status <= 599:
+                raise ValueError(f"Invalid GET request. Status: {r.status}, Response:\n {await r.text()}")
+            if r.status != 200:
+                raise ValueError(f"Unable to perform GET request. Status: {r.status}, Response:\n {await r.text()}")
+            yield r.content
 
     async def delete(self, resource: str, params: Mapping[str, Any] | Sequence[tuple[str, Any]] = ()) -> dict:
         return await self.request("DELETE", resource, params)

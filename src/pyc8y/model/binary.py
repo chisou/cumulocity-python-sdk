@@ -3,7 +3,7 @@ from typing import AsyncIterator, Self, Sequence
 
 import orjson
 
-from pyc8y.rest import CumulocityRestClient
+from pyc8y.rest import CumulocityRestClient, FileDownload
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.managed_object import ManagedObject
 from pyc8y.model.model_base import (
@@ -94,11 +94,11 @@ class Binary(ManagedObject):
         self._source_json = result_json
         return self
 
-    async def read_file(self) -> bytes:
+    async def read_file(self) -> FileDownload:
         """Read the content of the binary attachment.
 
         Returns:
-            The binary attachment's content as bytes
+            A FileDownload tuple of file content bytes and filename.
         """
         self._assert_c8y()
         self._assert_key()
@@ -114,14 +114,14 @@ class Binaries(CumulocityResource[Binary]):
     _meta = BinaryMeta
     _object_type = Binary
 
-    async def read_file(self, id: str) -> bytes:  # noqa (id)
+    async def read_file(self, id: str) -> FileDownload:  # noqa (id)
         """Read the binary content of a specific binary.
 
         Args:
             id (str):  The database ID of the binary object
 
         Returns:
-            The binary attachment's content as bytes
+            A FileDownload tuple of file content bytes and filename.
         """
         return await self.c8y.get_file(self.build_object_path(id))
 

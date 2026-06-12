@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 4.0.0
+
+* Forked from _Cumulocity Python API_ (`c8y_api`), version 3.7.2
+
 ### Features
 
 * Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood.
@@ -11,9 +15,16 @@
 * Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, ...) and bulk operations
   (`create`, `update`, `apply_to`, `delete`, ...) to automatically perform the activities unordered and in parallel.
 
+* Created a new `get_client` function in `pyc8y` to obtain a client intended for interactive sessions (e.g. using 
+  Jupyter). It supports standard Cumulocity session environment variables and a global pretty-printing logging handler. 
+
+* Added a `max_concurrent` parameter to `SimpleCumulocityApp` and `MultiTenantCumulocityApp` as well as `get_client`
+  to automatically limit the number of concurrent REST queries across all coroutines.
+
 * Added the `expression` parameter to all query-like functions (`select`, `get_all`, `delete_by`, ...) for consistency. 
 
-* Added `send_to` function to Operations API to send an operation to a collection of devices.
+* Added `send_to` function to Operations API to send an operation to a collection of devices for increased developer
+  experience.
  
 * Added auxiliary functions `resolve_type`, to heuristically determine the key fragment of an operation, and 
   `get_status_changes`, to obtain the operation's status changes from its delivery log, to the Operation model class.
@@ -22,6 +33,8 @@
 
 * Added functions `select_for` and `get_all_for` to the AuditRecords API to read records for a particular database
   object for better developer experience.
+  
+* Added support for the tenant statistics API.
 
 ### Breaking changes
 
@@ -43,6 +56,9 @@
 
 * The module now being exclusively async, the `AsyncListener` and `AsyncQueueListener` have been renamed to `Listener`
   and `QueueListener`. The synchronous variants have been dropped.
+
+* The `get_file` REST function now returns a tuple of content bytes and filename (string). The Binary API (`read_file`)
+  and Events API (`download_attachment`) have been updated accordingly.
 
 * The `GlobalRole` class has been renamed to `UserGroup` to match the REST API naming.  TODO: global_roles API alias?
   Likewise, the `permission_ids` property has been renamed to `role_ids`. `add_permissions` to `assign_roles` etc. 
@@ -79,7 +95,7 @@
 * Throughout the SDK additional parameters to the constructors (`__init__`) and query-like functions (`select`,
   `get_all`, `count`, etc.) now need to be named to enforce a better coding style and forward compatibility.  
 
-* The Identity classes' `create` and `delete` functions now also allow bulk creation/deletion to stay conform to the
+* The `Identity` classes' `create` and `delete` functions now also allow bulk creation/deletion to stay conform to the
   rest of the model classes. Direct creation and deletion of an individual external ID therefor now requires named
   parameters.
 
@@ -90,14 +106,6 @@
 * In the tenant options API, functions `TenantOptions.delete_by` and `TenantOptions.update_by` are discontinued. Use
   functions `delete` and `update_values` instead. The `get_all_mapped` function was optimized and replaced by function
   `get_values`. 
-
-
-* The `UserG`
-
-* In the Binary API, the
-
-
-
 
 ## Version 3.7.2
 
