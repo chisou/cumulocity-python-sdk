@@ -94,11 +94,11 @@ class Binary(ManagedObject):
         self._source_json = result_json
         return self
 
-    async def read_file(self) -> bytes:
+    async def read_file(self) -> FileDownload:
         """Read the content of the binary attachment.
 
         Returns:
-            The binary attachment's content as bytes
+            A FileDownload tuple of file content bytes and filename.
         """
         self._assert_c8y()
         self._assert_key()
@@ -121,7 +121,7 @@ class Binaries(CumulocityResource[Binary]):
             id (str):  The database ID of the binary object
 
         Returns:
-            A FileDownload with the file content and filename.
+            A FileDownload tuple of file content bytes and filename.
         """
         return await self.c8y.get_file(self.build_object_path(id))
 

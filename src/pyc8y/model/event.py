@@ -109,7 +109,7 @@ class Event(WithId, CumulocityObject):
         """Read the binary attachment.
 
         Returns:
-            A FileDownload with the attachment content and filename.
+            A FileDownload tuple of file content bytes and filename.
         """
         self._assert_c8y()
         self._assert_key()
@@ -662,7 +662,7 @@ class Events(CumulocityResource[Event]):
             event_id (str):  The database ID of the event
 
         Returns:
-            A FileDownload with the attachment content and filename.
+            A FileDownload tuple of file content bytes and filename.
         """
         return await self.c8y.get_file(self.build_attachment_path(event_id))
 

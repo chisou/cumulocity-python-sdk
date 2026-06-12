@@ -478,7 +478,7 @@ class CumulocityRestClient(object):
             params (dict|Sequence[tuple]): Additional request parameters
 
         Returns:
-            A FileDownload with the file content and filename (from Content-Disposition, if present).
+            A FileDownload tuple of file content bytes and filename (from Content-Disposition, if present).
 
         Raises:
             KeyError:  if the resource is not found (404)
