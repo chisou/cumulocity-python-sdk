@@ -1,6 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
 
-
 from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.model.application import Application

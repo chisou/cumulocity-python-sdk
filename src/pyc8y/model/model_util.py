@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from typing import Any
 
 
@@ -66,7 +66,7 @@ def coerce_timedelta(value: str | timedelta | None, name: str | None = None) -> 
     raise ValueError(f"Invalid timedelta{param_name()}: {value!r}")
 
 
-def coerce_timestring(value: str | datetime | None, name: str | None = None) -> str | None:
+def coerce_timestring(value: str | datetime | date | None, name: str | None = None) -> str | None:
     """Ensure that a given timestring reflects a proper, timezone aware date/time.
     A static string 'now' will be converted to the current datetime in UTC."""
 
@@ -79,7 +79,11 @@ def coerce_timestring(value: str | datetime | None, name: str | None = None) -> 
         if not value.tzinfo:
             raise ValueError(f"A specified datetime{param_name()} needs to be timezone aware.")
         return to_timestring(value)
+    if isinstance(value, date):
+        return to_timestring(value)
     if value == "now":
+        return now_timestring()
+    if value == "today":
         return now_timestring()
     try:
         value = to_datetime(value)
@@ -129,11 +133,11 @@ def get_by(dictionary: dict, path: str, default: Any = None, fail: bool = False)
         if not isinstance(current, dict):
             return default
         if key in current:
-            current = current[key]
+            current = dict.__getitem__(current, key)
             continue
         pascal_key = to_pascal_case(key)
         if pascal_key in current:
-            current = current[pascal_key]
+            current = dict.__getitem__(current, pascal_key)
             continue
         if fail:
             raise KeyError(f"Unable to find '{path}' in object JSON.")
@@ -187,12 +191,14 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
 
 def to_datetime(value: str) -> datetime:
     """Convert a Cumulocity datetime object to a datetime."""
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return datetime.fromisoformat(value)
 
 
-def to_timestring(value: datetime) -> str:
+def to_timestring(value: datetime | date) -> str:
     """Convert a Cumulocity timestring object to a string."""
-    return value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    if isinstance(value, datetime):
+        return value.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return value.isoformat()
 
 
 def now_datetime():
@@ -203,6 +209,11 @@ def now_datetime():
 def now_timestring() -> str:
     """Provide an ISO timestring for the current time."""
     return datetime.now(timezone.utc).isoformat()
+
+
+def today_timestring() -> str:
+    """Provide an ISO timestring for the current date."""
+    return date.today().isoformat()
 
 
 def to_pascal_case(name: str) -> str:
