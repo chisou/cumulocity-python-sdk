@@ -54,7 +54,7 @@ async def test_CRUD(live_c8y: CumulocityClient, file_factory):
         assert binary.content_type == binary.type
         assert binary.length == len(file1_data)
 
-        assert file1_data == (await binary.read_file()).decode('utf-8')
+        assert file1_data == (await binary.read_file()).content.decode('utf-8')
 
         assert await live_c8y.binaries.get_count(type='text/raw') >= 1
         assert binary.id in await live_c8y.binaries.get_all(type='text/raw', limit=100, as_values='id')
@@ -65,7 +65,7 @@ async def test_CRUD(live_c8y: CumulocityClient, file_factory):
         binary.content_type = "text/text"
         binary['custom_attribute'] = True
         binary = await binary.update()
-        new_data = (await binary.read_file()).decode('utf-8')
+        new_data = (await binary.read_file()).content.decode('utf-8')
         assert new_data == file2_data
 
         await binary.delete()
@@ -91,12 +91,13 @@ async def test_CRUD2(live_c8y: CumulocityClient, file_factory):
         assert created.content_type == created.type
         assert created.length == len(file1_data)
 
-        content = await live_c8y.binaries.read_file(created.id)
+        content, filename = await live_c8y.binaries.read_file(created.id)
         assert content.decode('utf-8') == file1_data
+        assert filename == "test.txt"
 
         await live_c8y.binaries.update(created.id, file=file2_name)
 
-        content = await live_c8y.binaries.read_file(created.id)
+        content, _ = await live_c8y.binaries.read_file(created.id)
         assert content.decode('utf-8') == file2_data
 
     finally:
