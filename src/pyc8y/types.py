@@ -47,6 +47,12 @@ class MimeType(StrEnum):
     USER_COLLECTION = "application/vnd.com.nsn.cumulocity.usercollection+json"
     USER_GROUP = "application/vnd.com.nsn.cumulocity.group+json"
     USER_GROUP_COLLECTION = "application/vnd.com.nsn.cumulocity.groupcollection+json"
+    TENANT_USAGE_STATISTICS_COLLECTION = "application/vnd.com.nsn.cumulocity.tenantusagestatisticscollection+json"
+    TENANT_USAGE_STATISTICS_SUMMARY = "application/vnd.com.nsn.cumulocity.tenantusagestatisticssummary+json"
+    TENANT_USAGE_STATISTICS_SUMMARY_ALL_TENANTS = "application/json"
+    TENANT_STATISTICS_DATE = "application/vnd.com.nsn.cumulocity.tenantstatisticsdate+json"
+    TENANT_STATISTICS_FILE = "application/vnd.com.nsn.cumulocity.tenantstatisticsfile+json"
+    TENANT_STATISTICS_FILE_COLLECTION = "application/vnd.com.nsn.cumulocity.tenantStatisticsfilecollection + json"
 
 
 class ResourceMeta(ABC):
@@ -152,6 +158,27 @@ class TenantMeta(ResourceMeta):
     collection_mime_type = MimeType.TENANT_COLLECTION
     resource_path = "tenant/tenants"
     collection_name = "tenants"
+
+
+class TenantDeviceStatisticsMeta(ResourceMeta):
+    object_mime_type = "application/json"
+    collection_mime_type = "application/json"
+    resource_path = "tenant/statistics/devices"
+    collection_name = "statistics"
+
+
+class TenantUsageStatisticsMeta(ResourceMeta):
+    object_mime_type = None
+    collection_mime_type = MimeType.TENANT_USAGE_STATISTICS_COLLECTION
+    resource_path = "tenant/statistics"
+    collection_name = "usageStatistics"
+
+
+class TenantStatisticsFilesMeta(ResourceMeta):
+    object_mime_type = MimeType.TENANT_STATISTICS_FILE
+    collection_mime_type = MimeType.TENANT_STATISTICS_FILE_COLLECTION
+    resource_path = "tenant/statistics/files"
+    collection_name = "statisticsFiles"
 
 
 class InventoryRoleMeta(ResourceMeta):
