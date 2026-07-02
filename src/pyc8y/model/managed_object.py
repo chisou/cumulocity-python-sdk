@@ -80,7 +80,12 @@ class ManagedObject(WithId, CumulocityObject):
     _meta = InventoryMeta
 
     def __init__(
-        self, c8y: CumulocityRestClient | None = None, type: str | None = None, name: str | None = None, owner: str | None = None, **kwargs
+            self,
+            c8y: CumulocityRestClient | None = None,
+            type: str | None = None,
+            name: str | None = None,
+            owner: str | None = None,
+            **kwargs
     ):
         """Create a new ManagedObject instance.
 
@@ -361,8 +366,13 @@ class Device(ManagedObject):
     """
 
     def __init__(
-        self, c8y: CumulocityRestClient | None = None, type: str | None = None, name: str | None = None, owner: str | None = None, **kwargs
-    ):  # noqa
+            self,
+            c8y: CumulocityRestClient | None = None,
+            type: str | None = None,
+            name: str | None = None,
+            owner: str | None = None,
+            **kwargs
+    ):
         """Create a new Device instance.
 
         A Device object will always have a `c8y_IsDevice` fragment.

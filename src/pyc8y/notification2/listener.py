@@ -84,7 +84,7 @@ class Listener(object):
                 when the listener stops.
         """
         self._id = next(self._ids)
-        self._log = logging.getLogger(f'{__name__}.Listener[{self._id}]')
+        self._log = logging.getLogger(f"{__name__}.Listener[{self._id}]")
 
         self.c8y = c8y
         self.subscription_name = subscription_name
@@ -141,8 +141,7 @@ class Listener(object):
         )
         session = await self.c8y.session
         connection = await asyncio.wait_for(
-            session.ws_connect(uri, heartbeat=self.ping_interval),
-            timeout=self.connect_timeout
+            session.ws_connect(uri, heartbeat=self.ping_interval), timeout=self.connect_timeout
         )
         self._log.info(
             "Websocket connection established for subscription %s, %s.",
@@ -168,6 +167,7 @@ class Listener(object):
         connection loss. It will end when the listener is stopped using its
         `stop` function.
         """
+
         async def _callback(msg):
             try:
                 await callback(msg)
@@ -203,7 +203,7 @@ class Listener(object):
                 # connection was closed by the server; apply backoff before reconnecting
                 if not self._stop_event.is_set():
                     connection_retry += 1
-                    backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
+                    backoff_delay = self.retry_interval * self.retry_rate**connection_retry
                     with contextlib.suppress(TimeoutError):
                         await asyncio.wait_for(
                             self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay)
@@ -217,11 +217,9 @@ class Listener(object):
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 self._log.info("Websocket connection failed: %s", e)
                 connection_retry += 1
-                backoff_delay = self.retry_interval * self.retry_rate ** connection_retry
+                backoff_delay = self.retry_interval * self.retry_rate**connection_retry
                 with contextlib.suppress(TimeoutError):  # timeout is expected when not stopped
-                    await asyncio.wait_for(
-                        self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay)
-                    )
+                    await asyncio.wait_for(self._stop_event.wait(), timeout=min(backoff_delay, self.retry_max_delay))
             finally:
                 # close and clear connection
                 self._is_connected.clear()
@@ -286,16 +284,18 @@ class Listener(object):
             if not self.shared:
                 self._log.error(
                     "Subscriber %s could not be unsubscribed (potentially data leak).",
-                    self.subscriber_name)
+                    self.subscriber_name,
+                )
             else:
                 self._log.info(
                     "Subscriber %s could not be unsubscribed (assuming it was already unsubscribed).",
-                    self.subscriber_name)
+                    self.subscriber_name,
+                )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self._log.fatal(
                 "Subscriber %s could not be unsubscribed (unknown error: %s).",
-                self.subscriber_name, e,
-                exc_info=e)
+                self.subscriber_name, e, exc_info=e
+            )
 
     async def send(self, payload: str):
         """Send a custom message.
@@ -332,6 +332,7 @@ class Listener(object):
             await self.send(msg_id)
         else:
             self._log.warning("Message %s not acknowledged (connection lost).", msg_id)
+
 
 class QueueListener(object):
     """Listener implementation that pushes notification messages into an
@@ -374,6 +375,7 @@ class QueueListener(object):
 
     def start(self):
         """Start the listener."""
+
         async def push_message(msg: Message):
             self.queue.put_nowait(msg)
 

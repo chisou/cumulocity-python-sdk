@@ -246,6 +246,7 @@ class JsonObject(dict):
     attributes which enables use of the property helpers, as well as
     dot-notation read access via `[]` and `.get`.
     """
+
     @property
     def json(self) -> dict:
         return self
@@ -266,7 +267,7 @@ class JsonObject(dict):
     def get(self, path, default: Any = None) -> Any:
         return get_by(self, path, default=default)
 
- 
+
 class CumulocityObject(Mapping):
     """Base class for all Cumulocity database objects."""
 
@@ -376,8 +377,7 @@ class CumulocityObject(Mapping):
             if fail:
                 if to_pascal_case(key) in current:
                     raise KeyError(
-                        f"Unable to access '{path}': '{key}' is missing — "
-                        f"did you mean '{to_pascal_case(key)}'?"
+                        f"Unable to access '{path}': '{key}' is missing — did you mean '{to_pascal_case(key)}'?"
                     )
                 raise KeyError(f"Unable to access '{path}': '{key}' is missing")
             current[key] = {}
@@ -506,8 +506,8 @@ class CumulocityObject(Mapping):
 class WithId:
     """Mixin for objects with a simple database ID."""
 
-    _source_json: dict   # declare only, this is defined in CumulocityObject
-    _meta: ResourceMeta   # declare only, this is defined in CumulocityObject
+    _source_json: dict  # declare only, this is defined in CumulocityObject
+    _meta: ResourceMeta  # declare only, this is defined in CumulocityObject
 
     @property
     def id(self):
@@ -524,7 +524,9 @@ class WithId:
 
 
 class PageFetcher(Protocol):
-    async def __call__(self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_) -> list: ...
+    async def __call__(
+        self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_
+    ) -> list: ...
 
 
 class CumulocityResource(Generic[CO]):
@@ -599,7 +601,9 @@ class CumulocityResource(Generic[CO]):
             )
         return result_json["statistics"]["totalPages"]
 
-    async def _fetch_page(self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_) -> list:
+    async def _fetch_page(
+        self, page: int, expression: str | None, params: Sequence[tuple[str, str]] | None, **_
+    ) -> list:
         if expression:
             result = await self.c8y.get(f"{self.resource_path}?{expression}&currentPage={page}")
         else:
@@ -692,9 +696,7 @@ class CumulocityResource(Generic[CO]):
 
         def launch():
             nonlocal current
-            in_flight.append(asyncio.create_task(
-                fetch(current, expression=expression, params=params)
-            ))
+            in_flight.append(asyncio.create_task(fetch(current, expression=expression, params=params)))
             current += 1
 
         try:
@@ -742,9 +744,7 @@ class CumulocityResource(Generic[CO]):
 
         def launch():
             nonlocal current
-            in_flight.add(asyncio.create_task(
-                fetch(current, expression=expression, params=params)
-            ))
+            in_flight.add(asyncio.create_task(fetch(current, expression=expression, params=params)))
             current += 1
 
         try:

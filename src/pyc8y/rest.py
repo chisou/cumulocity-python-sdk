@@ -19,8 +19,10 @@ from pyc8y.auth import Auth, BasicAuth, BearerAuth
 
 class FileDownload(NamedTuple):
     """Result of a binary file download."""
+
     content: bytes
     filename: str | None
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +99,6 @@ class BatchError(Exception):
 
 
 class CumulocityRestClient(object):
-
     def __init__(
         self,
         base_url: str,
@@ -216,7 +217,7 @@ class CumulocityRestClient(object):
                         # login failed, checking known reasons
                         response_json = orjson.loads(await response.text() or "") or {}
                         if response.status == 401:
-                            message:str|None = response_json.get("message", None)
+                            message: str | None = response_json.get("message", None)
                             # 1st request might fail due to missing TFA code
                             if message and any(x in message for x in ["TOTP", "TFA"]):
                                 raise MissingTfaError(HttpMethod.POST, str(response.url), message)
@@ -241,7 +242,11 @@ class CumulocityRestClient(object):
                             return auth, None
                         response_json = orjson.loads(await response.text() or "") or {}
                         if response.status == 401:
-                            raise UnauthorizedError(HttpMethod.GET, str(response.url), response_json.get("message", "No detailed error provided."))
+                            raise UnauthorizedError(
+                                HttpMethod.GET,
+                                str(response.url),
+                                response_json.get("message", "No detailed error provided."),
+                            )
                         # this should never happen
                         message = response_json.get("message", "Invalid request!")
                         raise HttpError(HttpMethod.GET, str(response.url), response.status, message)

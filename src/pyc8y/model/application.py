@@ -6,7 +6,15 @@ import aiohttp
 
 from pyc8y.base_util import first
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, JsonObject, WithId, json_property, map_params, resolve_page_size
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    CumulocityResource,
+    JsonObject,
+    WithId,
+    json_property,
+    map_params,
+    resolve_page_size,
+)
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.types import ApplicationMeta, FileSpec, MimeType
 
@@ -241,7 +249,10 @@ class Applications(CumulocityResource[Application]):
         Returns:
             List of ApplicationSubscription instances.
         """
-        result = await self.c8y.get("application/currentApplication/subscriptions", accept=MimeType.APPLICATION_USER_COLLECTION)
+        result = await self.c8y.get(
+            "application/currentApplication/subscriptions",
+            accept=MimeType.APPLICATION_USER_COLLECTION,
+        )
         return [ApplicationSubscription(x) for x in result["users"]]
 
     def select(

@@ -500,19 +500,19 @@ class Inventory(CumulocityResource[MO]):
         )
 
     def _collate_filter_params(
-        self,
-        query: str | None  = None,
-        ids: Sequence[str] | None  = None,
-        filters: Sequence[str] | None  = None,
-        order_by: str | None  = None,
-        type: str | None  = None,
-        parent: str | None  = None,
-        fragment: str | None  = None,
-        fragments: str | Sequence[str] | None = None,
-        name: str | None  = None,
-        owner: str | None  = None,
-        text: str | None  = None,
-        **kwargs,
+            self,
+            query: str | None = None,
+            ids: Sequence[str] | None = None,
+            filters: Sequence[str] | None = None,
+            order_by: str | None = None,
+            type: str | None = None,
+            parent: str | None = None,
+            fragment: str | None = None,
+            fragments: str | Sequence[str] | None = None,
+            name: str | None = None,
+            owner: str | None = None,
+            text: str | None = None,
+            **kwargs,
     ) -> dict:
         """Collate the various different filtering options."""
         only_devices = issubclass(self._object_type, Device)
@@ -535,9 +535,11 @@ class Inventory(CumulocityResource[MO]):
         # query parameters (a single fragment can, multiple fragments cannot)
         use_query = parent or filters or order_by or name or len(multi_fragments) > 1
         if not use_query:
-            return {k: v for k, v in dict(
-                type=type, owner=owner, text=text, fragment=single_fragment, **kwargs
-            ).items() if v is not None}
+            return {
+                k: v
+                for k, v in dict(type=type, owner=owner, text=text, fragment=single_fragment, **kwargs).items()
+                if v is not None
+            }
 
         # if any of the given filter is 'special' we have to convert to a query
         query_filters = list(filters) if filters else []
@@ -557,7 +559,7 @@ class Inventory(CumulocityResource[MO]):
 
         # convert to single query parameter
         order_by = f"+$orderby={order_by}" if order_by else ""
-        query = f'$filter=({" and ".join(query_filters)}){order_by}'
+        query = f"$filter=({' and '.join(query_filters)}){order_by}"
 
         return {query_key: query, **kwargs}
 

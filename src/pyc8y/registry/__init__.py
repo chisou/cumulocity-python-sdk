@@ -21,7 +21,7 @@ class Credentials:
 class DeviceRegistryClient(CumulocityRestClient):
     """Cumulocity device registry client."""
 
-    async def await_credentials(self, device_id: str, timeout: str = '60m', pause: str = '1s') -> Credentials:
+    async def await_credentials(self, device_id: str, timeout: str = "60m", pause: str = "1s") -> Credentials:
         """Wait for device credentials.
 
         The device must have requested credentials already. This function
@@ -49,7 +49,7 @@ class DeviceRegistryClient(CumulocityRestClient):
         """
         timeout_s = coerce_timedelta(timeout).seconds
         pause_s = coerce_timedelta(pause).seconds
-        request_json = {'id': device_id}
+        request_json = {"id": device_id}
 
         timeout_time = time.monotonic() + timeout_s
         while True:
@@ -57,9 +57,9 @@ class DeviceRegistryClient(CumulocityRestClient):
                 raise TimeoutError
             logger.debug(f'Requesting device credentials for device id "{device_id}" ...')
             response = await (await self.session).post(
-                '/devicecontrol/deviceCredentials',
+                "/devicecontrol/deviceCredentials",
                 json=request_json,
-                headers={'Content-Type': 'application/json', 'Accept': 'application/json'},
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
             )
             if response.status == 404:
                 # This is the expected response until the device registration request got accepted
@@ -69,9 +69,9 @@ class DeviceRegistryClient(CumulocityRestClient):
             elif response.status == 201:
                 response_json = await response.json()
                 return Credentials(
-                    tenant_id=response_json['tenantId'],
-                    username=response_json['username'],
-                    password=response_json['password'],
+                    tenant_id=response_json["tenantId"],
+                    username=response_json["username"],
+                    password=response_json["password"],
                 )
             else:
                 raise RuntimeError(f'Unexpected response code: {response.status} "{await response.text()}"')

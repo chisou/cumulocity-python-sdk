@@ -72,7 +72,9 @@ def like(expression: str, string: str):
         else (
             string.startswith(expression[:-1])
             if expression.endswith("*")
-            else string.endswith(expression[1:]) if expression.startswith("*") else expression == string
+            else string.endswith(expression[1:])
+            if expression.startswith("*")
+            else expression == string
         )
     )
 

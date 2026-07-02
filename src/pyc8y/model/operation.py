@@ -36,8 +36,10 @@ class OperationStatus(StrEnum):
 
 class OperationStatusChange(NamedTuple):
     """Operation status change."""
+
     time: str
     status: OperationStatus
+
     @property
     def datetime(self) -> datetime:
         return to_datetime(self.time)
@@ -89,9 +91,18 @@ class Operation(WithId, CumulocityObject):
         candidate = next(filter(lambda x: "_" in x, self.keys()), None)
         if candidate is not None:
             return candidate
+
         def fits_criteria(x):
-            return (x not in {"self", "id", "bulkOperationId", "creationTime", "status", "description", "delivery"}
-                    and not x.startswith("device"))
+            return x not in {
+                "self",
+                "id",
+                "bulkOperationId",
+                "creationTime",
+                "status",
+                "description",
+                "delivery",
+            } and not x.startswith("device")
+
         return next(filter(fits_criteria, self.keys()), None)
 
     def get_status_changes(self) -> list[OperationStatusChange]:
@@ -101,10 +112,7 @@ class Operation(WithId, CumulocityObject):
             A list of OperationStatusChange objects as defined in the
             object's JSON (`delivery.log`).
         """
-        return [
-            OperationStatusChange(x["time"], x["status"])
-            for x in self.get("delivery.log", [])
-        ]
+        return [OperationStatusChange(x["time"], x["status"]) for x in self.get("delivery.log", [])]
 
     async def create(self) -> Self:
         """Store the Operation within the database.

@@ -35,8 +35,9 @@ class _FancyFormatter(logging.Formatter):
         logging.ERROR: ("\033[31m", "❌"),
         logging.CRITICAL: ("\033[41m", "🚨"),
     }
-    DEFAULT =  ("\033[37m", "•")
-    RESET = '\033[0m'
+    DEFAULT = ("\033[37m", "•")
+    RESET = "\033[0m"
+
     def format(self, record):
         config = self.CONFIG.get(record.levelno, self.DEFAULT)
         log_fmt = f"{config[0]}{config[1]}  %(name)-20s  %(message)s{self.RESET}"
@@ -198,7 +199,6 @@ def get_c8y_env(name: str, default: str | None = _undefined) -> str | None:  # t
             return default
         keys = ", ".join(c8y_keys()) or "none"
         raise ValueError(f"Missing environment variable: {name}. Found {keys}.") from e
-
 
 
 class _CumulocityAppBase(ABC):

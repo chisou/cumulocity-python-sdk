@@ -53,8 +53,9 @@ class _DailyDeviceStatistics(CumulocityResource):
         resource = f"tenant/statistics/device/{tenant_id}/daily/{date_str}"
 
         async def fetch_page(page: int, expression, params, **_) -> list:
-            result = await self.c8y.get(resource, params=(("currentPage", str(page)),
-                                                          ("pageSize", str(page_size or 5))))
+            result = await self.c8y.get(
+                resource, params=(("currentPage", str(page)), ("pageSize", str(page_size or 5)))
+            )
             return result[self._meta.collection_name]
 
         return self._iterate(
@@ -65,7 +66,6 @@ class _DailyDeviceStatistics(CumulocityResource):
             workers=workers,
             preserve_order=False,
         )
-
 
 
 class _MonthlyDeviceStatistics(CumulocityResource):
@@ -90,8 +90,9 @@ class _MonthlyDeviceStatistics(CumulocityResource):
         resource = f"tenant/statistics/device/{tenant_id}/monthly/{date_str}"
 
         async def fetch_page(page: int, expression, params, **_) -> list:
-            result = await self.c8y.get(resource, params=(("currentPage", str(page)),
-                                                          ("pageSize", str(page_size or 5))))
+            result = await self.c8y.get(
+                resource, params=(("currentPage", str(page)), ("pageSize", str(page_size or 5)))
+            )
             return result[self._meta.collection_name]
 
         return self._iterate(
@@ -102,7 +103,6 @@ class _MonthlyDeviceStatistics(CumulocityResource):
             workers=workers,
             preserve_order=False,
         )
-
 
 
 class _UsageStatistics(CumulocityResource):
@@ -154,9 +154,7 @@ class _UsageStatistics(CumulocityResource):
         )
 
 
-
 class TenantStatisticsFile(WithId, CumulocityObject):
-
     _meta = TenantStatisticsFilesMeta
 
     id = json_property("id", read_only=True)
@@ -300,8 +298,15 @@ class TenantStatistics:
             as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
-        return self._daily.select(tenant_id, date, limit=limit, page_size=page_size,
-                                  page_number=page_number, as_values=as_values, workers=workers)
+        return self._daily.select(
+            tenant_id,
+            date,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+        )
 
     async def get_all_daily_device_statistics(
             self,
@@ -314,8 +319,18 @@ class TenantStatistics:
             as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
     ) -> list[DeviceStatistics]:
-        return [x async for x in self._daily.select(tenant_id, date, limit=limit, page_size=page_size,
-                                                     page_number=page_number, as_values=as_values, workers=workers)]
+        return [
+            x
+            async for x in self._daily.select(
+                tenant_id,
+                date,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
 
     def select_monthly_device_statistics(
             self,
@@ -328,8 +343,15 @@ class TenantStatistics:
             as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
-        return self._monthly.select(tenant_id, date, limit=limit, page_size=page_size,
-                                    page_number=page_number, as_values=as_values, workers=workers)
+        return self._monthly.select(
+            tenant_id,
+            date,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+        )
 
     async def get_all_monthly_device_statistics(
             self,
@@ -342,8 +364,18 @@ class TenantStatistics:
             as_values: str | tuple | Sequence[str | tuple] | None = None,
             workers: int | None = None,
     ) -> list[DeviceStatistics]:
-        return [x async for x in self._monthly.select(tenant_id, date, limit=limit, page_size=page_size,
-                                                       page_number=page_number, as_values=as_values, workers=workers)]
+        return [
+            x
+            async for x in self._monthly.select(
+                tenant_id,
+                date,
+                limit=limit,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
 
     # --- usage statistics ---
 
@@ -364,10 +396,21 @@ class TenantStatistics:
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[UsageStatistics]:
-        return self._usage.select(expression, before=before, after=after, date_from=date_from,
-                                  date_to=date_to, min_age=min_age, max_age=max_age, limit=limit,
-                                  page_size=page_size, page_number=page_number, as_values=as_values,
-                                  workers=workers, **kwargs)
+        return self._usage.select(
+            expression,
+            before=before,
+            after=after,
+            date_from=date_from,
+            date_to=date_to,
+            min_age=min_age,
+            max_age=max_age,
+            limit=limit,
+            page_size=page_size,
+            page_number=page_number,
+            as_values=as_values,
+            workers=workers,
+            **kwargs,
+        )
 
     async def get_all_usage_statistics(
             self,

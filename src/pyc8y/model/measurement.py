@@ -269,8 +269,7 @@ class Series(dict):
         if value is None:
             value = self._single_value_key(index)
         candidates = (
-            row[index].get(value) if index < len(row) and row[index] else None
-            for row in self.values.values()
+            row[index].get(value) if index < len(row) and row[index] else None for row in self.values.values()
         )
         return [v for v in candidates if v is not None]
 
@@ -313,17 +312,10 @@ class Series(dict):
         value_keys = self._resolve_value_keys(value, sample_index=indices[0])
 
         def values_at(row):
-            return tuple(
-                (row[i].get(k) if i < len(row) and row[i] else None)
-                for i in indices
-                for k in value_keys
-            )
+            return tuple((row[i].get(k) if i < len(row) and row[i] else None) for i in indices for k in value_keys)
 
         if timestamps:
-            return [
-                (self._parse_timestamp(ts, timestamps), *values_at(row))
-                for ts, row in self.values.items()
-            ]
+            return [(self._parse_timestamp(ts, timestamps), *values_at(row)) for ts, row in self.values.items()]
         return [values_at(row) for row in self.values.values()]
 
     def _assert_single_series(self) -> None:
@@ -339,8 +331,7 @@ class Series(dict):
             return {s.series: i for i, s in enumerate(self.specs)}[series]
         except KeyError as e:
             raise KeyError(
-                f"No such series: {series}. "
-                f"Available series are {', '.join(s.series for s in self.specs)}."
+                f"No such series: {series}. Available series are {', '.join(s.series for s in self.specs)}."
             ) from e
 
     def _available_value_keys(self, series_index: int) -> list[str]:
@@ -398,7 +389,7 @@ class Series(dict):
     @staticmethod
     def _encode_name(n: str) -> str:
         """Encode a series name for use as a column name."""
-        return re.sub(r'[ \\.+-]', '_', n)
+        return re.sub(r"[ \\.+-]", "_", n)
 
     def to_numpy(
         self,
@@ -442,13 +433,18 @@ class Series(dict):
                     return np.empty(0)
                 raise
 
-        rows = list(self['values'].values())
+        rows = list(self["values"].values())
         n = len(rows)
 
         return np.fromiter(
-            (row[series_index].get(value, float('nan')) if (series_index < len(row) and row[series_index] is not None) else float('nan')
-             for row in rows),
-            dtype=float, count=n,
+            (
+                row[series_index].get(value, float("nan"))
+                if (series_index < len(row) and row[series_index] is not None)
+                else float("nan")
+                for row in rows
+            ),
+            dtype=float,
+            count=n,
         )
 
     def to_dataframe(
@@ -501,16 +497,16 @@ class Series(dict):
         for idx, name in selected:
             base = self._encode_name(name)
             for key in value_keys:
-                col = base if len(value_keys) == 1 else f'{base}_{key}'
+                col = base if len(value_keys) == 1 else f"{base}_{key}"
                 columns[col] = [
-                    row[idx].get(key, None) if (idx < len(row) and row[idx] is not None) else None
-                    for row in rows
+                    row[idx].get(key, None) if (idx < len(row) and row[idx] is not None) else None for row in rows
                 ]
 
-        if timestamps == 'datetime':
+        if timestamps == "datetime":
             index = pd.to_datetime(ts_strings)
-        elif timestamps == 'epoch':
+        elif timestamps == "epoch":
             from datetime import datetime
+
             index = [datetime.fromisoformat(t).timestamp() for t in ts_strings]
         elif timestamps:
             index = ts_strings
@@ -522,7 +518,7 @@ class Series(dict):
     def to_series(
         self,
         series: str | None = None,
-        value: str = 'min',
+        value: str = "min",
         timestamps: bool | str | None = None,
     ):
         """Build a Pandas Series from a single Cumulocity series.
@@ -555,15 +551,16 @@ class Series(dict):
 
         ts_strings = []
         values = []
-        for ts, row in self['values'].items():
+        for ts, row in self["values"].items():
             ts_strings.append(ts)
             vg = row[idx] if idx < len(row) else None
-            values.append(vg.get(value, float('nan')) if vg is not None else float('nan'))
+            values.append(vg.get(value, float("nan")) if vg is not None else float("nan"))
 
-        if timestamps == 'datetime':
+        if timestamps == "datetime":
             index = pd.to_datetime(ts_strings)
-        elif timestamps == 'epoch':
+        elif timestamps == "epoch":
             from datetime import datetime
+
             index = [datetime.fromisoformat(t).timestamp() for t in ts_strings]
         elif timestamps:
             index = ts_strings

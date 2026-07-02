@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta, date
 from typing import Any
 
 
-def coerce_datetime(value: str | datetime | None, name: str| None = None) -> datetime | None:
+def coerce_datetime(value: str | datetime | None, name: str | None = None) -> datetime | None:
     """Ensure a proper datetime object."""
 
     def param_name():
@@ -161,9 +161,7 @@ def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
         argument.
     """
     return tuple(
-        get_by(
-            data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
-        )
+        get_by(data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None)
         for path in paths
     )
 
@@ -182,9 +180,7 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         The extracted values (or defaults it specified) as dictionary.
     """
     return {
-        key: get_by(
-            data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None
-        )
+        key: get_by(data, path[0] if isinstance(path, tuple) else path, path[1] if isinstance(path, tuple) else None)
         for key, path in mapping.items()
     }
 

@@ -8,8 +8,20 @@ if TYPE_CHECKING:
     from pyc8y.model.managed_object import ManagedObject
 from pyc8y.auth import BasicAuth
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.model.model_base import CumulocityObject, WithId, json_property, time_property, datetime_property, \
-    CumulocityResource, JsonObject, references_property, map_params, resolve_page_size, run_batched, ensure_ids
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    WithId,
+    json_property,
+    time_property,
+    datetime_property,
+    CumulocityResource,
+    JsonObject,
+    references_property,
+    map_params,
+    resolve_page_size,
+    run_batched,
+    ensure_ids,
+)
 from pyc8y.types import UserMeta, CurrentUserMeta, UserGroupMeta, InventoryRoleMeta
 
 
@@ -19,11 +31,12 @@ class TfaSettings(JsonObject):
     This is a regular JSON dict which features convenience properties for
     known/default entries.
     """
-    enabled = json_property[bool]('tfaEnabled')
-    enforced = json_property[bool]('tfaEnforced')
-    strategy = json_property[str]('strategy')
-    last_request_time = time_property('lastTfaRequestTime')
-    last_request_datetime = datetime_property('lastTfaRequestTime')
+
+    enabled = json_property[bool]("tfaEnabled")
+    enforced = json_property[bool]("tfaEnforced")
+    strategy = json_property[str]("strategy")
+    last_request_time = time_property("lastTfaRequestTime")
+    last_request_datetime = datetime_property("lastTfaRequestTime")
 
 
 class UserGroup(WithId, CumulocityObject):
@@ -60,13 +73,13 @@ class UserGroup(WithId, CumulocityObject):
 
     @property
     def object_path(self) -> str:
-        return f'/user/{self.c8y.tenant_id}/groups/{self.id}'
+        return f"/user/{self.c8y.tenant_id}/groups/{self.id}"
 
     async def _create(self) -> Self:
         self._assert_c8y()
         return self._build(
             json=await self.c8y.post(
-                f'/user/{self.c8y.tenant_id}/groups',
+                f"/user/{self.c8y.tenant_id}/groups",
                 json=self.json,
                 accept=self._meta.object_mime_type,
             ),
@@ -94,7 +107,6 @@ class UserGroup(WithId, CumulocityObject):
             a fresh instance.
         """
         return await self._reload(copy)
-
 
     async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
@@ -158,6 +170,7 @@ class UserGroups(CumulocityResource):
 
     See also: https://cumulocity.com/api/core/#tag/Groups
     """
+
     _meta = UserGroupMeta
     _object_type = UserGroup
 
@@ -254,13 +267,14 @@ class UserGroups(CumulocityResource):
             https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
+
         async def fetch_page(page: int, **_) -> list:
             """Custom page fetcher for get by username."""
             result = await self.c8y.get(
-                f'/user/{self.c8y.tenant_id}/users/{username}/groups',
-                params=(('pageSize', page_size), ('currentPage', page)),
+                f"/user/{self.c8y.tenant_id}/users/{username}/groups",
+                params=(("pageSize", page_size), ("currentPage", page)),
             )
-            return [ref['group'] for ref in result['references']]
+            return [ref["group"] for ref in result["references"]]
 
         return self._iterate(
             expression=expression,
@@ -297,17 +311,20 @@ class UserGroups(CumulocityResource):
         Returns:
             List of UserGroup objects
         """
-        return [x async for x in self.select(
-            expression=expression,
-            username=username,
-            limit=limit,
-            include=include,
-            exclude=exclude,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                username=username,
+                limit=limit,
+                include=include,
+                exclude=exclude,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
 
     async def get_count(self, expression: str | None = None, *, username: str | None = None) -> int:
         """Calculate the number of user groups in the database.
@@ -323,16 +340,14 @@ class UserGroups(CumulocityResource):
             Number of user groups
         """
         if expression:
-            result = await self.c8y.get(
-                f"{self.resource_path}?{expression}&pageSize=1&withTotalPages=true"
-            )
-            return result['statistics']['totalPages']
+            result = await self.c8y.get(f"{self.resource_path}?{expression}&pageSize=1&withTotalPages=true")
+            return result["statistics"]["totalPages"]
         if username:
-            path = f'/user/{self.c8y.tenant_id}/users/{username}/groups'
+            path = f"/user/{self.c8y.tenant_id}/users/{username}/groups"
         else:
-            path = f'/user/{self.c8y.tenant_id}/groups'
-        result = await self.c8y.get(path, params=(('pageSize', '1'), ('withTotalPages', 'true')))
-        return result['statistics']['totalPages']
+            path = f"/user/{self.c8y.tenant_id}/groups"
+        result = await self.c8y.get(path, params=(("pageSize", "1"), ("withTotalPages", "true")))
+        return result["statistics"]["totalPages"]
 
     async def create(self, *groups: UserGroup, workers: int | None = None) -> None:
         """Create user groups within the database.
@@ -371,8 +386,11 @@ class UserGroups(CumulocityResource):
         """
         path = f"{self.build_object_path(str(group_id))}/users"
         await run_batched(
-            list(usernames), workers,
-            lambda u: self.c8y.post(path, json={'user': {'self': f'/user/{self.c8y.tenant_id}/users/{u}'}}, accept=None),
+            list(usernames),
+            workers,
+            lambda u: self.c8y.post(
+                path, json={"user": {"self": f"/user/{self.c8y.tenant_id}/users/{u}"}}, accept=None
+            ),
         )
 
     async def unassign_users(self, group_id: int | str, *usernames: str, workers: int | None = None):
@@ -383,7 +401,7 @@ class UserGroups(CumulocityResource):
             *usernames (str):  Iterable of usernames to unassign
             workers (int):  Number of parallel requests; defaults to sequential
         """
-        base_path = self.build_object_path(str(group_id)) + '/users/'
+        base_path = self.build_object_path(str(group_id)) + "/users/"
         await run_batched(list(usernames), workers, lambda u: self.c8y.delete(base_path + u))
 
     async def assign_roles(self, group_id: int | str, *role_ids: str, workers: int | None = None):
@@ -398,7 +416,7 @@ class UserGroups(CumulocityResource):
         await run_batched(
             unwrap_args(role_ids),
             workers,
-            lambda r: self.c8y.post(path, json={'role': {'self': f'user/roles/{r}'}}, accept=None)
+            lambda r: self.c8y.post(path, json={"role": {"self": f"user/roles/{r}"}}, accept=None),
         )
 
     async def unassign_roles(self, group_id: int | str, *role_ids: str, workers: int | None = None):
@@ -410,11 +428,7 @@ class UserGroups(CumulocityResource):
             workers (int):  Number of parallel requests; defaults to sequential
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
-        await run_batched(
-            unwrap_args(role_ids),
-            workers,
-            lambda r: self.c8y.delete(f"{path}/{r}")
-        )
+        await run_batched(unwrap_args(role_ids), workers, lambda r: self.c8y.delete(f"{path}/{r}"))
 
 
 class BaseUser(CumulocityObject):
@@ -459,17 +473,17 @@ class BaseUser(CumulocityObject):
 
     email = json_property[str]("email")
     enabled = json_property[bool]("enabled")
-    display_name = json_property[str]('displayName')
-    password = json_property[str]('password')
-    first_name = json_property[str]('firstName')
-    last_name = json_property[str]('lastName')
-    phone = json_property[str]('phone')
-    tfa_enabled = json_property[bool]('twoFactorAuthenticationEnabled')
-    last_password_change = time_property('lastPasswordChange')
-    last_password_change_datetime = datetime_property('lastPasswordChange')
-    require_password_reset = json_property[bool]('shouldResetPassword')
-    should_reset_password = json_property[bool]('shouldResetPassword')
-    send_password_reset_email = json_property[bool]('sendPasswordResetEmail')
+    display_name = json_property[str]("displayName")
+    password = json_property[str]("password")
+    first_name = json_property[str]("firstName")
+    last_name = json_property[str]("lastName")
+    phone = json_property[str]("phone")
+    tfa_enabled = json_property[bool]("twoFactorAuthenticationEnabled")
+    last_password_change = time_property("lastPasswordChange")
+    last_password_change_datetime = datetime_property("lastPasswordChange")
+    require_password_reset = json_property[bool]("shouldResetPassword")
+    should_reset_password = json_property[bool]("shouldResetPassword")
+    send_password_reset_email = json_property[bool]("sendPasswordResetEmail")
 
     async def reload(self, copy: bool = False) -> Self:
         """Reload the User from the database.
@@ -726,16 +740,19 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         Returns:
             List of InventoryRole instances
         """
-        return [x async for x in self.select(
-            expression=expression,
-            limit=limit,
-            include=include,
-            exclude=exclude,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                limit=limit,
+                include=include,
+                exclude=exclude,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
 
     async def create(self, *roles: InventoryRole, workers: int | None = None) -> None:
         """Create inventory roles within the database.
@@ -783,10 +800,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
             List of InventoryRoleAssignment instances
         """
         result = await self.c8y.get(self.build_assignment_path(username))
-        return [
-            InventoryRoleAssignment.from_json(j, c8y=self.c8y)
-            for j in result["inventoryAssignments"]
-        ]
+        return [InventoryRoleAssignment.from_json(j, c8y=self.c8y) for j in result["inventoryAssignments"]]
 
     async def assign(
         self,
@@ -890,11 +904,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         """
         assignments = await self.get_assignments(username)
         target_ids = set(ensure_ids(objects)) if objects else None
-        ids_to_delete = [
-            x.id
-            for x in assignments
-            if target_ids is None or x.managed_object_id in target_ids
-        ]
+        ids_to_delete = [x.id for x in assignments if target_ids is None or x.managed_object_id in target_ids]
         await self.unassign(username, *ids_to_delete, workers=workers)
 
 
@@ -903,13 +913,13 @@ class User(BaseUser):
 
     @property
     def object_path(self) -> str:
-        return f'/user/{self.c8y.tenant_id}/users/{self.username}'
+        return f"/user/{self.c8y.tenant_id}/users/{self.username}"
 
     async def _create(self) -> Self:
         self._assert_c8y()
         return self._build(
             json=await self.c8y.post(
-                f'/user/{self.c8y.tenant_id}/users',
+                f"/user/{self.c8y.tenant_id}/users",
                 json=self.json,
                 accept=self._meta.object_mime_type,
             ),
@@ -1023,11 +1033,12 @@ class CurrentUser(BaseUser):
 
     See also https://cumulocity.com/api/core/#tag/Current-User
     """
+
     _meta = CurrentUserMeta
 
     @property
     def object_path(self) -> str:
-        return '/user/currentUser'
+        return "/user/currentUser"
 
     async def update_password(self, current_password: str, new_password: str):
         """Update the current user's password.
@@ -1079,7 +1090,7 @@ class Users(CumulocityResource):
 
     async def logout_all(self):
         """Terminate all user's sessions."""
-        await self.c8y.post(f'/user/logout/{self.c8y.tenant_id}/allUsers', json={})
+        await self.c8y.post(f"/user/logout/{self.c8y.tenant_id}/allUsers", json={})
 
     def select(
             self,
@@ -1129,7 +1140,7 @@ class Users(CumulocityResource):
             AsyncIterator of User instances
         """
         # for some reason, the groups param accepts multiple group ID, comma separated
-        groups_param = ','.join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
+        groups_param = ",".join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
 
         page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (
@@ -1148,14 +1159,14 @@ class Users(CumulocityResource):
         async def fetch_page(page: int, **_) -> list:
             if expression:
                 result = await self.c8y.get(
-                    f'/user/{self.c8y.tenant_id}/users?{expression}&currentPage={page}',
+                    f"/user/{self.c8y.tenant_id}/users?{expression}&currentPage={page}",
                 )
             else:
                 result = await self.c8y.get(
-                    f'/user/{self.c8y.tenant_id}/users',
-                    params=(*params, ('currentPage', page)),
+                    f"/user/{self.c8y.tenant_id}/users",
+                    params=(*params, ("currentPage", page)),
                 )
-            return result['users']
+            return result["users"]
 
         return self._iterate(
             expression=expression,
@@ -1210,23 +1221,27 @@ class Users(CumulocityResource):
 
         group_ids = (
             await asyncio.gather(*[resolve_group_id(g) for g in ensure_sequence(groups)])
-            if groups is not None else None
+            if groups is not None
+            else None
         )
-        return [x async for x in self.select(
-            expression=expression,
-            username=username,
-            groups=group_ids,
-            owner=owner,
-            only_devices=only_devices,
-            with_subusers_count=with_subusers_count,
-            limit=limit,
-            include=include,
-            exclude=exclude,
-            page_size=page_size,
-            page_number=page_number,
-            as_values=as_values,
-            workers=workers,
-        )]
+        return [
+            x
+            async for x in self.select(
+                expression=expression,
+                username=username,
+                groups=group_ids,
+                owner=owner,
+                only_devices=only_devices,
+                with_subusers_count=with_subusers_count,
+                limit=limit,
+                include=include,
+                exclude=exclude,
+                page_size=page_size,
+                page_number=page_number,
+                as_values=as_values,
+                workers=workers,
+            )
+        ]
 
     async def get_count(
             self,
@@ -1251,11 +1266,11 @@ class Users(CumulocityResource):
         Returns:
             Number of users
         """
-        path = f'/user/{self.c8y.tenant_id}/users'
+        path = f"/user/{self.c8y.tenant_id}/users"
         if expression:
             result = await self.c8y.get(f"{path}?{expression}&pageSize=1&withTotalPages=true")
-            return result['statistics']['totalPages']
-        groups_param = ','.join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
+            return result["statistics"]["totalPages"]
+        groups_param = ",".join(str(g) for g in ensure_ids(ensure_sequence(groups))) if groups is not None else None
         params = map_params(
             username=username,
             groups=groups_param,
@@ -1263,8 +1278,8 @@ class Users(CumulocityResource):
             only_devices=only_devices,
             page_size=1,
         )
-        result = await self.c8y.get(path, (*params, ('withTotalPages', 'true')))
-        return result['statistics']['totalPages']
+        result = await self.c8y.get(path, (*params, ("withTotalPages", "true")))
+        return result["statistics"]["totalPages"]
 
     async def create(self, *users: User, workers: int | None = None) -> None:
         """Create users within the database.
@@ -1317,10 +1332,10 @@ class Users(CumulocityResource):
             new_password (str): The new password to set
         """
         request_json = {
-            'currentUserPassword': current_password,
-            'newPassword': new_password,
+            "currentUserPassword": current_password,
+            "newPassword": new_password,
         }
-        await self.c8y.put('/user/currentUser/password', json=request_json, accept=None)
+        await self.c8y.put("/user/currentUser/password", json=request_json, accept=None)
         if isinstance(self.c8y.auth, BasicAuth):
             await self.c8y.close()
             self.c8y.auth = BasicAuth(self.c8y.auth.username, new_password)
@@ -1338,7 +1353,7 @@ class Users(CumulocityResource):
         if not owner_id:
             await self.c8y.delete(resource)
         else:
-            await self.c8y.put(resource, json={'owner': owner_id}, accept=None)
+            await self.c8y.put(resource, json={"owner": owner_id}, accept=None)
 
     async def set_delegate(self, user_id: str, delegate_id: str | None):
         """Set the delegate of a given user.
@@ -1352,7 +1367,7 @@ class Users(CumulocityResource):
         if not delegate_id:
             await self.c8y.delete(resource)
         else:
-            await self.c8y.put(resource, json={'delegatedBy': delegate_id}, accept=None)
+            await self.c8y.put(resource, json={"delegatedBy": delegate_id}, accept=None)
 
     async def get_tfa_settings(self, user_id: str) -> TfaSettings:
         """Read the TFA settings of a given user.
@@ -1363,7 +1378,7 @@ class Users(CumulocityResource):
         Returns:
             A TfaSettings object
         """
-        return TfaSettings(await self.c8y.get(self.build_object_path(user_id) + '/tfa'))
+        return TfaSettings(await self.c8y.get(self.build_object_path(user_id) + "/tfa"))
 
     async def revoke_totp_secret(self, user_id: str):
         """Revoke the currently set TFA/TOTP secret for a user.
