@@ -1,13 +1,8 @@
 
 ![GitHub](https://img.shields.io/github/license/chisou/cumulocity-python-sdk)
 ![TOML Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fchisou%2Fcumulocity-python-sdk%2Frefs%2Fheads%2Fmain%2Fpyproject.toml&logo=python&logoColor=ffffff)
-![GitHub release (latest public by date)](https://img.shields.io/github/v/release/chisou/cumulocity-python-sdk?logo=github)
-![GitHub Release Date](https://img.shields.io/github/release-date/chisou/cumulocity-python-sdk?label=)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/chisou/cumulocity-python-sdk?include_prereleases&logo=github&label=pre)
-![GitHub Pre Release Date](https://img.shields.io/github/release-date-pre/chisou/cumulocity-python-sdk?label=)
-[![ReadTheDocs](https://img.shields.io/badge/docs-latest-brightgreen?logo=readthedocs)](https://cumulocity-python-sdk.readthedocs.io/en/latest/)
-
-
+[![GitHub release (latest public by date)](https://img.shields.io/github/v/release/chisou/cumulocity-python-sdk?logo=github&include_prereleases)](https://github.com/chisou/cumulocity-python-sdk/releases)
+[![ReadTheDocs](https://img.shields.io/badge/docs-latest-brightgreen?logo=readthedocs&color=purple)](https://cumulocity-python-sdk.readthedocs.io/en/latest/)
 
 # cumulocity-python-sdk
 
