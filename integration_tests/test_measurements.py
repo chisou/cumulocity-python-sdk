@@ -55,12 +55,6 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
 
     yield factory_fun
 
-    # for d in created_devices:
-    #     try:
-    #         await d.delete()
-    #     except KeyError:
-    #         logging.warning(f"Device #{d.id} already deleted.")
-
 
 async def test_select(live_c8y: CumulocityClient, measurement_factory):
     """Verify that selection works as expected."""
@@ -159,6 +153,18 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     sources = [created_ms[0].source, source_ms[1].source]
     for source in sources:
         assert not await live_c8y.measurements.get_count(source=source)
+
+
+async def test_get_last(live_c8y: CumulocityClient, measurement_factory):
+    """Verify that get_last returns the most recent matching measurement."""
+    created_ms = await measurement_factory(5)
+    device_id = created_ms[0].source
+    type_name = created_ms[0].type
+
+    last = await live_c8y.measurements.get_last(source=device_id, type=type_name)
+
+    assert last is not None
+    assert last.id == created_ms[0].id
 
 
 async def test_single_page_select(live_c8y: CumulocityClient, measurement_factory):

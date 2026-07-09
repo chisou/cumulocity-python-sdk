@@ -1,5 +1,5 @@
 # Copyright (c) 2026 Christoph Souris
-
+import asyncio
 import logging
 import os
 import random
@@ -121,6 +121,24 @@ async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # no
 
     # 7) assert deletion
     assert not await live_c8y.events.get_all(type=typename)
+
+
+async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
+    """Verify that get_last returns the most recent matching event."""
+    typename = create_random_name()
+    device_id = session_device.id
+    now = now_datetime()
+    events = await asyncio.gather(*[
+        Event(live_c8y, type=typename, text=f'Event{i}', source=device_id, time=now + timedelta(minutes=i)).create()
+        for i in range(3)
+    ])
+
+    try:
+        last = await live_c8y.events.get_last(type=typename, source=session_device.id)
+        assert last is not None
+        assert last.id == events[-1].id
+    finally:
+        await live_c8y.events.delete_by(type=typename, source=session_device.id)
 
 
 async def test_filter_by_update_time(live_c8y: CumulocityClient, session_device: Device, sample_events: list[Event]):

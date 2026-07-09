@@ -52,6 +52,27 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
     assert not await live_c8y.operations.get_all(device_id=session_device.id)
 
 
+async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
+    """Verify that get_last returns the most recently created matching operation."""
+    name = create_random_name()
+    operations = await asyncio.gather(*[
+        Operation(
+            live_c8y,
+            device_id=session_device.id,
+            description=f'{name}_{i}',
+            c8y_Command={'text': 'Command text'},
+        ).create()
+        for i in range(3)
+    ])
+
+    try:
+        last = await live_c8y.operations.get_last(device_id=session_device.id, status=OperationStatus.PENDING)
+        assert last is not None
+        assert last.id == operations[-1].id
+    finally:
+        await live_c8y.operations.delete_by(device_id=session_device.id)
+
+
 async def test_get(live_c8y: CumulocityClient, session_device: Device):
     """Verify that query-like retrieval works as expected."""
 

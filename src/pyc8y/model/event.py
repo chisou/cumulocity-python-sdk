@@ -527,7 +527,6 @@ class Events(CumulocityResource[Event]):
         Returns:
             The most recent Event, or None if no match is found.
         """
-        # ensure a lower bound so the query returns results ordered newest-first
         after = None if (before or date_to or min_age) else "1970-01-01"
         params = (
             map_params(
@@ -540,6 +539,7 @@ class Events(CumulocityResource[Event]):
                 after=after,
                 date_to=date_to,
                 min_age=min_age,
+                revert=False,
                 with_source_assets=with_source_assets,
                 with_source_devices=with_source_devices,
                 **kwargs,

@@ -844,6 +844,7 @@ class Measurements(CumulocityResource[Measurement]):
             after=after,
             date_to=date_to,
             min_age=min_age,
+            revert=True,
             page_size=1,
             **kwargs,
         )
