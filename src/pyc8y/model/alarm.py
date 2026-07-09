@@ -82,8 +82,18 @@ class Alarm(WithId, CumulocityObject):
     last_updated = json_property("lastUpdated", read_only=True)
     last_updated_datetime = datetime_property("lastUpdated")
 
-    async def create(self):
-        return await self._create()
+    async def create(self, copy: bool = False) -> Self:
+        """Create the Alarm within the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The created Alarm. By default, this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Update the object within the database.
@@ -93,7 +103,7 @@ class Alarm(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Alarm. By default this is `self`; if `copy=True`,
+            The updated Alarm. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)

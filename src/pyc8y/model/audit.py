@@ -151,13 +151,18 @@ class AuditRecord(WithId, CumulocityObject):
         if value is not None:
             self._staged_json["changes"] = list(value)
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create the AuditRecord within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh AuditRecord object representing what was created within the database.
+            The created AuditRecord. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
 
 class AuditRecords(CumulocityResource[AuditRecord]):

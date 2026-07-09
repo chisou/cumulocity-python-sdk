@@ -29,7 +29,7 @@ async def test_crud(live_c8y: CumulocityClient):
 
         # 2) update the option
         option.value = 'new value'
-        option = await option.update()
+        await option.update()
         assert option.value == 'new value'
         assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
 

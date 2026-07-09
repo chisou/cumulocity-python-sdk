@@ -33,7 +33,7 @@ async def test_crud(live_c8y: CumulocityClient):
 
         created_user.require_password_reset = False
         created_user.last_name = "last_name"
-        updated_user = await created_user.update()
+        updated_user = await created_user.update(copy=True)
 
         assert updated_user.last_name == created_user.last_name
         assert updated_user.require_password_reset == created_user.require_password_reset
@@ -83,7 +83,7 @@ async def test_current_update(live_c8y: CumulocityClient, user_c8y: CumulocityCl
     current_user = await user_c8y.users.get_current()
 
     current_user.first_name = "New"
-    current_user = await current_user.update()
+    await current_user.update()
     assert current_user.first_name == "New"
 
 

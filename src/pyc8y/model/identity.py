@@ -63,22 +63,28 @@ class ExternalId(CumulocityObject):
         if not self.external_id or not self.external_type:
             raise ValueError("Both external_id and external_type must be set to allow direct object access.")
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Store the external ID in the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            Self reference.
+            The created ExternalId. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        # can't use _delete function as object IDs are built differently
-        return self._build(
-            await self.c8y.post(
-                _build_resource_path(self.managed_object_id),
-                json=_build_json(self.external_id, self.external_type),
-                content_type="application/vnd.com.nsn.cumulocity.externalid+json",
-                accept="application/vnd.com.nsn.cumulocity.externalid+json",
-            ),
-            c8y=self.c8y,
+        # can't use _create as object paths are built differently
+        result_json = await self.c8y.post(
+            _build_resource_path(self.managed_object_id),
+            json=_build_json(self.external_id, self.external_type),
+            content_type="application/vnd.com.nsn.cumulocity.externalid+json",
+            accept="application/vnd.com.nsn.cumulocity.externalid+json",
         )
+        if copy:
+            return self._build(result_json, c8y=self.c8y)
+        self._source_json = result_json
+        return self
 
     async def delete(self) -> None:
         """Remove the external ID from the database."""

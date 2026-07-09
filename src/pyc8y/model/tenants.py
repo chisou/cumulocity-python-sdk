@@ -74,13 +74,18 @@ class Tenant(WithId, CumulocityObject):
         refs = self._source_json.get("ownedApplications", {}).get("references", [])
         return [Application.from_json(ref["application"], c8y=self.c8y) for ref in refs]
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create a new representation of this tenant within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Tenant instance representing the created tenant.
+            The created Tenant. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
@@ -90,7 +95,7 @@ class Tenant(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Tenant. By default this is `self`; if `copy=True`,
+            The updated Tenant. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -103,7 +108,7 @@ class Tenant(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded Tenant. By default this is `self`; if `copy=True`,
+            The reloaded Tenant. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)

@@ -114,13 +114,18 @@ class Operation(WithId, CumulocityObject):
         """
         return [OperationStatusChange(x["time"], x["status"]) for x in self.get("delivery.log", [])]
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Store the Operation within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Operation object representing what was created within the database.
+            The created Operation. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Update the Operation within the database.
@@ -549,13 +554,18 @@ class BulkOperation(WithId, CumulocityObject):
     general_status = json_property("generalStatus", read_only=True)
     operation_prototype = json_property("operationPrototype")
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Store the Bulk Operation within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh BulkOperation object representing what was created within the database.
+            The created BulkOperation. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Update the BulkOperation within the database.
@@ -565,7 +575,7 @@ class BulkOperation(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated BulkOperation. By default this is `self`; if `copy=True`,
+            The updated BulkOperation. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -578,7 +588,7 @@ class BulkOperation(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded BulkOperation. By default this is `self`; if `copy=True`,
+            The reloaded BulkOperation. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)

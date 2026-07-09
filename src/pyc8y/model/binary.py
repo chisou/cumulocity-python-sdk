@@ -49,11 +49,16 @@ class Binary(ManagedObject):
     def from_json(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         return cls._build(json, c8y=c8y)
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create a new binary within the database by uploading the file.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Binary instance representing the created object.
+            The created Binary. By default, this is `self`; if `copy=True`,
+            a fresh instance.
 
         Raises:
             FileNotFoundError:  if the file attribute refers to an invalid path
@@ -66,7 +71,10 @@ class Binary(ManagedObject):
             form_data={"object": orjson.dumps(self.json).decode("utf8")},
             content_type=self.get("content_type"),
         )
-        return Binary.from_json(result_json, c8y=self.c8y)
+        if copy:
+            return self._build(result_json, c8y=self.c8y)
+        self._source_json = result_json
+        return self
 
     async def update(self, copy: bool = False) -> Self:
         """Update the binary attachment.
@@ -76,7 +84,7 @@ class Binary(ManagedObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Binary. By default this is `self`; if `copy=True`,
+            The updated Binary. By default, this is `self`; if `copy=True`,
             a fresh instance.
 
         Raises:

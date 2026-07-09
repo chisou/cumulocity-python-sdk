@@ -23,7 +23,7 @@ async def test_crud(live_c8y: CumulocityClient):
 
         created_role.name = f"{rolename}_2"
         created_role.description = f"Updated {created_role.description}"
-        updated_role = await created_role.update()
+        updated_role = await created_role.update(copy=True)
 
         assert updated_role.name == created_role.name
         assert updated_role.description == created_role.description

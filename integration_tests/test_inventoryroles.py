@@ -28,7 +28,7 @@ async def test_crud(live_c8y: CumulocityClient):
         role.description = 'new description'
         perms = role.permissions[1:]
         role.permissions = perms
-        updated = await role.update()
+        updated = await role.update(copy=True)
 
         assert updated.id == role.id
         assert updated.description == 'new description'

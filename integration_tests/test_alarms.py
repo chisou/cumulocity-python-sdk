@@ -37,7 +37,7 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
         created_alarm.severity = AlarmSeverity.MINOR
         created_alarm.status = AlarmStatus.ACKNOWLEDGED
 
-        updated_alarm = await created_alarm.update()
+        updated_alarm = await created_alarm.update(copy=True)
         # -> text should be updated in db
         assert updated_alarm.text == created_alarm.text
         assert updated_alarm.status == created_alarm.status

@@ -45,7 +45,7 @@ async def test_CRUD(live_c8y: CumulocityClient, file_factory):
     file2_name, file2_data = file_factory()
     binary = Binary(live_c8y, name='some_file.py', type='text/raw', file=file1_name, custom_attribute=False)
 
-    binary = await binary.create()
+    await binary.create()
     try:
         assert binary.id
         assert binary.is_binary
@@ -64,7 +64,7 @@ async def test_CRUD(live_c8y: CumulocityClient, file_factory):
         binary.file = file2_name
         binary.content_type = "text/text"
         binary['custom_attribute'] = True
-        binary = await binary.update()
+        await binary.update()
         new_data = (await binary.read_file()).content.decode('utf-8')
         assert new_data == file2_data
 

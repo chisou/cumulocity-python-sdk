@@ -137,25 +137,28 @@ class ManagedObject(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded ManagedObject. By default this is `self`; if `copy=True`,
+            The reloaded ManagedObject. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create a new representation of this object within the database.
 
         This function can be called multiple times to create multiple
         instances of this object with different ID.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh ManagedObject instance representing the created
-            object within the database. This instance can be used to get
-            at the ID of the new managed object.
+            The created ManagedObject. By default, this is `self`; if `copy=True`,
+            a fresh instance.
 
         See also function Inventory.create which doesn't parse the result.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
@@ -165,7 +168,7 @@ class ManagedObject(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated ManagedObject. By default this is `self`; if `copy=True`,
+            The updated ManagedObject. By default, this is `self`; if `copy=True`,
             a fresh instance.
 
         See also function Inventory.update which doesn't parse the result.
@@ -510,20 +513,24 @@ class DeviceGroup(ManagedObject):
         await self.assign_child_asset(child.id)
         return child
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create a new representation of this object within the database.
 
         This operation will create the group and all added child groups
         within the database.
 
-        :returns:  A fresh DeviceGroup instance representing the created
-            object within the database. This instance can be used to get at
-            the ID of the new object.
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The created DeviceGroup. By default, this is `self`; if `copy=True`,
+            a fresh instance.
 
         See also function DeviceGroupInventory.create which doesn't parse
         the result.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False, **_) -> Self:
         """Write changed to the database.
@@ -534,7 +541,7 @@ class DeviceGroup(ManagedObject):
             copy (bool): If True, return a fresh instance with the server's
                 state and leave self unchanged; default False (mutate self).
 
-        :returns:  The updated DeviceGroup. By default this is `self`; if
+        :returns:  The updated DeviceGroup. By default, this is `self`; if
             `copy=True`, a fresh instance.
         """
         return await self._update(copy)

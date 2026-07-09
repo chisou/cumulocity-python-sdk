@@ -121,13 +121,18 @@ class Event(WithId, CumulocityObject):
         self._assert_key()
         await self.c8y.delete(self.attachment_path)
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create this event within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Event instance representing what was created (including the ID).
+            The created Event. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Write changes to this event to the database.
@@ -137,7 +142,7 @@ class Event(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Event. By default this is `self`; if `copy=True`,
+            The updated Event. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -154,7 +159,7 @@ class Event(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded Event. By default this is `self`; if `copy=True`,
+            The reloaded Event. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)

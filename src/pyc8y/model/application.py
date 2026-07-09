@@ -121,14 +121,18 @@ class Application(WithId, CumulocityObject):
         except (KeyError, TypeError):
             return None
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create the Application within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Application object representing what was
-            created within the database (including the ID).
+            The created Application. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Update the Application within the database.
@@ -140,7 +144,7 @@ class Application(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated Application. By default this is `self`; if `copy=True`,
+            The updated Application. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)

@@ -114,13 +114,18 @@ class Subscription(WithId, CumulocityObject):
     def from_json(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         return cls._build(json, c8y=c8y)
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create a new subscription within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh Subscription instance representing the created subscription.
+            The created Subscription. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
 
 class Subscriptions(CumulocityResource[Subscription]):

@@ -328,6 +328,11 @@ class CumulocityObject(Mapping):
     def from_json(cls, json: dict, c8y: CumulocityRestClient | None = None) -> Self:
         return cls._build(json, c8y=c8y)
 
+    def _rebuild(self, json: dict) -> None:
+        # rebuild self to reflect different JSON
+        self._source_json = json
+        self._staged_json = {}
+
     def __contains__(self, path) -> bool:
         current = self.json
         for key in path.split("."):
@@ -409,35 +414,24 @@ class CumulocityObject(Mapping):
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         return as_record(self.json, mapping)
 
-    async def _create(self) -> Self:
-        """Create the object within the database.
-
-        Returns:
-            A fresh object representing what was created within the database;
-            this includes the Cumulocity ID.
-        """
+    async def _create(self, copy: bool = False) -> Self:
         self._assert_c8y()
-        return self._build(
-            json=await self.c8y.post(
+        object_json = await self.c8y.post(
                 self.resource_path,
                 json=self.json,
                 accept=self._meta.object_mime_type,
-            ),
-            c8y=self.c8y,
-        )
+            )
+        if copy:
+            return self._build(object_json, c8y=self.c8y)
+        self._rebuild(object_json)
+        return self
 
     async def _update(self, copy: bool = False) -> Self:
-        """Update the object within the database.
-
-        Note: This will only send changed fields to increase performance.
-
-        Returns:
-            A fresh object representing the updated state within the database.
-        """
+        # apply locally stages changes to the object
         return await self._apply(self._staged_json, copy=copy)
 
     async def _apply(self, json: dict, copy: bool = False) -> Self:
-        """Apply the object within the database."""
+        # apply JSON fields as changes to the object
         self._assert_c8y()
         self._assert_key()
         object_json = await self.c8y.put(
@@ -448,19 +442,11 @@ class CumulocityObject(Mapping):
         )
         if copy:
             return self._build(object_json, c8y=self.c8y)
-        self._source_json = object_json
+        self._rebuild(object_json)
         return self
 
     async def _apply_to(self, other_id: str) -> Self:
-        """Apply changes made to this object to another object in the database.
-
-        Args:
-            other_id (str):  Database ID of the object to update.
-
-        Returns:
-            A fresh object representing the updated object's state within
-            the database.
-        """
+        # apply locally stages changes to another object
         self._assert_c8y()
         return self._build(
             json=await self.c8y.put(
@@ -486,7 +472,7 @@ class CumulocityObject(Mapping):
         )
         if copy:
             return self._build(object_json, c8y=self.c8y)
-        self._source_json = object_json
+        self._rebuild(object_json)
         return self
 
     async def delete(self, **_) -> None:  # allow override with parameters

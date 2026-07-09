@@ -75,25 +75,30 @@ class UserGroup(WithId, CumulocityObject):
     def object_path(self) -> str:
         return f"/user/{self.c8y.tenant_id}/groups/{self.id}"
 
-    async def _create(self) -> Self:
+    async def _create(self, copy: bool = False) -> Self:
         self._assert_c8y()
-        return self._build(
-            json=await self.c8y.post(
-                f"/user/{self.c8y.tenant_id}/groups",
-                json=self.json,
-                accept=self._meta.object_mime_type,
-            ),
-            c8y=self.c8y,
+        object_json = await self.c8y.post(
+            f"/user/{self.c8y.tenant_id}/groups",
+            json=self.json,
+            accept=self._meta.object_mime_type,
         )
+        if copy:
+            return self._build(object_json, c8y=self.c8y)
+        self._rebuild(object_json)
+        return self
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create the GlobalRole within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh GlobalRole object representing what was
-            created within the database (including the ID).
+            The created GlobalRole. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def reload(self, copy: bool = False) -> Self:
         """Reload this object's data from database.
@@ -103,7 +108,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded GlobalRole. By default this is `self`; if `copy=True`,
+            The reloaded GlobalRole. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)
@@ -116,7 +121,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated GlobalRole. By default this is `self`; if `copy=True`,
+            The updated GlobalRole. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -493,7 +498,7 @@ class BaseUser(CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded User. By default this is `self`; if `copy=True`,
+            The reloaded User. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)
@@ -506,7 +511,7 @@ class BaseUser(CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated User. By default this is `self`; if `copy=True`,
+            The updated User. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -602,13 +607,18 @@ class InventoryRole(WithId, CumulocityObject):
     def permissions(self, value: list[Permission]):
         self.set("permissions", list(value))
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create this inventory role within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh InventoryRole representing the created object.
+            The created InventoryRole. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def update(self, copy: bool = False) -> Self:
         """Write changes to the database.
@@ -618,7 +628,7 @@ class InventoryRole(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated InventoryRole. By default this is `self`; if
+            The updated InventoryRole. By default, this is `self`; if
             `copy=True`, a fresh instance.
         """
         return await self._update(copy)
@@ -631,7 +641,7 @@ class InventoryRole(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded InventoryRole. By default this is `self`; if
+            The reloaded InventoryRole. By default, this is `self`; if
             `copy=True`, a fresh instance.
         """
         return await self._reload(copy)
@@ -915,25 +925,30 @@ class User(BaseUser):
     def object_path(self) -> str:
         return f"/user/{self.c8y.tenant_id}/users/{self.username}"
 
-    async def _create(self) -> Self:
+    async def _create(self, copy: bool = False) -> Self:
         self._assert_c8y()
-        return self._build(
-            json=await self.c8y.post(
-                f"/user/{self.c8y.tenant_id}/users",
-                json=self.json,
-                accept=self._meta.object_mime_type,
-            ),
-            c8y=self.c8y,
+        object_json = await self.c8y.post(
+            f"/user/{self.c8y.tenant_id}/users",
+            json=self.json,
+            accept=self._meta.object_mime_type,
         )
+        if copy:
+            return self._build(object_json, c8y=self.c8y)
+        self._rebuild(object_json)
+        return self
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Create the User within the database.
 
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
         Returns:
-            A fresh User object representing what was
-            created within the database (including the ID).
+            The created User. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
     async def set_owner(self, user_id: str) -> None:
         """Set the owner for this user.

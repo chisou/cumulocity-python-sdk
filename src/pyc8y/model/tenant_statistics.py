@@ -177,16 +177,36 @@ class TenantStatisticsFile(WithId, CumulocityObject):
         self.date_from = date_from
         self.date_to = date_to
 
-    async def generate(self) -> Self:
-        return await self._create()
+    async def generate(self, copy: bool = False) -> Self:
+        """Generate the statistics file within the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The created TenantStatisticsFile. By default, this is `self`; if
+            `copy=True`, a fresh instance.
+        """
+        return await self._create(copy)
 
     async def read(self) -> FileDownload:
         self._assert_c8y()
         self._assert_key()
         return await self.c8y.get_file(self.object_path)
 
-    async def create(self) -> Self:
-        return await self.generate()
+    async def create(self, copy: bool = False) -> Self:
+        """Create (generate) the statistics file within the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The created TenantStatisticsFile. By default, this is `self`; if
+            `copy=True`, a fresh instance.
+        """
+        return await self.generate(copy)
 
 
 class _StatisticsFiles(CumulocityResource):

@@ -37,7 +37,7 @@ async def test_CRUD(live_c8y: CumulocityClient, safe_create):
 
     # update child2
     child2["another_fragment"] = {"data": 12345}
-    child2 = await child2.update()
+    await child2.update()
     assert (await live_c8y.group_inventory.get(child2.id))["another_fragment.data"] == 12345
 
     # unassign child groups

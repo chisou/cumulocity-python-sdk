@@ -54,6 +54,13 @@
   needs to be overwritten. This is in conformance with Cumulocity's data model in which an attribute cannot be altered
   but only overwritten with the new value resp. structure.
 
+* Side effects of model operations. The object-oriented `create`, `update`, `apply`, and `reload` functions on
+  `CumulocityObject` model classes now implicitly update `self` to reflect the changes made - basically `self` is 
+  reset to the JSON response making `obj = obj.create()` (previous style) and `obj.create()` are now equivalent
+  operations. This behavior feels more natural in the OOP model. For the legitimate reason to _not_ change `self`
+  all operations feature a `copy` parameter which leave `self` as-is and return a fresh instance based on the JSON
+  response.
+
 * The module now being exclusively async, the `AsyncListener` and `AsyncQueueListener` have been renamed to `Listener`
   and `QueueListener`. The synchronous variants have been dropped.
 

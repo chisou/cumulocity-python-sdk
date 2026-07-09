@@ -49,7 +49,7 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
 
         # 2) update updatable fields
         created_event.text = f'{typename} updated'
-        updated_event = await created_event.update()
+        updated_event = await created_event.update(copy=True)
         assert updated_event.text == created_event.text
 
         # 3) use apply_to

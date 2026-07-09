@@ -652,13 +652,18 @@ class Measurement(WithId, CumulocityObject):
             if isinstance(value1, dict) and "value" in value1
         ]
 
-    async def create(self) -> Self:
+    async def create(self, copy: bool = False) -> Self:
         """Store the Measurement within the database.
 
-        Returns:  A fresh Measurement object representing what was
-            created within the database (including the ID).
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The created Measurement. By default, this is `self`; if `copy=True`,
+            a fresh instance.
         """
-        return await self._create()
+        return await self._create(copy)
 
 
 class Measurements(CumulocityResource[Measurement]):
