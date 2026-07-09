@@ -1,9 +1,11 @@
 
 ![GitHub](https://img.shields.io/github/license/chisou/cumulocity-python-sdk)
-![TOML Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FCumulocity-IoT%2Fcumulocity-python-api%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/chisou/cumulocity-python-sdk)
-![GitHub Release Date](https://img.shields.io/github/release-date/chisou/cumulocity-python-sdk)
-![ReadTheDocs](https://img.shields.io/readthedocs/cumulocity-python-sdk)
+![TOML Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fchisou%2Fcumulocity-python-sdk%2Frefs%2Fheads%2Fmain%2Fpyproject.toml&logo=python&logoColor=ffffff)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/chisou/cumulocity-python-sdk?include_prereleases&logo=github)
+![GitHub Release Date](https://img.shields.io/github/release-date/chisou/cumulocity-python-sdk?include_prereleases&logo=github)
+[![ReadTheDocs](https://img.shields.io/badge/docs-latest-brightgreen?logo=readthedocs)](https://cumulocity-python-sdk.readthedocs.io/en/latest/)
+
+
 
 # cumulocity-python-sdk
 
