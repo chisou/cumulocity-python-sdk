@@ -73,6 +73,30 @@ async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
         await live_c8y.operations.delete_by(device_id=session_device.id)
 
 
+async def test_skim_latest(live_c8y: CumulocityClient, session_device: Device):
+    """Verify that skim_latest returns the latest operation of each resolved type."""
+    n = 2
+    fragments = {
+        "c8y_Command": {"text": "Command text"},
+        "c8y_Firmware": {"url": "-"}
+    }
+    operations = [
+        await Operation(live_c8y, device_id=session_device.id, description=f"{k}_{i}", **{k: v}).create()
+        for k, v in fragments.items()
+        for i in range(1, n+1)
+    ]
+
+    try:
+        skim = await live_c8y.operations.skim_latest(device_id=session_device.id, status=OperationStatus.PENDING)
+        # -> one of each type
+        assert set(skim.keys()) == set(fragments)
+        # -> always the latest
+        #    fragments are grouped by type, so we take every nth starting at n-1
+        assert {x.id for x in skim.values()} == {x.id for x in operations[n-1::n]}
+    finally:
+        await live_c8y.operations.delete_by(device_id=session_device.id)
+
+
 async def test_get(live_c8y: CumulocityClient, session_device: Device):
     """Verify that query-like retrieval works as expected."""
 

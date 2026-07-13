@@ -100,6 +100,14 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     assert len({x.get_series()[0] for x in same_series_ms}) == 1
     assert len(same_series_ms) == len(created_ms) + len(source_ms) + len(type_ms)
 
+    # skim latest
+    skim_result = await live_c8y.measurements.skim_latest(source=device_id)
+    # -> one of each type
+    assert set(skim_result.keys()) == {name, other_name}
+    # -> always return the latest of each
+    assert skim_result[name].id == max(created_ms + series_ms, key=lambda m: m.time).id
+    assert skim_result[other_name].id == max(type_ms, key=lambda m: m.time).id
+
     # (2) Testing deletion
 
     # Delete all with same source and type (fragment is not supported)

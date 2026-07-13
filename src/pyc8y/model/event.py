@@ -13,6 +13,7 @@ from pyc8y.model.model_base import (
     time_property,
     map_params,
     resolve_page_size,
+    skim_latest_by,
 )
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.types import EventMeta, FileSpec
@@ -209,6 +210,35 @@ class Events(CumulocityResource[Event]):
             An Event instance representing the object in the database.
         """
         return await self._get(event_id)
+
+    async def skim_latest(
+        self,
+        *,
+        source: str | None = None,
+        max_age: str | timedelta | None = "1d",
+        limit: int | None = 200,
+        **kwargs,
+    ) -> dict[str, Event]:
+        """Best-effort assembly of the latest event of each type.
+
+        Scans up to `limit` of the most recent events within `max_age`
+        and returns the latest one seen for each distinct `type`. This is
+        NOT guaranteed to be complete - a type that hasn't occurred within
+        the scanned window is silently missing from the result. Intended
+        for quick, interactive exploration.
+
+        Args:
+            source (str):  Database ID of a source device
+            max_age (timedelta|str):  How far back to scan; default 1 day.
+            limit (int):  Maximum number of events to scan; default 200.
+            kwargs:  Additional filters, forwarded to `get_all`.
+
+        Returns:
+            Mapping of event type to the latest matching Event seen
+                within the scanned window.
+        """
+        events = await self.get_all(source=source, max_age=max_age, limit=limit, asc=False, **kwargs)
+        return skim_latest_by(events, key=lambda e: e.type)
 
     def select(
         self,

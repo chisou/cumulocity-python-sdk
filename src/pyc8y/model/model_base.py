@@ -839,6 +839,20 @@ class CumulocityResource(Generic[CO]):
         )
 
 
+def skim_latest_by(items: Sequence[T], key: Callable[[T], Any]) -> dict[Any, T]:
+    """Reduce a list of items ordered newest-first to the first (i.e.
+    latest) occurrence of each `key(item)` value.
+
+    Items for which `key` returns None are skipped.
+    """
+    latest: dict[Any, T] = {}
+    for item in items:
+        k = key(item)
+        if k is not None and k not in latest:
+            latest[k] = item
+    return latest
+
+
 def resolve_page_size(
     page_size: int | None,
     limit: int | None,

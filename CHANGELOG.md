@@ -4,9 +4,17 @@
 
 * Forked from _Cumulocity Python API_ (`c8y_api`), version 3.7.2
 
+  The SDK is now built on _asynchronous I/O_ and oriented towards a _better developer experience_ over strict
+  mirroring of the Cumulocity REST API (see below for details).
+
 ### Features
 
-* Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood.
+* Migrated the entire library to `asyncio` using highly optimized `httpio` and `orjson` libraries under the hood
+  resulting in a significant throughput and performance boost.
+
+* Changed the design philosophy, putting developer experience first rather than building a strict REST mirror. All
+  endpoints are still provided, but auxiliary parameters and convenience functions are now directly woven into the
+  respective API classes for better discoverability.
 
 * All model objects are now fully based on and compatible to the actual JSON data. The pure JSON representation is 
   available via the commonly available `json` property. Key fields (like `id`, or `creation_date` are still promoted
@@ -35,6 +43,11 @@
   object for better developer experience.
   
 * Added support for the tenant statistics API.
+
+* Added best-effort convenience methods (`skim_latest` on `Measurements`, `Events`, `Operations`, and
+  `skim_latest_measurements`/`skim_latest_events`/`skim_latest_operations` on `ManagedObject`) that scan a bounded
+  window of items and return the latest item per type. They are intended for quick, interactive exploration and not
+  guaranteed to be complete.
 
 ### Breaking changes
 
@@ -84,7 +97,6 @@
 
 * The nested constants classes like `Alarm.Status`, `Alarm.Severity`, `Operation.Status` etc. have been promoted to 
   top-level classes `AlarmStatus`, `AlarmSeverity`, `OperationStatus`, respectively. 
-
 
 #### Minor changes
 

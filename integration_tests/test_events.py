@@ -141,6 +141,23 @@ async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
         await live_c8y.events.delete_by(type=typename, source=session_device.id)
 
 
+async def test_skim_lastest(live_c8y: CumulocityClient, session_device: Device):
+    """Verify that skim_latest returns the latest event of each type."""
+    device_id = session_device.id
+    typenames = [create_random_name(), create_random_name()]
+    times = [now_datetime() + timedelta(minutes=i) for i in range(4)]
+    events = await asyncio.gather(*[
+        Event(live_c8y, type=typenames[i//2], text=f"Event{i}", source=device_id, time=times[i]).create()
+        for i in range(4)
+    ])
+
+    try:
+        skim = await live_c8y.events.skim_latest(source=session_device.id)
+        assert set(skim.keys()) == set(typenames)
+    finally:
+        await live_c8y.events.delete(*events, workers=len(events))
+
+
 async def test_filter_by_update_time(live_c8y: CumulocityClient, session_device: Device, sample_events: list[Event]):
     """Verify that filtering by lastUpdatedTime works as expected."""
 
@@ -176,6 +193,10 @@ async def test_select(live_c8y: CumulocityClient, sample_events: list[Event]):
 
     # 2) type/source filter
     assert (await live_c8y.events.get_all(type=event_1.type, source=event_1.source))[0].text == event_1.text
+
+    # 3) skim_latest groups by type - each sample event has a distinct type
+    skim = await live_c8y.events.skim_latest(source=event_1.source)
+    assert all(skim[e.type].id == e.id for e in sample_events)
 
 
 async def test_CRUD_attachments(live_c8y: CumulocityClient, session_device: Device, sample_events: list[Event]):  # noqa (case)

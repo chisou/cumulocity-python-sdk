@@ -18,6 +18,7 @@ from pyc8y.model.model_base import (
     expression_implies_order,
     map_params,
     resolve_page_size,
+    skim_latest_by,
 )
 from pyc8y.model.model_util import to_datetime
 from pyc8y.types import MeasurementMeta
@@ -849,6 +850,37 @@ class Measurements(CumulocityResource[Measurement]):
             **kwargs,
         )
         return await self._get_last(expression=expression, params=params, as_values=as_values)
+
+    async def skim_latest(
+        self,
+        *,
+        source: str | None = None,
+        max_age: str | timedelta | None = "1d",
+        limit: int | None = 200,
+        **kwargs,
+    ) -> dict[str, Measurement]:
+        """Best-effort assembly of the latest measurement of each type.
+
+        Scans up to `limit` of the most recent measurements within
+        `max_age` and returns the latest one seen for each distinct
+        `type`. This is NOT guaranteed to be complete - a type that
+        hasn't reported within the scanned window is silently missing
+        from the result. Intended for quick, interactive exploration;
+        use `get_last` with an explicit `type` if you need a reliable
+        result for a known type.
+
+        Args:
+            source (str):  Database ID of a source device
+            max_age (timedelta|str):  How far back to scan; default 1 day.
+            limit (int):  Maximum number of measurements to scan; default 200.
+            kwargs:  Additional filters, forwarded to `get_all`.
+
+        Returns:
+            Mapping of measurement type to the latest matching Measurement
+                seen within the scanned window.
+        """
+        measurements = await self.get_all(source=source, max_age=max_age, limit=limit, asc=False, **kwargs)
+        return skim_latest_by(measurements, key=lambda m: m.type)
 
     def select(
         self,
