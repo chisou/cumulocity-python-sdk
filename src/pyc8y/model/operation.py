@@ -183,31 +183,34 @@ class Operations(CumulocityResource[Operation]):
 
     async def skim_latest(
         self,
-        *,
         device_id: str | None = None,
-        max_age: str | timedelta | None = "1d",
+        *,
+        max_age: str | timedelta | None = None,
         limit: int | None = 200,
         **kwargs,
     ) -> dict[str, Operation]:
         """Best-effort assembly of the latest operation of each type.
 
-        Scans up to `limit` of the most recent operations within
-        `max_age` and returns the latest one seen for each type, as
-        resolved by `Operation.resolve_type`. This is NOT guaranteed to
-        be complete - a type that hasn't occurred within the scanned
-        window is silently missing from the result. Intended for quick,
-        interactive exploration.
+        Scans the most recent operations and returns the latest one seen
+        for each type, as resolved by `Operation.resolve_type`. Intended
+        for quick, interactive exploration this is NOT guaranteed to be
+        complete - a type that hasn't occurred within the scanned window
+        is silently missing from the result.
 
         Args:
             device_id (str):  Database ID of device
-            max_age (timedelta|str):  How far back to scan; default 1 day.
-            limit (int):  Maximum number of operations to scan; default 200.
+            max_age (timedelta|str):  How far back to scan; takes
+                precedence over `limit` if given.
+            limit (int):  Maximum number of operations to scan; default
+                200. Ignored if `max_age` is given.
             kwargs:  Additional filters, forwarded to `get_all`.
 
         Returns:
             Mapping of resolved operation type to the latest matching
                 Operation seen within the scanned window.
         """
+        if max_age is not None:
+            limit = None
         operations = await self.get_all(device_id=device_id, max_age=max_age, limit=limit, asc=False, **kwargs)
         return skim_latest_by(operations, key=lambda o: o.resolve_type())
 

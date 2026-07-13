@@ -44,8 +44,7 @@
   
 * Added support for the tenant statistics API.
 
-* Added best-effort convenience methods (`skim_latest` on `Measurements`, `Events`, `Operations`, and
-  `skim_latest_measurements`/`skim_latest_events`/`skim_latest_operations` on `ManagedObject`) that scan a bounded
+* Added best-effort convenience methods (`skim_latest` on `Measurements`, `Events`, `Operations`) that scan a bounded
   window of items and return the latest item per type. They are intended for quick, interactive exploration and not
   guaranteed to be complete.
 

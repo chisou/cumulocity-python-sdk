@@ -1,8 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import Self, Any, TYPE_CHECKING
+from typing import Self, Any
 
 from pyc8y.model.user import User, Users
 from pyc8y.rest import CumulocityRestClient
@@ -16,11 +15,6 @@ from pyc8y.model.model_base import (
     tag_property,
 )
 from pyc8y.types import InventoryMeta
-
-if TYPE_CHECKING:
-    from pyc8y.model.measurement import Measurement
-    from pyc8y.model.event import Event
-    from pyc8y.model.operation import Operation
 
 
 @dataclass
@@ -358,57 +352,6 @@ class ManagedObject(WithId, CumulocityObject):
             List of measurement series names.
         """
         return await self._get_resource("supportedSeries")
-
-    async def skim_latest_measurements(
-        self,
-        *,
-        max_age: str | timedelta | None = "1d",
-        limit: int | None = 200,
-        **kwargs,
-    ) -> dict[str, "Measurement"]:
-        """Best-effort assembly of the latest measurement of each type.
-
-        See `Measurements.skim_latest` for details.
-        """
-        from pyc8y.model.measurement import Measurements
-
-        self._assert_c8y()
-        self._assert_key()
-        return await Measurements(self.c8y).skim_latest(source=self.id, max_age=max_age, limit=limit, **kwargs)
-
-    async def skim_latest_events(
-        self,
-        *,
-        max_age: str | timedelta | None = "1d",
-        limit: int | None = 200,
-        **kwargs,
-    ) -> dict[str, "Event"]:
-        """Best-effort assembly of the latest event of each type.
-
-        See `Events.skim_latest` for details.
-        """
-        from pyc8y.model.event import Events
-
-        self._assert_c8y()
-        self._assert_key()
-        return await Events(self.c8y).skim_latest(source=self.id, max_age=max_age, limit=limit, **kwargs)
-
-    async def skim_latest_operations(
-        self,
-        *,
-        max_age: str | timedelta | None = "1d",
-        limit: int | None = 200,
-        **kwargs,
-    ) -> dict[str, "Operation"]:
-        """Best-effort assembly of the latest operation of each type.
-
-        See `Operations.skim_latest` for details.
-        """
-        from pyc8y.model.operation import Operations
-
-        self._assert_c8y()
-        self._assert_key()
-        return await Operations(self.c8y).skim_latest(device_id=self.id, max_age=max_age, limit=limit, **kwargs)
 
 
 class Device(ManagedObject):

@@ -213,30 +213,34 @@ class Events(CumulocityResource[Event]):
 
     async def skim_latest(
         self,
-        *,
         source: str | None = None,
-        max_age: str | timedelta | None = "1d",
+        *,
+        max_age: str | timedelta | None = None,
         limit: int | None = 200,
         **kwargs,
     ) -> dict[str, Event]:
         """Best-effort assembly of the latest event of each type.
 
-        Scans up to `limit` of the most recent events within `max_age`
-        and returns the latest one seen for each distinct `type`. This is
-        NOT guaranteed to be complete - a type that hasn't occurred within
-        the scanned window is silently missing from the result. Intended
-        for quick, interactive exploration.
+        Scans the most recent events and returns the latest one seen for
+        each distinct `type`. Intended for quick, interactive exploration
+        this is NOT guaranteed to be complete - a type that hasn't
+        occurred within the scanned window is silently missing from the
+        result.
 
         Args:
             source (str):  Database ID of a source device
-            max_age (timedelta|str):  How far back to scan; default 1 day.
+            max_age (timedelta|str):  How far back to scan; takes
+                precedence over `limit` if given.
             limit (int):  Maximum number of events to scan; default 200.
+                Ignored if `max_age` is given.
             kwargs:  Additional filters, forwarded to `get_all`.
 
         Returns:
             Mapping of event type to the latest matching Event seen
                 within the scanned window.
         """
+        if max_age is not None:
+            limit = None
         events = await self.get_all(source=source, max_age=max_age, limit=limit, asc=False, **kwargs)
         return skim_latest_by(events, key=lambda e: e.type)
 
