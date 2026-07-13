@@ -641,13 +641,16 @@ class CumulocityResource(Generic[CO]):
                     if (not include or include.safe_matches(x)) and (not exclude or not exclude.safe_matches(x))
                 ]
             for json in obj_jsons:
-                if limit and num_results >= limit:
-                    return
                 if as_values:
                     yield _extract_as_values(json, as_values)
                 else:
                     yield self._object_type.from_json(json, c8y=self.c8y)
                 num_results += 1
+                # exit as soon as the limit is satisfied, even if that lands
+                # exactly on a page's last item - no need to fetch another
+                # page just to confirm there's nothing more
+                if limit and num_results >= limit:
+                    return
             if page_number:
                 return
 
