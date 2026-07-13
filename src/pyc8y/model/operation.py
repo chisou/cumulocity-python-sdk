@@ -394,18 +394,14 @@ class Operations(CumulocityResource[Operation]):
         Returns:
             Last matching Operation object or None
         """
-        after = None
-        if not before and not min_age:
-            after = "1970-01-01"
         params = (
             map_params(
                 fragment=fragment,
                 bulk_id=bulk_id,
-                after=after,
                 before=before,
                 date_to=date_to,
                 min_age=min_age,
-                revert=True,
+                revert=True,  # forces use of date constraint
                 page_size=1,
                 agentId=agent_id,
                 deviceId=device_id,

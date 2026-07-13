@@ -185,6 +185,13 @@ def map_params(
 
     date_from = coerce_timestring(date_from, "date_from") or coerce_timestring(after, "after")
     date_to = coerce_timestring(date_to, "date_to") or coerce_timestring(before, "before")
+    # Some Cumulocity collection endpoints (Measurements, Events, Operations)
+    # only reliably apply `revert` ordering when a date range filter is also
+    # present; force a wide-open one if ordering was requested but no bound
+    # was otherwise given (same workaround each resource's `get_last` uses).
+    if revert is not None and date_from is None and date_to is None:
+        date_from = coerce_timestring("1970-01-01", "date_from")
+
     created_from = coerce_timestring(created_from, "created_from") or coerce_timestring(created_after, "created_after")
     created_to = coerce_timestring(created_to, "created_to") or coerce_timestring(created_before, "created_before")
     updated_from = coerce_timestring(last_updated_from, "last_updated_from") or coerce_timestring(

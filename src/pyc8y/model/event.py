@@ -561,7 +561,6 @@ class Events(CumulocityResource[Event]):
         Returns:
             The most recent Event, or None if no match is found.
         """
-        after = None if (before or date_to or min_age) else "1970-01-01"
         params = (
             map_params(
                 type=type,
@@ -570,10 +569,9 @@ class Events(CumulocityResource[Event]):
                 fragment_type=fragment_type,
                 fragment_value=fragment_value,
                 before=before,
-                after=after,
                 date_to=date_to,
                 min_age=min_age,
-                revert=False,
+                revert=False,  # forces use of date constraint
                 with_source_assets=with_source_assets,
                 with_source_devices=with_source_devices,
                 **kwargs,

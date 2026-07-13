@@ -73,7 +73,11 @@ async def test_subscription_deletion(live_c8y: CumulocityClient, safe_create):
 
     assert await live_c8y.subscriptions.get_count(source=mo.id) == 1
     await mo.delete()
-    await asyncio.sleep(1)
+    for i in range(1, 10):
+        await asyncio.sleep(pow(2, i))
+        if await live_c8y.subscriptions.get_count(source=mo.id) == 0:
+            break
+        print("Subscription not deleted (yet). Retrying ...")
     assert await live_c8y.subscriptions.get_count(source=mo.id) == 0
 
 

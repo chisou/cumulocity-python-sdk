@@ -831,21 +831,15 @@ class Measurements(CumulocityResource[Measurement]):
             value_fragment_type=value_fragment_type,
             value_fragment_series=value_fragment_series,
         )
-        # we need at least one date parameter
-        after = None
-        if all(x is None for x in [date_to, before, min_age]):
-            after = "1970-01-01"
-
         params = map_params(
             type=type,
             source=source,
             valueFragmentType=series_type,
             valueFragmentSeries=series_value,
             before=before,
-            after=after,
             date_to=date_to,
             min_age=min_age,
-            revert=True,
+            revert=True,   # forces use of date constraint
             page_size=1,
             **kwargs,
         )

@@ -27,7 +27,9 @@ UTC = timezone.utc
 
         # named parameters that get renamed
         ({"fragment": "f"},                                          [("fragmentType", "f")]),
-        ({"revert": True},                                           [("revert", "true")]),
+        ({"revert": True},                                           [("dateFrom", "1970-01-01T00:00:00.000Z"), ("revert", "true")]),
+        ({"revert": True, "date_from": "2020-01-01T00:00:00+00:00"}, [("dateFrom", "2020-01-01T00:00:00.000Z"), ("revert", "true")]),
+        ({"revert": True, "before": "2020-01-01T00:00:00+00:00"},    [("dateTo", "2020-01-01T00:00:00.000Z"), ("revert", "true")]),
 
         # date params: short forms renamed, long forms camelCased
         ({"before": "2026-01-01T00:00:00+00:00"},                    [("dateTo",   "2026-01-01T00:00:00.000Z")]),
@@ -47,7 +49,7 @@ UTC = timezone.utc
         ({"date_from": dt(2026, 1, 1, tzinfo=UTC)},                  [("dateFrom", "2026-01-01T00:00:00.000Z")]),
 
         # value encoding
-        ({"revert": False},                                          [("revert", "false")]),
+        ({"revert": False},                                          [("dateFrom", "1970-01-01T00:00:00.000Z"), ("revert", "false")]),
 
         # sequence expansion
         ({"series": "A"},                                            [("series", "A")]),
@@ -69,20 +71,22 @@ UTC = timezone.utc
         "bulk_id-renamed",
         "kwarg-snake-to-camelCase",
         "kwarg-already-camelCase",
-        "fragment→fragmentType",
-        "revert+bool",
-        "before→dateTo",
-        "after→dateFrom",
-        "date_to→dateTo",
-        "date_from→dateFrom",
-        "created_before→createdTo",
-        "created_after→createdFrom",
-        "created_to→createdTo",
-        "created_from→createdFrom",
-        "updated_before→lastUpdatedTo",
-        "updated_after→lastUpdatedFrom",
-        "last_updated_to→lastUpdatedTo",
-        "last_updated_from→lastUpdatedFrom",
+        "fragment_fragmentType",
+        "revert_solo",
+        "revert_date_from",
+        "revert_before",
+        "before_dateTo",
+        "after_dateFrom",
+        "date_to_dateTo",
+        "date_from_dateFrom",
+        "created_before_createdTo",
+        "created_after_createdFrom",
+        "created_to_createdTo",
+        "created_from_createdFrom",
+        "updated_before_lastUpdatedTo",
+        "updated_after_lastUpdatedFrom",
+        "last_updated_to_lastUpdatedTo",
+        "last_updated_from_lastUpdatedFrom",
         "date_from-datetime-obj",
         "bool-false-encoded",
         "series-scalar",
@@ -152,7 +156,7 @@ async def test_stream_pages_yields_in_order_with_workers():
     res = CumulocityResource(Mock())
 
     async def fetch(page, **_):
-        # earlier pages take longer → later pages would finish first if order
+        # earlier pages take longer _ later pages would finish first if order
         # weren't enforced. We expect them in launch order anyway.
         await asyncio.sleep((10 - page) * 0.005 if page <= 5 else 0)
         return [{"page": page}] if page <= 5 else []
@@ -224,5 +228,5 @@ async def test_stream_pages_cancels_overshoot_on_empty():
         pass
 
     # we asked for 4 in-flight; pages 1,2 returned data, page 3 was empty (sentinel),
-    # page 4 was launched before we saw the empty → cancelled on exit
+    # page 4 was launched before we saw the empty _ cancelled on exit
     assert 4 in cancelled
