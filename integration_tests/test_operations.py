@@ -66,6 +66,7 @@ async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
     ])
 
     try:
+        await asyncio.sleep(0.1)
         last = await live_c8y.operations.get_last(device_id=session_device.id, status=OperationStatus.PENDING)
         assert last is not None
         assert last.id == operations[-1].id
