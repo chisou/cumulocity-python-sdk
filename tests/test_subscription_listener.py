@@ -6,7 +6,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from pyc8y.app import MultiTenantCumulocityApp, SubscriptionListener
+from pyc8y.app import MultiTenantCumulocityApp
+from pyc8y.listener import SubscriptionListener
 
 
 def make_app(*subscriber_batches):
