@@ -154,7 +154,7 @@ class Operation(WithId, CumulocityObject):
         await run_batched(
             ensure_ids(unwrap_args(devices)),
             workers,
-            lambda x: self.c8y.post(self.resource_path, operation_json | {"deviceId": x}, accept=None),
+            lambda x: self.c8y.post(self.resource_path, json=operation_json | {"deviceId": x}, accept=None),
         )
 
 

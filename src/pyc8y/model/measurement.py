@@ -950,6 +950,7 @@ class Measurements(CumulocityResource[Measurement]):
                 the values at certain JSON paths as tuples; If the path is not
                 defined in a result, None is used; Specify a tuple to define
                 a proper default value for each path.
+            workers (int): The number of parallel processes to use
 
         Returns:
             Async iterator for matching Measurement objects or values/value

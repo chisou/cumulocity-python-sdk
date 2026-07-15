@@ -146,7 +146,7 @@ async def get_client(
         while not auth:
             pw = password or read_variable("C8Y_PASSWORD", "Please enter the Cumulocity password:", secret=True)
             if not pw:
-                raise UnauthorizedError("No password provided. Authentication failed.")
+                raise UnauthorizedError(method="GET", url=base_url, message="No password provided. Authentication failed.")
             tfa_code = input("Please enter a current TFA code:") if needs_tfa else None
 
             try:

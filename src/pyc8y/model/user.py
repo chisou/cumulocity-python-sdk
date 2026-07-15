@@ -453,7 +453,6 @@ class BaseUser(CumulocityObject):
             last_name: str | None = None,
             phone: str | None = None,
             tfa_enabled: bool = False,
-            require_password_reset: bool = False,
     ):
         super().__init__(c8y)
         if username is not None:
@@ -468,7 +467,6 @@ class BaseUser(CumulocityObject):
         self.tfa_enabled = tfa_enabled
         if not password:
             self.send_password_reset_email = True
-            # self.should_reset_password = True
 
     username = json_property[str]("userName", read_only=True)
     password_strength = json_property("passwordStrength", read_only=True)
@@ -1293,7 +1291,7 @@ class Users(CumulocityResource):
             only_devices=only_devices,
             page_size=1,
         )
-        result = await self.c8y.get(path, (*params, ("withTotalPages", "true")))
+        result = await self.c8y.get(path, params=(*params, ("withTotalPages", "true")))
         return result["statistics"]["totalPages"]
 
     async def create(self, *users: User, workers: int | None = None) -> None:

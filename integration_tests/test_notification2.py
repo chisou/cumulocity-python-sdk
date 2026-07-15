@@ -217,7 +217,7 @@ async def test_token_timeout(caplog, live_c8y: CumulocityClient, sample_subscrip
     obj_id = sample_subscription.source_id
     callback = Mock()
 
-    async def async_callback(msg):
+    async def async_callback(_):
         callback()
 
     listener = Listener(

@@ -606,7 +606,7 @@ class DeviceInventory(Inventory[Device]):
         object which does this by default.
 
         Args:
-           *devices (str | Device): Objects (or their database ID).
+            *devices (str | Device): Objects (or their database ID).
             workers (int): Number of workers to use for parallel processing
                 or None to process sequentially.
         """

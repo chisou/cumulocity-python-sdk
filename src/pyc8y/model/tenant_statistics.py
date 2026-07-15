@@ -52,7 +52,7 @@ class _DailyDeviceStatistics(CumulocityResource):
         date_str = coerce_timestring(date)
         resource = f"tenant/statistics/device/{tenant_id}/daily/{date_str}"
 
-        async def fetch_page(page: int, expression, params, **_) -> list:
+        async def fetch_page(page: int, **_) -> list:
             result = await self.c8y.get(
                 resource, params=(("currentPage", str(page)), ("pageSize", str(page_size or 5)))
             )
@@ -89,7 +89,7 @@ class _MonthlyDeviceStatistics(CumulocityResource):
         date_str = coerce_timestring(date)
         resource = f"tenant/statistics/device/{tenant_id}/monthly/{date_str}"
 
-        async def fetch_page(page: int, expression, params, **_) -> list:
+        async def fetch_page(page: int, **_) -> list:
             result = await self.c8y.get(
                 resource, params=(("currentPage", str(page)), ("pageSize", str(page_size or 5)))
             )

@@ -321,10 +321,10 @@ custom fragments.
 Within Cumulocity IoT, alarms are special events that need manual
 intervention. They feature a lifecycle and correspondingly can only be
 created once (creating an identical alarm multiple times does not raise
-the alarm again, see also [Cumulocity IoT's Event model](https://cumulocity.com/guides/concepts/domain-model/#events).
+the alarm again, see also [Cumulocity IoT's Event model](https://cumulocity.com/guides/concepts/domain-model/#events)).
 
 Because of this, we can run our sample application multiple times
-without spamming the platform with additional alarms. A alarm can only
+without spamming the platform with additional alarms. An alarm can only
 be raised (i.e. created) again, when it was previously acknowledged and
 cleared. We can do this in the UI (feel free to do that right now!) or
 we can do this using Python.

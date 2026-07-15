@@ -101,7 +101,7 @@ def tag_property(key: str, read_only=False) -> property:
     def getter(self):
         return key in self.json
 
-    def setter(self, value):
+    def setter(self, _):
         self._staged_json[key] = {}
 
     return property(getter) if read_only else property(getter, setter)
@@ -686,7 +686,6 @@ class CumulocityResource(Generic[CO]):
                 if not page:
                     return
                 current += 1
-            return
 
         in_flight: "deque[asyncio.Task]" = deque()
 

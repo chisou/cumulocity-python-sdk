@@ -253,6 +253,7 @@ class Alarms(CumulocityResource[Alarm]):
                 directly extract the values at certain JSON paths as tuples;
                 If the path is not defined in a result, None is used; Specify
                 a tuple to define a proper default value for each path.
+            workers (int): The number of parallel processes to use
 
         Returns:
             Generator of Alarm objects

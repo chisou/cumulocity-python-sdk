@@ -325,6 +325,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
 
         Args:
             *options (TenantOption):  Collection of TenantOption instances
+            workers (int): The number of parallel processes to use
         """
         await self._create(*options, workers=workers)
 
@@ -333,7 +334,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
 
         Args:
             *options (TenantOption):  Collection of TenantOption instances
-            workers (int):  Number of parallel workers
+            workers (int): The number of parallel processes to use
         """
         await run_batched(
             options,

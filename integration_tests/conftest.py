@@ -288,7 +288,7 @@ async def fix_app_factory(logger, live_c8y: CumulocityClient):
 #
 @pytest.fixture(scope='session', name="session_device")
 async def fix_session_device(logger: logging.Logger, live_c8y: CumulocityClient):
-    """Provide an sample device, just for testing purposes."""
+    """Provide a sample device, just for testing purposes."""
 
     typename = create_random_name()
     device = await Device(live_c8y, type=typename, name=typename, com_cumulocity_model_Agent={}).create()

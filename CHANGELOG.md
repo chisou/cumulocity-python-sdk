@@ -17,7 +17,7 @@
   respective API classes for better discoverability.
 
 * All model objects are now fully based on and compatible to the actual JSON data. The pure JSON representation is 
-  available via the commonly available `json` property. Key fields (like `id`, or `creation_date` are still promoted
+  available via the commonly available `json` property. Key fields (like `id`, or `creation_date`) are still promoted
   as class attributes, all other fragments can be read using the universal `get` function and `[]` operator.
 
 * Added `workers` parameter to most query-like functions (`select`, `get_all`, `delete_by`, ...) and bulk operations

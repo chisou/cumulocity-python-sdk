@@ -320,6 +320,7 @@ class Applications(CumulocityResource[Application]):
                 automatic follow-up page retrieval.
             as_values (*str|tuple):  Don't parse objects, but directly extract
                 the values at certain JSON paths as tuples.
+            workers (int): The number of parallel processes to use
 
         Returns:
             AsyncIterator of Application objects

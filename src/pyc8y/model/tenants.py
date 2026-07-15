@@ -178,6 +178,10 @@ class Tenants(CumulocityResource[Tenant]):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int):  Pull a specific page only
+            as_values: (*str|tuple):  Don't parse objects, but directly extract
+                the values at certain JSON paths as tuples; If the path is not
+                defined in a result, None is used; Specify a tuple to define
+                a proper default value for each path.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
