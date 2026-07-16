@@ -119,8 +119,10 @@ class ManagedObject(WithId, CumulocityObject):
 
     creation_time = time_property("creationTime", read_only=True)
     creation_datetime = datetime_property("creationTime")
-    update_time = time_property("updateTime", read_only=True)
-    update_datetime = datetime_property("updateTime")
+    update_time = time_property("lastUpdated", read_only=True)
+    update_datetime = datetime_property("lastUpdated")
+    last_updated = time_property("lastUpdated", read_only=True)
+    last_updated_datetime = datetime_property("lastUpdated")
 
     child_devices = references_property("childDevices")
     child_assets = references_property("childAssets")

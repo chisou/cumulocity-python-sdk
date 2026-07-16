@@ -74,12 +74,12 @@ class Alarm(WithId, CumulocityObject):
     status = json_property("status")
     severity = json_property("severity")
     count = json_property("count")
-    datetime = datetime_property("datetime")
-    creation_time = json_property("creationTime", read_only=True)
+    datetime = datetime_property("time")
+    creation_time = time_property("creationTime", read_only=True)
     creation_datetime = datetime_property("creationTime")
-    update_time = json_property("lastUpdated", read_only=True)
+    update_time = time_property("lastUpdated", read_only=True)
     update_datetime = datetime_property("lastUpdated")
-    last_updated = json_property("lastUpdated", read_only=True)
+    last_updated = time_property("lastUpdated", read_only=True)
     last_updated_datetime = datetime_property("lastUpdated")
 
     async def create(self, copy: bool = False) -> Self:
