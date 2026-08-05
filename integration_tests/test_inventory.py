@@ -169,7 +169,7 @@ async def test_get_availability(live_c8y: CumulocityClient, session_device: Devi
     # verify availability information is defined
     # -> the information is updated asynchronously, hence this may be delayed
     availability = None
-    for i in range(1, 10):
+    for i in range(1, 6):
         await asyncio.sleep(pow(2, i))
         try:
             availability = await live_c8y.inventory.get_latest_availability(session_device.id)
