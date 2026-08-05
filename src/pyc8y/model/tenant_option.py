@@ -59,6 +59,10 @@ class TenantOption(CumulocityObject):
         return self._key.startswith("credentials.")
 
     @property
+    def object_path(self) -> str:
+        return f"{self.resource_path}/{self.category}/{self._key}"
+
+    @property
     def value(self):
         # value might be undefined, hence a special getter is needed
         return self.get("value", None)
@@ -99,7 +103,7 @@ class TenantOption(CumulocityObject):
         self._assert_c8y()
         self._assert_key()
         result_json = await self.c8y.put(
-            resource=build_value_resource(self.category, self._key),
+            resource=self.object_path,
             json={"value": self.value},
             accept=self._meta.object_mime_type,
             content_type=self._meta.object_mime_type,
@@ -122,7 +126,7 @@ class TenantOption(CumulocityObject):
         """Remove the option from the database."""
         self._assert_c8y()
         self._assert_key()
-        await self.c8y.delete(build_value_resource(self.category, self._key))
+        await self.c8y.delete(self.object_path)
 
 
 class TenantOptions(CumulocityResource[TenantOption]):

@@ -183,9 +183,6 @@ class UserGroups(CumulocityResource):
     def resource_path(self) -> str:
         return f"user/{self.c8y.tenant_id}/groups"
 
-    def build_object_path(self, object_id: str) -> str:
-        return f"user/{self.c8y.tenant_id}/groups/{object_id}"
-
     async def get(self, group_id: int | str):
         """Retrieve a specific group.
 

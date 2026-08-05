@@ -61,10 +61,6 @@ class ResourceMeta(ABC):
     resource_path: ClassVar[str]
     collection_name: ClassVar[str]
 
-    @classmethod
-    def build_object_path(cls, object_id):
-        return f"{cls.resource_path}/{object_id}"
-
 
 class AlarmMeta(ResourceMeta):
     object_mime_type = MimeType.ALARM
@@ -112,10 +108,6 @@ class IdentityMeta(ResourceMeta):
     object_mime_type = MimeType.EXTERNAL_ID
     collection_mime_type = MimeType.EXTERNAL_ID
     collection_name = "externalIds"
-
-    @classmethod
-    def build_object_path(cls, _) -> str:
-        raise NotImplementedError("Function not available for Identity API.")
 
 
 class InventoryMeta(ResourceMeta):
@@ -199,16 +191,8 @@ class UserMeta(ResourceMeta):
     collection_mime_type = MimeType.USER_COLLECTION
     collection_name = "users"
 
-    @classmethod
-    def build_object_path(cls, _) -> str:
-        raise NotImplementedError("Function not available for User API.")
-
 
 class CurrentUserMeta(ResourceMeta):
     object_mime_type = MimeType.CURRENT_USER
     collection_mime_type = None
     collection_name = None
-
-    @classmethod
-    def build_object_path(cls, _) -> str:
-        raise NotImplementedError("Function not available for CurrentUser API.")

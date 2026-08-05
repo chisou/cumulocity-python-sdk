@@ -304,6 +304,11 @@ class CumulocityObject(Mapping):
     def resource_path(self) -> str:
         return self._meta.resource_path
 
+    @property
+    @abstractmethod
+    def object_path(self) -> str:
+        """Path to this specific object within Cumulocity."""
+
     def __repr__(self) -> str:
         return "".join(
             [  # -> ClassName(id=123, type=abc)
@@ -452,19 +457,6 @@ class CumulocityObject(Mapping):
         self._rebuild(object_json)
         return self
 
-    async def _apply_to(self, other_id: str) -> Self:
-        # apply locally stages changes to another object
-        self._assert_c8y()
-        return self._build(
-            json=await self.c8y.put(
-                self._meta.build_object_path(other_id),
-                json=self._staged_json,
-                accept=self._meta.object_mime_type,
-                content_type=self._meta.object_mime_type,
-            ),
-            c8y=self.c8y,
-        )
-
     async def _delete(self, **params):
         self._assert_c8y()
         self._assert_key()
@@ -500,7 +492,12 @@ class WithId:
     """Mixin for objects with a simple database ID."""
 
     _source_json: dict  # declare only, this is defined in CumulocityObject
+    _staged_json: dict  # declare only, this is defined in CumulocityObject
     _meta: ResourceMeta  # declare only, this is defined in CumulocityObject
+    resource_path: str  # declare only, this is defined in CumulocityObject
+    c8y: CumulocityRestClient | None  # declare only, this is defined in CumulocityObject
+    _assert_c8y: Callable[[], None]  # declare only, this is defined in CumulocityObject
+    _build: Callable[..., Self]  # declare only, this is defined in CumulocityObject
 
     @property
     def id(self):
@@ -509,11 +506,24 @@ class WithId:
 
     @property
     def object_path(self) -> str:
-        return self._meta.build_object_path(self.id)
+        return f"{self.resource_path}/{self.id}"
 
     def _assert_key(self):
         if not self.id:
             raise ValueError("The object ID must be set to allow direct object access.")
+
+    async def _apply_to(self, other_id: str) -> Self:
+        # apply locally staged changes to another object of the same kind
+        self._assert_c8y()
+        return self._build(
+            json=await self.c8y.put(
+                f"{self.resource_path}/{other_id}",
+                json=self._staged_json,
+                accept=self._meta.object_mime_type,
+                content_type=self._meta.object_mime_type,
+            ),
+            c8y=self.c8y,
+        )
 
 
 class PageFetcher(Protocol):
@@ -553,7 +563,7 @@ class CumulocityResource(Generic[CO]):
         Returns:
             The relative path to the object within Cumulocity.
         """
-        return self._meta.build_object_path(object_id)
+        return f"{self.resource_path}/{object_id}"
 
     async def _get(self, object_id: str, **kwargs) -> CO:
         return self._object_type.from_json(
