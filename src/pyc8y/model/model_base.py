@@ -426,11 +426,12 @@ class CumulocityObject(Mapping):
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         return as_record(self.json, mapping)
 
-    async def _create(self, copy: bool = False) -> Self:
+    async def _create(self, copy: bool = False, **params) -> Self:
         self._assert_c8y()
         object_json = await self.c8y.post(
                 self.resource_path,
                 json=self.json,
+                params=map_params(**params) if params else (),
                 accept=self._meta.object_mime_type,
             )
         if copy:
@@ -827,10 +828,28 @@ class CumulocityResource(Generic[CO]):
             unwrap_args(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.json, accept=None)
         )
 
-    async def _create_bulk(self, *objects: CO) -> None:
-        objects = unwrap_args(objects)  # not documented, but good to have
-        bulk_json = {self._meta.collection_name: [o.json for o in objects]}
-        await self.c8y.post(self.resource_path, json=bulk_json, content_type=self.collection_mime_type)
+    async def _create_bulk(
+        self,
+        *objects: CO,
+        path: str | None = None,
+        batch_size: int | None = None,
+        workers: int | None = None,
+    ) -> None:
+        objects = unwrap_args(objects)
+        target = path or self.resource_path
+        chunks = (
+            [objects] if not batch_size
+            else [objects[i : i + batch_size] for i in range(0, len(objects), batch_size)]
+        )
+
+        async def post_chunk(chunk: Sequence[CO]) -> None:
+            await self.c8y.post(
+                target,
+                json={self._meta.collection_name: [o.json for o in chunk]},
+                content_type=self.collection_mime_type,
+            )
+
+        await run_batched(chunks, workers, post_chunk)
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(

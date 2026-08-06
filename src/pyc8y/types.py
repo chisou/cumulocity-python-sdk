@@ -53,6 +53,8 @@ class MimeType(StrEnum):
     TENANT_STATISTICS_DATE = "application/vnd.com.nsn.cumulocity.tenantstatisticsdate+json"
     TENANT_STATISTICS_FILE = "application/vnd.com.nsn.cumulocity.tenantstatisticsfile+json"
     TENANT_STATISTICS_FILE_COLLECTION = "application/vnd.com.nsn.cumulocity.tenantStatisticsfilecollection + json"
+    TRUSTED_CERTIFICATE = "application/json"
+    TRUSTED_CERTIFICATE_COLLECTION = "application/json"
 
 
 class ResourceMeta(ABC):
@@ -171,6 +173,13 @@ class TenantStatisticsFilesMeta(ResourceMeta):
     collection_mime_type = MimeType.TENANT_STATISTICS_FILE_COLLECTION
     resource_path = "tenant/statistics/files"
     collection_name = "statisticsFiles"
+
+
+class TrustedCertificatesMeta(ResourceMeta):
+    object_mime_type = MimeType.TRUSTED_CERTIFICATE
+    collection_mime_type = MimeType.TRUSTED_CERTIFICATE_COLLECTION
+    resource_path = None
+    collection_name = "certificates"
 
 
 class InventoryRoleMeta(ResourceMeta):

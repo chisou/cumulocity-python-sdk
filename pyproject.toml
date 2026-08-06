@@ -34,6 +34,7 @@ jmespath = ["jmespath"]
 jsonpath = ["jsonpath-ng"]
 filters = ["python-dict-display-filter", "jmespath", "jsonpath-ng"]
 pandas = ["pandas"]
+cryptography = ["cryptography"]
 
 [project.urls]
 Homepage = "https://github.com/chisou/cumulocity-python-sdk"
@@ -44,6 +45,7 @@ Documentation = "https://cumulocity-python-sdk.readthedocs.io/en/latest/"
 [dependency-groups]
 dev = [
     "coolname",
+    "cryptography",
     "deepdiff",
     "fastapi",
     "inputimeout",

@@ -428,8 +428,9 @@ class CumulocityRestClient(object):
         file: str | os.PathLike | BinaryIO,
         accept: str | None = None,
         content_type: str | None = None,
+        multipart: bool = False,
     ) -> dict:
-        """Update a binary file using multipart/form-data.
+        """Update a binary file.
 
         Args:
             resource (str): Resource path
@@ -438,6 +439,8 @@ class CumulocityRestClient(object):
                 application/json).
             content_type (str): Content type of the file sent
                 (default is application/octet-stream)
+            multipart (bool): If True, send the file as multipart/form-data
+                (like `post_file`) instead of as a raw request body.
 
         Returns:
             The JSON response (nested dict), {} if no response body is returned.
@@ -452,9 +455,14 @@ class CumulocityRestClient(object):
         session = await self.session
 
         async def put(file_obj):
-            async with session.request(
-                method="PUT", url=resource, data=file_obj, headers={"Accept": accept, "Content-Type": content_type}
-            ) as r:
+            if multipart:
+                form = aiohttp.FormData()
+                form.add_field("file", file_obj, content_type=content_type)
+                # proper multipart content-type is set by aiohttp
+                data, headers = form, {"Accept": accept}
+            else:
+                data, headers = file_obj, {"Accept": accept, "Content-Type": content_type}
+            async with session.request(method="PUT", url=resource, data=data, headers=headers) as r:
                 if r.status == 401:
                     raise UnauthorizedError("PUT", resource, message=(await r.json())["message"])
                 if r.status == 403:
