@@ -426,11 +426,12 @@ class CumulocityObject(Mapping):
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         return as_record(self.json, mapping)
 
-    async def _create(self, copy: bool = False) -> Self:
+    async def _create(self, copy: bool = False, **params) -> Self:
         self._assert_c8y()
         object_json = await self.c8y.post(
                 self.resource_path,
                 json=self.json,
+                params=map_params(**params) if params else (),
                 accept=self._meta.object_mime_type,
             )
         if copy:
