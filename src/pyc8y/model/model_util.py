@@ -123,7 +123,7 @@ def get_by(dictionary: dict, path: str, default: Any = None, fail: bool = False)
         fail (bool):  whether to raise an exception if the path expression
             doesn't match a value in the dictionary.
 
-    Return:
+    Returns:
         The extracted value or the specified default.
     """
     keys = path.split(".")
@@ -155,7 +155,7 @@ def as_tuple(data: dict, paths: list[str | tuple]) -> tuple:
         paths: (list):  a list of path-like expressions; each "expression"
             can be a tuple to define a default value other than None.
 
-    Return:
+    Returns:
         The extracted values (or defaults it specified) as tuple. The
         number of elements in the tuple matches the length of the `paths`
         argument.
@@ -176,7 +176,7 @@ def as_record(data: dict, mapping: dict[str, str | tuple[str | Any]]) -> dict:
             expression; each "expression" can be a tuple to define a
             default value other than None.
 
-    Return:
+    Returns:
         The extracted values (or defaults it specified) as dictionary.
     """
     return {

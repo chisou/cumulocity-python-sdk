@@ -7,7 +7,7 @@ fundamental wrapping around authentication and basic `get`, `post`,
 class is your entrypoint into higher level funct    ions, grouped by
 contexts like `inventory`, `users`, and `measurements`. Each of these
 contexts is documented in detail within the
-`main-api-classes` section.
+[Main API classes](docs-main.md) section.
 
 The [DeviceRegistryClient][pyc8y.DeviceRegistryClient] class
 provides an additional entry point for devices, wrapping the entire

@@ -1,7 +1,7 @@
 import asyncio
 from typing import Self, AsyncIterator, Sequence, TYPE_CHECKING
 
-from pyc8y.base_util import unwrap_args, ensure_sequence
+from pyc8y.base_util import ensure_sequence
 from pyc8y.model.matcher import JsonMatcher
 
 if TYPE_CHECKING:
@@ -88,14 +88,14 @@ class UserGroup(WithId, CumulocityObject):
         return self
 
     async def create(self, copy: bool = False) -> Self:
-        """Create the GlobalRole within the database.
+        """Create the UserGroup within the database.
 
         Args:
             copy (bool): If True, return a fresh instance with the server's
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The created GlobalRole. By default, this is `self`; if `copy=True`,
+            The created UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._create(copy)
@@ -108,7 +108,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded GlobalRole. By default, this is `self`; if `copy=True`,
+            The reloaded UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)
@@ -121,7 +121,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated GlobalRole. By default, this is `self`; if `copy=True`,
+            The updated UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -262,11 +262,10 @@ class UserGroups(CumulocityResource):
                 a proper default value for each path.
             workers (int):  Number of pages to fetch in parallel; defaults to sequential
 
-        Return:
-            Generator of GlobalRole instances
+        Returns:
+            AsyncIterator of UserGroup instances
 
-        See also:
-            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        See also: https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
 
@@ -416,7 +415,7 @@ class UserGroups(CumulocityResource):
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
         await run_batched(
-            unwrap_args(role_ids),
+            role_ids,
             workers,
             lambda r: self.c8y.post(path, json={"role": {"self": f"user/roles/{r}"}}, accept=None),
         )
@@ -430,7 +429,7 @@ class UserGroups(CumulocityResource):
             workers (int):  Number of parallel requests; defaults to sequential
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
-        await run_batched(unwrap_args(role_ids), workers, lambda r: self.c8y.delete(f"{path}/{r}"))
+        await run_batched(role_ids, workers, lambda r: self.c8y.delete(f"{path}/{r}"))
 
 
 class BaseUser(CumulocityObject):
@@ -1300,7 +1299,7 @@ class Users(CumulocityResource):
         """
         path = f"user/{self.c8y.tenant_id}/users"
         await run_batched(
-            unwrap_args(users),
+            users,
             workers,
             lambda u: self.c8y.post(path, json=u.json, accept=None),
         )
@@ -1313,7 +1312,7 @@ class Users(CumulocityResource):
             workers (int): Number of parallel requests
         """
         await run_batched(
-            unwrap_args(users),
+            users,
             workers,
             lambda u: self.c8y.put(self.build_object_path(u.username), json=u._staged_json, accept=None),
         )
@@ -1325,7 +1324,7 @@ class Users(CumulocityResource):
             *users (str | User): User objects or usernames to delete
             workers (int): Number of parallel requests
         """
-        usernames = [u.username if isinstance(u, User) else u for u in unwrap_args(users)]
+        usernames = [u.username if isinstance(u, User) else u for u in users]
         await run_batched(
             usernames,
             workers,

@@ -17,7 +17,7 @@ from typing import (
 )
 
 from pyc8y.rest import CumulocityRestClient, BatchError
-from pyc8y.base_util import ensure_sequence, unwrap_args, is_sequence
+from pyc8y.base_util import ensure_sequence, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
     as_record,
@@ -426,12 +426,11 @@ class CumulocityObject(Mapping):
     def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
         return as_record(self.json, mapping)
 
-    async def _create(self, copy: bool = False, **params) -> Self:
+    async def _create(self, copy: bool = False) -> Self:
         self._assert_c8y()
         object_json = await self.c8y.post(
                 self.resource_path,
                 json=self.json,
-                params=map_params(**params) if params else (),
                 accept=self._meta.object_mime_type,
             )
         if copy:
@@ -825,7 +824,7 @@ class CumulocityResource(Generic[CO]):
 
     async def _create(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            unwrap_args(objects), workers, lambda x: self.c8y.post(self.resource_path, json=x.json, accept=None)
+            objects, workers, lambda x: self.c8y.post(self.resource_path, json=x.json, accept=None)
         )
 
     async def _create_bulk(
@@ -835,7 +834,6 @@ class CumulocityResource(Generic[CO]):
         batch_size: int | None = None,
         workers: int | None = None,
     ) -> None:
-        objects = unwrap_args(objects)
         target = path or self.resource_path
         chunks = (
             [objects] if not batch_size
@@ -853,7 +851,7 @@ class CumulocityResource(Generic[CO]):
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
-            unwrap_args(objects),
+            objects,
             workers,
             lambda x: self.c8y.put(self.build_object_path(x.id), json=x._staged_json, accept=None),
         )
@@ -861,7 +859,7 @@ class CumulocityResource(Generic[CO]):
     async def _apply_to(self, model: dict | CO, *objects: str | CO, workers: int | None = None) -> None:
         model_json = model if isinstance(model, dict) else model._staged_json
         await run_batched(
-            ensure_ids(unwrap_args(objects)),
+            ensure_ids(objects),
             workers,
             lambda x: self.c8y.put(
                 self.build_object_path(x), json=model_json, content_type=self._meta.object_mime_type, accept=None
@@ -871,7 +869,7 @@ class CumulocityResource(Generic[CO]):
     # this one should be ok for all implementations, hence we define it here
     async def _delete(self, *objects: str | CO, workers: int | None = None) -> None:
         await run_batched(
-            ensure_ids(unwrap_args(objects)),
+            ensure_ids(objects),
             workers,
             lambda x: self.c8y.delete(self.build_object_path(x)),
         )

@@ -134,8 +134,7 @@ class Subscriptions(CumulocityResource[Subscription]):
     This class can be used for get, search for, create, and
     delete Notification2 subscriptions within the Cumulocity database.
 
-    See also: https://cumulocity.com/api/core/#tag/Subscriptions
-              https://cumulocity.com/guides/reference/notifications/
+    See also: https://cumulocity.com/api/core/#tag/Subscriptions and https://cumulocity.com/guides/reference/notifications/
     """
 
     _meta = SubscriptionMeta
@@ -309,8 +308,7 @@ class Subscriptions(CumulocityResource[Subscription]):
 class Tokens:
     """Provides access to the Notification 2.0 token generation API.
 
-    See also: https://cumulocity.com/api/core/#tag/Tokens
-              https://cumulocity.com/guides/reference/notifications/
+    See also: https://cumulocity.com/api/core/#tag/Tokens and https://cumulocity.com/guides/reference/notifications/
     """
 
     _subscriber_uuid = uuid.uuid5(uuid.NAMESPACE_URL, "https://github.com/Cumulocity-IoT/cumulocity-python-api")

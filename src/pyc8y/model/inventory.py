@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import AsyncIterator, Sequence, TypeVar
 
 from pyc8y.rest import BatchError
-from pyc8y.base_util import encode_odata_query_value, ensure_sequence, unwrap_args
+from pyc8y.base_util import encode_odata_query_value, ensure_sequence
 from pyc8y.model.managed_object import Availability, ManagedObject, Device, DeviceGroup
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
@@ -364,8 +364,7 @@ class Inventory(CumulocityResource[MO]):
             Async iterator for object instances or values/value tuples if the
             `as_values` parameter is defined.
 
-        See also:
-            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        See also: https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
         return self._select(
@@ -403,7 +402,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Device (managed object) ID
 
-        Return:
+        Returns:
             DeviceAvailability object
         """
         return Availability(await self.c8y.get(f"{self.build_object_path(mo_id)}/availability"))
@@ -415,7 +414,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Managed object ID
 
-        Return:
+        Returns:
             List of measurement fragment names.
         """
         result_json = await self.c8y.get(f"{self.build_object_path(mo_id)}/supportedMeasurements")
@@ -428,7 +427,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Managed object ID
 
-        Return:
+        Returns:
             List of series names.
         """
         result_json = await self.c8y.get(f"{self.build_object_path(mo_id)}/supportedSeries")
@@ -610,7 +609,6 @@ class DeviceInventory(Inventory[Device]):
             workers (int): Number of workers to use for parallel processing
                 or None to process sequentially.
         """
-        devices = unwrap_args(devices)
         if not workers:
             for d in devices:
                 await d.delete()
@@ -773,7 +771,7 @@ class DeviceGroupInventory(Inventory):
             workers (int|None): Number of parallel requests; sequential if None.
         """
         await run_batched(
-            ensure_ids(unwrap_args(groups)),
+            ensure_ids(groups),
             workers,
             lambda x: self.c8y.request("DELETE", self.build_object_path(x), params={"cascade": "true"}),
         )

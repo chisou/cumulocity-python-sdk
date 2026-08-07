@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import AsyncIterator, Self, Sequence, NamedTuple
 
-from pyc8y.base_util import unwrap_args
 from pyc8y.model.model_util import to_datetime
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.inventory import Device
@@ -152,7 +151,7 @@ class Operation(WithId, CumulocityObject):
         skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
         operation_json = {k: v for k, v in self.json.items() if k not in skip_keys}
         await run_batched(
-            ensure_ids(unwrap_args(devices)),
+            ensure_ids(devices),
             workers,
             lambda x: self.c8y.post(self.resource_path, json=operation_json | {"deviceId": x}, accept=None),
         )

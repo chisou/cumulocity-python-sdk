@@ -82,5 +82,6 @@ of [Cumulocity IoT's REST interface](https://cumulocity.com/api/core>) based on 
 [→ Kilograms][pyc8y.model.Kilograms]<br>
 [→ Liters][pyc8y.model.Liters]<br>
 [→ Meters][pyc8y.model.Meters]<br>
+[→ Millimeters][pyc8y.model.Millimeters]<br>
 [→ Percent][pyc8y.model.Percent]<br>
 [→ Value][pyc8y.model.Value]<br>
