@@ -42,13 +42,13 @@ except ImportError:
         except ImportError:
             DefaultMatcher = None
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.types import InventoryMeta, ResourceMeta, AsValuesSpec, DEFAULT_PAGE_SIZE
+from pyc8y.types import InventoryMeta, ResourceMeta, DEFAULT_PAGE_SIZE
 
 CO = TypeVar("CO", bound="CumulocityObject")
 T = TypeVar("T")
 
 
-def _extract_as_values(json: dict, as_values: AsValuesSpec) -> Any:
+def _extract_as_values(json: dict, as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]]) -> Any:
     """Apply the collection-level `as_values` semantics: scalar in - scalar
     out, sequence in - tuple out."""
     if isinstance(as_values, list):
@@ -579,7 +579,7 @@ class CumulocityResource(Generic[CO]):
         self,
         expression: str | None,
         params: dict | Sequence[tuple[str, Any]] | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None = None,
     ) -> CO | None:
         if expression:
             result_json = await self.c8y.get(
@@ -622,7 +622,7 @@ class CumulocityResource(Generic[CO]):
         limit: int | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        as_values: AsValuesSpec | None = None,
+        as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         preserve_order: bool = True,
         fetch_page: PageFetcher | None = None,

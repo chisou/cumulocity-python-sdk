@@ -1,14 +1,8 @@
 # Copyright (c) 2026 Christoph Souris
 
-import os
 from abc import ABC
 from enum import StrEnum
-from typing import BinaryIO, ClassVar, Sequence, Any
-
-AsValuesSpec = str | tuple[str, Any] | Sequence[str | tuple[str, Any]]
-
-FileSpec = str | os.PathLike | BinaryIO
-"""File-like object or a file path."""
+from typing import ClassVar
 
 DEFAULT_PAGE_SIZE = 100
 """Default page size used by paged queries when neither `page_size` nor `limit` constrain it."""

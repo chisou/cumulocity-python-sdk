@@ -36,3 +36,4 @@
             - AuditRecord
             - Change
             - TenantStatisticsFile
+            - TrustedCertificate

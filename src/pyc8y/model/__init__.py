@@ -101,6 +101,11 @@ from pyc8y.model.tenants import (
     Tenant as Tenant,
     Tenants as Tenants,
 )
+from pyc8y.model.trusted_certificates import (
+    TrustedCertificateStatus as TrustedCertificateStatus,
+    TrustedCertificate as TrustedCertificate,
+    TrustedCertificates as TrustedCertificates,
+)
 from pyc8y.model.user import (
     TfaSettings as TfaSettings,
     UserGroup as UserGroup,
