@@ -27,7 +27,7 @@ class MimeType(StrEnum):
     CURRENT_USER = "application/vnd.com.nsn.cumulocity.currentuser+json"
     EVENT = "application/vnd.com.nsn.cumulocity.event+json"
     EVENT_COLLECTION = "application/vnd.com.nsn.cumulocity.eventcollection+json"
-    EXTERNAL_ID = ("application/vnd.com.nsn.cumulocity.externalid+json",)
+    EXTERNAL_ID = "application/vnd.com.nsn.cumulocity.externalid+json"
     GLOBAL_ROLE = "application/vnd.com.nsn.cumulocity.group+json"
     INVENTORY_ROLE = "application/vnd.com.nsn.cumulocity.inventoryrole+json"
     INVENTORY_ROLE_COLLECTION = "application/vnd.com.nsn.cumulocity.inventoryrolecollection+json"
@@ -160,7 +160,6 @@ class TenantDeviceStatisticsMeta(ResourceMeta):
 
 
 class TenantUsageStatisticsMeta(ResourceMeta):
-    object_mime_type = None
     collection_mime_type = MimeType.TENANT_USAGE_STATISTICS_COLLECTION
     resource_path = "tenant/statistics"
     collection_name = "usageStatistics"
@@ -194,5 +193,3 @@ class UserMeta(ResourceMeta):
 
 class CurrentUserMeta(ResourceMeta):
     object_mime_type = MimeType.CURRENT_USER
-    collection_mime_type = None
-    collection_name = None
