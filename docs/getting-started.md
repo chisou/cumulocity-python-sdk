@@ -137,7 +137,7 @@ In this first application we will simply iterate through all registered
 devices and list their Cumulocity object ID, designation and owner:
 
 ``` python
-for d in await c8y.device_inventory.select():
+async for d in c8y.device_inventory.select():
     print(f"Found device #{d.id} '{d.name}', owned by {d.owner}")
 ```
 
@@ -290,7 +290,7 @@ test_alarm.json['cx_CustomData']['foo']  # accessing the pure JSON
 Let's loop through all alarms and list their details:
 
 ``` python
-for a in await c8y.alarms.select(source=device_id):
+async for a in c8y.alarms.select(source=device_id):
     print(f"Found alarm #{a.id}, {a.text}, fragments: {list(a.json.keys())}")
     if 'cx_CustomData' in a:
         print(f"   Important: {a.get('cx_CustomData.data.is_important')}")
@@ -333,7 +333,7 @@ Updating via the Cumulocity Python SDK is particularly easy. Let ups
 loop through all alarms of our device and clear them:
 
 ``` python
-for a in await c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE):
+async for a in c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE):
     a.status = AlarmStatus.CLEARED
     await a.update()
     print(f"Alarm #{a.id} cleared.")
@@ -348,7 +348,7 @@ async def clear_alarm(alarm):
 
 await asyncio.gather(*[
   clear_alarm(a)
-  for a in await c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE)
+  async for a in c8y.alarms.select(source=device_id, status=AlarmStatus.ACTIVE)
  ]) 
 ```
 

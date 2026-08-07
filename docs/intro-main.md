@@ -88,7 +88,7 @@ an ordering parameter is specified:
 ```python
 all_events = await c8y.events.get_all(
     source="12345",
-    ascending=True,  # or: revert=True
+    asc=True,  # or: revert=True
     limit=None,
     page_size=100,
     workers=20)
@@ -114,7 +114,7 @@ without the need to pull object instances:
 ```python
 # add a new fragment to a known set of inventory objects:
 new_fragment_json = {"my_AdditionalFragment": {"essential": True}}
-await c8y.inventory.update(new_fragment_json, "123456", "1238957", "12399192")
+await c8y.inventory.apply_to(new_fragment_json, "123456", "1238957", "12399192")
 ```
 
 Similar functions exist to `create` and `delete` objects in bulk. Each API

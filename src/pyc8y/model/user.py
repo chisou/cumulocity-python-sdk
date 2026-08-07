@@ -88,14 +88,14 @@ class UserGroup(WithId, CumulocityObject):
         return self
 
     async def create(self, copy: bool = False) -> Self:
-        """Create the GlobalRole within the database.
+        """Create the UserGroup within the database.
 
         Args:
             copy (bool): If True, return a fresh instance with the server's
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The created GlobalRole. By default, this is `self`; if `copy=True`,
+            The created UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._create(copy)
@@ -108,7 +108,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The reloaded GlobalRole. By default, this is `self`; if `copy=True`,
+            The reloaded UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._reload(copy)
@@ -121,7 +121,7 @@ class UserGroup(WithId, CumulocityObject):
                 state and leave self unchanged; default False (mutate self).
 
         Returns:
-            The updated GlobalRole. By default, this is `self`; if `copy=True`,
+            The updated UserGroup. By default, this is `self`; if `copy=True`,
             a fresh instance.
         """
         return await self._update(copy)
@@ -263,7 +263,7 @@ class UserGroups(CumulocityResource):
             workers (int):  Number of pages to fetch in parallel; defaults to sequential
 
         Return:
-            Generator of GlobalRole instances
+            AsyncIterator of UserGroup instances
 
         See also:
             https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language

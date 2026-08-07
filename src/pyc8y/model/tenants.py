@@ -142,6 +142,9 @@ class Tenants(CumulocityResource[Tenant]):
     async def get(self, tenant_id: str) -> Tenant:
         """Read a specific tenant from the database.
 
+        Note: Reading a tenant other than your own requires management
+        tenant access; use `get_current` for the current tenant instead.
+
         Args:
             tenant_id (str):  Database ID of the tenant
 
@@ -165,6 +168,9 @@ class Tenants(CumulocityResource[Tenant]):
         **kwargs,
     ) -> AsyncIterator[Tenant]:
         """Query the database for tenants and iterate over the results.
+
+        Note: This lists tenants across the platform and requires
+        management tenant access.
 
         Args:
             expression (str):  Arbitrary filter expression; all other filters
@@ -249,6 +255,8 @@ class Tenants(CumulocityResource[Tenant]):
     async def create(self, *tenants: Tenant, workers: int | None = None) -> None:
         """Create tenant objects within the database.
 
+        Note: This can only be invoked from the management tenant.
+
         Args:
             *tenants (Tenant):  Collection of Tenant instances
             workers (int):  Number of parallel workers
@@ -258,6 +266,8 @@ class Tenants(CumulocityResource[Tenant]):
     async def update(self, *tenants: Tenant, workers: int | None = None) -> None:
         """Update tenant objects within the database.
 
+        Note: This can only be invoked from the management tenant.
+
         Args:
             *tenants (Tenant):  Collection of Tenant instances
             workers (int):  Number of parallel workers
@@ -266,6 +276,8 @@ class Tenants(CumulocityResource[Tenant]):
 
     async def delete(self, *tenants: str | Tenant, workers: int | None = None) -> None:
         """Delete tenant objects from the database.
+
+        Note: This can only be invoked from the management tenant.
 
         Args:
             *tenants (str | Tenant):  Collection of Tenant instances or IDs

@@ -20,14 +20,10 @@
             - Series
             - Subscription
             - Availability
-            - Fragment
-            - NamedObject
             - User
             - CurrentUser
             - UserGroup
-            - UserGroups
             - TfaSettings
-            - GlobalRole
             - Permission
             - ReadPermission
             - WritePermission
@@ -35,8 +31,8 @@
             - Operation
             - BulkOperation
             - Application
-            - ApplicationSetting
             - ApplicationSubscription
             - TenantOption
             - AuditRecord
             - Change
+            - TenantStatisticsFile

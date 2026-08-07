@@ -28,6 +28,8 @@
             - liters
             - Meters
             - meters
+            - Millimeters
+            - millimeters
             - Percent
             - percent
             - Value

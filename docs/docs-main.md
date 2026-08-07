@@ -11,18 +11,21 @@
         members:
             -  Inventory
             -  DeviceInventory
+            -  DeviceGroupInventory
             -  Identity
             -  Binaries
             -  Measurements
             -  Events
             -  Alarms
             -  Users
-            -  GlobalRoles
+            -  UserGroups
             -  InventoryRoles
             -  Subscriptions
             -  Tokens
             -  Operations
             -  BulkOperations
             -  Applications
+            -  Tenants
             -  TenantOptions
+            -  TenantStatistics
             -  AuditRecords 
