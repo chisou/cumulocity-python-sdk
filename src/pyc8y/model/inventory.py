@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import AsyncIterator, Sequence, TypeVar
 
 from pyc8y.rest import BatchError
-from pyc8y.base_util import encode_odata_query_value, ensure_sequence, unwrap_args
+from pyc8y.base_util import encode_odata_query_value, ensure_sequence
 from pyc8y.model.managed_object import Availability, ManagedObject, Device, DeviceGroup
 from pyc8y.model.matcher import JsonMatcher
 from pyc8y.model.model_base import (
@@ -609,7 +609,6 @@ class DeviceInventory(Inventory[Device]):
             workers (int): Number of workers to use for parallel processing
                 or None to process sequentially.
         """
-        devices = unwrap_args(devices)
         if not workers:
             for d in devices:
                 await d.delete()
@@ -772,7 +771,7 @@ class DeviceGroupInventory(Inventory):
             workers (int|None): Number of parallel requests; sequential if None.
         """
         await run_batched(
-            ensure_ids(unwrap_args(groups)),
+            ensure_ids(groups),
             workers,
             lambda x: self.c8y.request("DELETE", self.build_object_path(x), params={"cascade": "true"}),
         )

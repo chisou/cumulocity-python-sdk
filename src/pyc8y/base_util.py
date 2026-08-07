@@ -17,27 +17,6 @@ def ensure_sequence(obj: Any | Sequence[Any] | None) -> Sequence[Any]:
     return obj if is_sequence(obj) else (obj,)
 
 
-def unwrap_args(args: Sequence[Any]) -> tuple[Any, ...]:
-    """Unwrap a *args-style argument tuple, flattening one level of sequences.
-
-    Supports the stdlib min/max calling convention: callers may pass items
-    either as individual positional arguments or collected in sequences, and
-    the two forms can be mixed.
-
-    Examples:
-        unwrap_args(("a", "b"))         -> ("a", "b")
-        unwrap_args((["a", "b"],))      -> ("a", "b")
-        unwrap_args((["a", "b"], "c"))  -> ("a", "b", "c")
-    """
-    result: list = []
-    for item in args:
-        if is_sequence(item):
-            result.extend(item)
-        else:
-            result.append(item)
-    return tuple(result)
-
-
 def first(*values: Any) -> Any | None:
     """Returns the first defined (not None) value in a sequence of
     candidates.

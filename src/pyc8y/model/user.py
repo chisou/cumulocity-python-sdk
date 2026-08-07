@@ -1,7 +1,7 @@
 import asyncio
 from typing import Self, AsyncIterator, Sequence, TYPE_CHECKING
 
-from pyc8y.base_util import unwrap_args, ensure_sequence
+from pyc8y.base_util import ensure_sequence
 from pyc8y.model.matcher import JsonMatcher
 
 if TYPE_CHECKING:
@@ -415,7 +415,7 @@ class UserGroups(CumulocityResource):
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
         await run_batched(
-            unwrap_args(role_ids),
+            role_ids,
             workers,
             lambda r: self.c8y.post(path, json={"role": {"self": f"user/roles/{r}"}}, accept=None),
         )
@@ -429,7 +429,7 @@ class UserGroups(CumulocityResource):
             workers (int):  Number of parallel requests; defaults to sequential
         """
         path = f"{self.build_object_path(str(group_id))}/roles"
-        await run_batched(unwrap_args(role_ids), workers, lambda r: self.c8y.delete(f"{path}/{r}"))
+        await run_batched(role_ids, workers, lambda r: self.c8y.delete(f"{path}/{r}"))
 
 
 class BaseUser(CumulocityObject):
@@ -1299,7 +1299,7 @@ class Users(CumulocityResource):
         """
         path = f"user/{self.c8y.tenant_id}/users"
         await run_batched(
-            unwrap_args(users),
+            users,
             workers,
             lambda u: self.c8y.post(path, json=u.json, accept=None),
         )
@@ -1312,7 +1312,7 @@ class Users(CumulocityResource):
             workers (int): Number of parallel requests
         """
         await run_batched(
-            unwrap_args(users),
+            users,
             workers,
             lambda u: self.c8y.put(self.build_object_path(u.username), json=u._staged_json, accept=None),
         )
@@ -1324,7 +1324,7 @@ class Users(CumulocityResource):
             *users (str | User): User objects or usernames to delete
             workers (int): Number of parallel requests
         """
-        usernames = [u.username if isinstance(u, User) else u for u in unwrap_args(users)]
+        usernames = [u.username if isinstance(u, User) else u for u in users]
         await run_batched(
             usernames,
             workers,
