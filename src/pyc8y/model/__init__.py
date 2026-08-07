@@ -43,6 +43,7 @@ from pyc8y.model.inventory import (
     DeviceGroupInventory as DeviceGroupInventory,
 )
 from pyc8y.model.measurement import (
+    AggregationType as AggregationType,
     Units as Units,
     Value as Value,
     Grams as Grams,

@@ -10,6 +10,7 @@
         show_root_toc_entry: false
         members:
             - Units
+            - AggregationType
             - Celsius
             - celsius
             - Centimeters

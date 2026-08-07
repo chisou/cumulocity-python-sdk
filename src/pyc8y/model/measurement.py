@@ -997,7 +997,7 @@ class Measurements(CumulocityResource[Measurement]):
         expression: str | None = None,
         *,
         source: str | None = None,
-        aggregation: str | None = None,
+        aggregation: AggregationType | str | None = None,
         aggregation_function: str | Sequence[str] | None = None,
         aggregation_interval: str | None = None,
         series: str | Sequence[str] | None = None,
@@ -1016,7 +1016,7 @@ class Measurements(CumulocityResource[Measurement]):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             source (str):  Database ID of a source device
-            aggregation (str):  Aggregation type
+            aggregation (AggregationType|str):  Aggregation type
             aggregation_function (str):  Aggregation function, e.g. "min",
                 "max", "avg", "sum", "count". Needs aggregation_interval.
             aggregation_interval (str):  Aggregation interval for the
@@ -1072,7 +1072,7 @@ class Measurements(CumulocityResource[Measurement]):
         expression: str | None = None,
         *,
         source: str | None = None,
-        aggregation: str | None = None,
+        aggregation: AggregationType | str | None = None,
         series: str | Sequence[str] | None = None,
         before: str | datetime | None = None,
         after: str | datetime | None = None,
@@ -1094,7 +1094,7 @@ class Measurements(CumulocityResource[Measurement]):
                 passed to Cumulocity without change; all other filters
                 are ignored if this is provided
             source (str):  Database ID of a source device
-            aggregation (str):  Aggregation type
+            aggregation (AggregationType|str):  Aggregation type
             series (str|Sequence[str]):  Series' to query and collect; If
                 multiple series are collected each element in the result will
                 be a tuple. If omitted, all available series are collected.
