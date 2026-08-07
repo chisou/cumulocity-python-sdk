@@ -364,8 +364,7 @@ class Inventory(CumulocityResource[MO]):
             Async iterator for object instances or values/value tuples if the
             `as_values` parameter is defined.
 
-        See also:
-            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        See also: https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
         return self._select(
@@ -403,7 +402,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Device (managed object) ID
 
-        Return:
+        Returns:
             DeviceAvailability object
         """
         return Availability(await self.c8y.get(f"{self.build_object_path(mo_id)}/availability"))
@@ -415,7 +414,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Managed object ID
 
-        Return:
+        Returns:
             List of measurement fragment names.
         """
         result_json = await self.c8y.get(f"{self.build_object_path(mo_id)}/supportedMeasurements")
@@ -428,7 +427,7 @@ class Inventory(CumulocityResource[MO]):
         Args:
             mo_id (str):  Managed object ID
 
-        Return:
+        Returns:
             List of series names.
         """
         result_json = await self.c8y.get(f"{self.build_object_path(mo_id)}/supportedSeries")

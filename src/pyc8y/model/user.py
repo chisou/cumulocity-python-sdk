@@ -262,11 +262,10 @@ class UserGroups(CumulocityResource):
                 a proper default value for each path.
             workers (int):  Number of pages to fetch in parallel; defaults to sequential
 
-        Return:
+        Returns:
             AsyncIterator of UserGroup instances
 
-        See also:
-            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        See also: https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
 

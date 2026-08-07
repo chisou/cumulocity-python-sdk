@@ -324,7 +324,7 @@ class TenantStatistics:
     Covers device-level statistics (daily/monthly per tenant), tenant-level
     usage statistics, and statistics file management.
 
-    See also: TODO
+    See also: https://cumulocity.com/api/core/#tag/Device-statistics and https://cumulocity.com/api/core/#tag/Usage-statistics
     """
 
     def __init__(self, c8y: CumulocityRestClient):

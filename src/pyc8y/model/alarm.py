@@ -258,8 +258,7 @@ class Alarms(CumulocityResource[Alarm]):
         Returns:
             AsyncIterator of Alarm objects
 
-        See also:
-            https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
+        See also: https://github.com/bytebutcher/pydfql/blob/main/docs/USER_GUIDE.md#4-query-language
         """
         page_size = resolve_page_size(page_size, limit, include, exclude)
         params = (

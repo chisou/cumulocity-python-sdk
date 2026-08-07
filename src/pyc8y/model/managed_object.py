@@ -334,7 +334,7 @@ class ManagedObject(WithId, CumulocityObject):
     async def get_latest_availability(self) -> Availability:
         """Retrieve the latest availability information of this object.
 
-        Return:
+        Returns:
             DeviceAvailability object
         """
         return Availability(await self._get_resource("availability"))
@@ -342,7 +342,7 @@ class ManagedObject(WithId, CumulocityObject):
     async def get_supported_measurements(self) -> list[str]:
         """Retrieve all supported measurement names of this managed object.
 
-        Return:
+        Returns:
             List of measurement fragment names.
         """
         return await self._get_resource("supportedMeasurements")
@@ -350,7 +350,7 @@ class ManagedObject(WithId, CumulocityObject):
     async def get_supported_series(self) -> list[str]:
         """Retrieve all supported measurement series names of this managed object.
 
-        Return:
+        Returns:
             List of measurement series names.
         """
         return await self._get_resource("supportedSeries")

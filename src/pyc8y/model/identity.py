@@ -106,8 +106,7 @@ class Identity(CumulocityResource):
     The Identity API uses non-standard resource paths and does not follow
     the standard CumulocityResource pagination pattern.
 
-    See also: https://cumulocity.com/api/core/#tag/External-IDs
-              https://cumulocity.com/api/core/#tag/Identity-API
+    See also: https://cumulocity.com/api/core/#tag/External-IDs and https://cumulocity.com/api/core/#tag/Identity-API
     """
 
     _meta = IdentityMeta

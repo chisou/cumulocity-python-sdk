@@ -35,6 +35,7 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.superfences
+  - pymdownx.magiclink
 
 nav:
   - Home: index.md
