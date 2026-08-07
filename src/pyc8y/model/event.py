@@ -1,5 +1,6 @@
+import os
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, BinaryIO, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient, FileDownload
 from pyc8y.model.model_base import (
@@ -16,7 +17,7 @@ from pyc8y.model.model_base import (
     skim_latest_by,
 )
 from pyc8y.model.matcher import JsonMatcher
-from pyc8y.types import EventMeta, FileSpec
+from pyc8y.types import EventMeta
 
 
 class Event(WithId, CumulocityObject):
@@ -76,7 +77,7 @@ class Event(WithId, CumulocityObject):
         """
         return self.has("c8y_IsBinary")
 
-    async def create_attachment(self, file: FileSpec, content_type: str | None = None) -> dict:
+    async def create_attachment(self, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
         """Create the binary attachment.
 
         Args:
@@ -91,7 +92,7 @@ class Event(WithId, CumulocityObject):
         self._assert_key()
         return await self.c8y.post_file(self.attachment_path, file=file, content_type=content_type)
 
-    async def update_attachment(self, file: FileSpec, content_type: str | None = None) -> dict:
+    async def update_attachment(self, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
         """Update the binary attachment.
 
         Args:
@@ -666,7 +667,7 @@ class Events(CumulocityResource[Event]):
         )
         await self.c8y.delete(self.resource_path, params=params)
 
-    async def create_attachment(self, event_id: str, file: FileSpec, content_type: str | None = None) -> dict:
+    async def create_attachment(self, event_id: str, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
         """Add a binary attachment to an event.
 
         Args:
@@ -679,7 +680,7 @@ class Events(CumulocityResource[Event]):
         """
         return await self.c8y.post_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
 
-    async def update_attachment(self, event_id: str, file: FileSpec, content_type: str | None = None) -> dict:
+    async def update_attachment(self, event_id: str, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
         """Update a binary attachment of an event.
 
         Args:

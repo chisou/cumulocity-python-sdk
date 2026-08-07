@@ -1,6 +1,7 @@
 # Copyright (c) 2025 Cumulocity GmbH
 
-from typing import AsyncIterator, Self, Sequence
+import os
+from typing import AsyncIterator, BinaryIO, Self, Sequence
 
 import aiohttp
 
@@ -16,7 +17,7 @@ from pyc8y.model.model_base import (
     resolve_page_size,
 )
 from pyc8y.rest import CumulocityRestClient
-from pyc8y.types import ApplicationMeta, FileSpec, MimeType
+from pyc8y.types import ApplicationMeta, MimeType
 
 
 class Application(WithId, CumulocityObject):
@@ -435,7 +436,7 @@ class Applications(CumulocityResource[Application]):
         """
         await self._delete(*applications, workers=workers)
 
-    async def upload_attachment(self, application_id: str, file: FileSpec) -> None:
+    async def upload_attachment(self, application_id: str, file: str | os.PathLike | BinaryIO) -> None:
         """Upload application binary for a registered application.
 
         Args:
