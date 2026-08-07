@@ -91,6 +91,12 @@ from pyc8y.model.tenant_option import (
     TenantOption as TenantOption,
     TenantOptions as TenantOptions,
 )
+from pyc8y.model.tenant_statistics import (
+    DeviceStatistics as DeviceStatistics,
+    UsageStatistics as UsageStatistics,
+    TenantStatisticsFile as TenantStatisticsFile,
+    TenantStatistics as TenantStatistics,
+)
 from pyc8y.model.tenants import (
     Tenant as Tenant,
     Tenants as Tenants,
