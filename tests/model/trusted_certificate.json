@@ -1,0 +1,35 @@
+[
+    {
+        "fingerprint": "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD",
+        "name": "my-ca-cert",
+        "status": "ENABLED",
+        "autoRegistrationEnabled": true,
+        "tenantCertificateAuthority": true,
+        "certInPemFormat": "-----BEGIN CERTIFICATE-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A\n-----END CERTIFICATE-----",
+        "serialNumber": "123456789",
+        "version": "3",
+        "algorithmName": "SHA256withECDSA",
+        "subject": "CN=my-ca-cert",
+        "issuer": "CN=my-ca-cert",
+        "notBefore": "2026-01-01T00:00:00.000Z",
+        "notAfter": "2036-01-01T00:00:00.000Z",
+        "proofOfPossessionUnsignedVerificationCode": "abc123",
+        "proofOfPossessionValid": false,
+        "proofOfPossessionVerificationCodeUsableUntil": "2026-01-01T01:00:00.000Z"
+    },
+    {
+        "fingerprint": "11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44",
+        "name": "device-cert",
+        "status": "DISABLED",
+        "autoRegistrationEnabled": false,
+        "tenantCertificateAuthority": false,
+        "certInPemFormat": "-----BEGIN CERTIFICATE-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAQ8A\n-----END CERTIFICATE-----",
+        "serialNumber": "987654321",
+        "version": "3",
+        "algorithmName": "SHA256withRSA",
+        "subject": "CN=device-cert",
+        "issuer": "CN=my-ca-cert",
+        "notBefore": "2026-02-01T00:00:00.000Z",
+        "notAfter": "2027-02-01T00:00:00.000Z"
+    }
+]
