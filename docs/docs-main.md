@@ -28,4 +28,5 @@
             -  Tenants
             -  TenantOptions
             -  TenantStatistics
+            -  TrustedCertificates        
             -  AuditRecords 

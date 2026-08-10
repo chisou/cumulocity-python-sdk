@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
+import io
 import logging
 import os
 import ssl
@@ -8,7 +9,7 @@ from collections import Counter
 from contextlib import asynccontextmanager, nullcontext
 from enum import StrEnum
 from pathlib import Path
-from typing import Awaitable, BinaryIO, Callable, NamedTuple, Self, Sequence, Any, Mapping
+from typing import Awaitable, Callable, NamedTuple, Self, Sequence, Any, Mapping
 
 import aiohttp
 import certifi
@@ -360,7 +361,7 @@ class CumulocityRestClient(object):
     async def post_file(
         self,
         resource: str,
-        file: str | os.PathLike | BinaryIO,
+        file: str | os.PathLike | io.IOBase,
         filename: str | None = None,
         form_data: dict[str, str | bytes] | None = None,
         accept: str | None = None,
@@ -370,7 +371,7 @@ class CumulocityRestClient(object):
 
         Args:
             resource (str):  The resource path.
-            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
+            file (str | PathLike | io.IOBase):  File path or file-like object to upload.
             filename (str):  The filename for the upload part. Derived from the path if not specified.
             form_data (dict):  Additional file metadata as JSON (nested dict) stored within Cumulocity.
             accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
@@ -425,19 +426,22 @@ class CumulocityRestClient(object):
     async def put_file(
         self,
         resource: str,
-        file: str | os.PathLike | BinaryIO,
+        file: str | os.PathLike | io.IOBase,
         accept: str | None = None,
         content_type: str | None = None,
+        multipart: bool = False,
     ) -> dict:
-        """Update a binary file using multipart/form-data.
+        """Update a binary file.
 
         Args:
             resource (str): Resource path
-            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
+            file (str | PathLike | io.IOBase):  File path or file-like object to upload.
             accept (str|None): Custom Accept header to use (default is
                 application/json).
             content_type (str): Content type of the file sent
                 (default is application/octet-stream)
+            multipart (bool): If True, send the file as multipart/form-data
+                (like `post_file`) instead of as a raw request body.
 
         Returns:
             The JSON response (nested dict), {} if no response body is returned.
@@ -452,9 +456,14 @@ class CumulocityRestClient(object):
         session = await self.session
 
         async def put(file_obj):
-            async with session.request(
-                method="PUT", url=resource, data=file_obj, headers={"Accept": accept, "Content-Type": content_type}
-            ) as r:
+            if multipart:
+                form = aiohttp.FormData()
+                form.add_field("file", file_obj, content_type=content_type)
+                # proper multipart content-type is set by aiohttp
+                data, headers = form, {"Accept": accept}
+            else:
+                data, headers = file_obj, {"Accept": accept, "Content-Type": content_type}
+            async with session.request(method="PUT", url=resource, data=data, headers=headers) as r:
                 if r.status == 401:
                     raise UnauthorizedError("PUT", resource, message=(await r.json())["message"])
                 if r.status == 403:

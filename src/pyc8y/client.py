@@ -19,6 +19,7 @@ from pyc8y.model.operation import Operations, BulkOperations
 from pyc8y.model.tenant_option import TenantOptions
 from pyc8y.model.tenant_statistics import TenantStatistics
 from pyc8y.model.tenants import Tenants
+from pyc8y.model.trusted_certificates import TrustedCertificates
 from pyc8y.model.user import Users, UserGroups, InventoryRoles
 from pyc8y.rest import CumulocityRestClient
 
@@ -64,6 +65,7 @@ class CumulocityClient(CumulocityRestClient):
         self.tenant_options = TenantOptions(self)
         self.tenant_statistics = TenantStatistics(self)
         self.tenants = Tenants(self)
+        self.trusted_certificates = TrustedCertificates(self)
         self.tokens = Tokens(self)
         self.inventory_roles = InventoryRoles(self)
         self.user_groups = UserGroups(self)
