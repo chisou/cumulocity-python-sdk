@@ -44,6 +44,8 @@
   
 * Added support for the tenant statistics API.
 
+* Added support for the trusted certificates API.
+
 * Added best-effort convenience methods (`skim_latest` on `Measurements`, `Events`, `Operations`) that scan a bounded
   window of items and return the latest item per type. They are intended for quick, interactive exploration and not
   guaranteed to be complete.
