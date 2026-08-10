@@ -469,25 +469,24 @@ class TrustedCertificates(CumulocityResource):
         )
 
         async def post_batch(batch: Sequence) -> None:
-            # create csv file in memory
-            with io.BytesIO() as buffer:
-                with io.TextIOWrapper(buffer, encoding="utf-8") as wrapper:
-                    csv_writer = csv.writer(wrapper)
-                    csv_writer.writerow(["SERIAL NO.", "REVOCATION DATE"])
-                    for item in batch:
-                        if isinstance(item, tuple):
-                            csv_writer.writerow([item[0], coerce_timestring(item[1])])
-                        else:
-                            csv_writer.writerow([item])
+            # newline="" disables StringIO's own newline handling, leaving csv.writer's
+            # \r\n row terminators untouched (see the csv module docs' own warning about this)
+            with io.StringIO(newline="") as text_buffer:
+                csv_writer = csv.writer(text_buffer)
+                csv_writer.writerow(["SERIAL NO.", "REVOCATION DATE"])
+                for item in batch:
+                    if isinstance(item, tuple):
+                        csv_writer.writerow([item[0], coerce_timestring(item[1])])
+                    else:
+                        csv_writer.writerow([item])
+                csv_bytes = text_buffer.getvalue().encode("utf-8")
 
-                    wrapper.flush()
-                    buffer.seek(0)
-                    await self.c8y.put_file(
-                        "tenant/trusted-certificates/settings/crl",
-                        file=buffer,
-                        content_type="text/csv",
-                        multipart=True,
-                    )
+            await self.c8y.put_file(
+                "tenant/trusted-certificates/settings/crl",
+                file=io.BytesIO(csv_bytes),
+                content_type="text/csv",
+                multipart=True,
+            )
 
         await run_batched(batches, workers, post_batch)
 
