@@ -1,6 +1,7 @@
+import io
 import os
 from datetime import datetime, timedelta
-from typing import AsyncIterator, BinaryIO, Self, Sequence
+from typing import AsyncIterator, Self, Sequence
 
 from pyc8y.rest import CumulocityRestClient, FileDownload
 from pyc8y.model.model_base import (
@@ -77,11 +78,11 @@ class Event(WithId, CumulocityObject):
         """
         return self.has("c8y_IsBinary")
 
-    async def create_attachment(self, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
+    async def create_attachment(self, file: str | os.PathLike | io.IOBase, content_type: str | None = None) -> dict:
         """Create the binary attachment.
 
         Args:
-            file (str | PathLike | BinaryIO): File-like object or a file path
+            file (str | PathLike | io.IOBase): File-like object or a file path
             content_type (str):  Content type of the file sent
                 (default is application/octet-stream)
 
@@ -92,11 +93,11 @@ class Event(WithId, CumulocityObject):
         self._assert_key()
         return await self.c8y.post_file(self.attachment_path, file=file, content_type=content_type)
 
-    async def update_attachment(self, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
+    async def update_attachment(self, file: str | os.PathLike | io.IOBase, content_type: str | None = None) -> dict:
         """Update the binary attachment.
 
         Args:
-            file (str | PathLike | BinaryIO): File-like object or a file path
+            file (str | PathLike | io.IOBase): File-like object or a file path
             content_type (str):  Content type of the file sent
                 (default is application/octet-stream)
 
@@ -667,12 +668,12 @@ class Events(CumulocityResource[Event]):
         )
         await self.c8y.delete(self.resource_path, params=params)
 
-    async def create_attachment(self, event_id: str, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
+    async def create_attachment(self, event_id: str, file: str | os.PathLike | io.IOBase, content_type: str | None = None) -> dict:
         """Add a binary attachment to an event.
 
         Args:
             event_id (str):  The database ID of the event
-            file (str | PathLike | BinaryIO): File-like object or a file path
+            file (str | PathLike | io.IOBase): File-like object or a file path
             content_type (str):  Content type of the file sent
 
         Returns:
@@ -680,12 +681,12 @@ class Events(CumulocityResource[Event]):
         """
         return await self.c8y.post_file(self.build_attachment_path(event_id), file=file, content_type=content_type)
 
-    async def update_attachment(self, event_id: str, file: str | os.PathLike | BinaryIO, content_type: str | None = None) -> dict:
+    async def update_attachment(self, event_id: str, file: str | os.PathLike | io.IOBase, content_type: str | None = None) -> dict:
         """Update a binary attachment of an event.
 
         Args:
             event_id (str):  The database ID of the event
-            file (str | PathLike | BinaryIO): File-like object or a file path
+            file (str | PathLike | io.IOBase): File-like object or a file path
             content_type (str):  Content type of the file sent
 
         Returns:

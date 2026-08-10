@@ -1,5 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
+import io
 import logging
 import os
 import ssl
@@ -8,7 +9,7 @@ from collections import Counter
 from contextlib import asynccontextmanager, nullcontext
 from enum import StrEnum
 from pathlib import Path
-from typing import Awaitable, BinaryIO, Callable, NamedTuple, Self, Sequence, Any, Mapping
+from typing import Awaitable, Callable, NamedTuple, Self, Sequence, Any, Mapping
 
 import aiohttp
 import certifi
@@ -360,7 +361,7 @@ class CumulocityRestClient(object):
     async def post_file(
         self,
         resource: str,
-        file: str | os.PathLike | BinaryIO,
+        file: str | os.PathLike | io.IOBase,
         filename: str | None = None,
         form_data: dict[str, str | bytes] | None = None,
         accept: str | None = None,
@@ -370,7 +371,7 @@ class CumulocityRestClient(object):
 
         Args:
             resource (str):  The resource path.
-            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
+            file (str | PathLike | io.IOBase):  File path or file-like object to upload.
             filename (str):  The filename for the upload part. Derived from the path if not specified.
             form_data (dict):  Additional file metadata as JSON (nested dict) stored within Cumulocity.
             accept(str): Accept header value; `application/json` is assumed/automatically inserted if omitted
@@ -425,7 +426,7 @@ class CumulocityRestClient(object):
     async def put_file(
         self,
         resource: str,
-        file: str | os.PathLike | BinaryIO,
+        file: str | os.PathLike | io.IOBase,
         accept: str | None = None,
         content_type: str | None = None,
         multipart: bool = False,
@@ -434,7 +435,7 @@ class CumulocityRestClient(object):
 
         Args:
             resource (str): Resource path
-            file (str | PathLike | BinaryIO):  File path or file-like object to upload.
+            file (str | PathLike | io.IOBase):  File path or file-like object to upload.
             accept (str|None): Custom Accept header to use (default is
                 application/json).
             content_type (str): Content type of the file sent

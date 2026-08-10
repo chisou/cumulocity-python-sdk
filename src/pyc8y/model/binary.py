@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
+import io
 import os
-from typing import AsyncIterator, BinaryIO, Self, Sequence
+from typing import AsyncIterator, Self, Sequence
 
 import orjson
 
@@ -33,7 +34,7 @@ class Binary(ManagedObject):
         name: str | None = None,
         owner: str | None = None,
         content_type: str | None = None,
-        file: str | os.PathLike | BinaryIO | None = None,
+        file: str | os.PathLike | io.IOBase | None = None,
         **kwargs,
     ):
         filename = None
@@ -134,7 +135,7 @@ class Binaries(CumulocityResource[Binary]):
         """
         return await self.c8y.get_file(self.build_object_path(id))
 
-    async def upload(self, file: str | os.PathLike | BinaryIO, name: str, type: str) -> Binary:  # noqa (type)
+    async def upload(self, file: str | os.PathLike | io.IOBase, name: str, type: str) -> Binary:  # noqa (type)
         """Upload a file.
 
         Args:
@@ -185,7 +186,7 @@ class Binaries(CumulocityResource[Binary]):
         )
         return len(binaries)
 
-    async def update(self, id: str, file: str | os.PathLike | BinaryIO, type: str | None = None) -> None:  # noqa (type,id)
+    async def update(self, id: str, file: str | os.PathLike | io.IOBase, type: str | None = None) -> None:  # noqa (type,id)
         """Update a binary attachment.
 
         Args:
