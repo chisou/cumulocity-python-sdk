@@ -51,10 +51,15 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
         assert updated_alarm.text == 'some text'
         assert updated_alarm["custom_attribute"] == 'value'
 
+        # 4) reload should reflect the same state
+        reloaded_alarm = await updated_alarm.reload(copy=True)
+        assert reloaded_alarm.text == updated_alarm.text
+        assert reloaded_alarm["custom_attribute"] == 'value'
+
     finally:
         await created_alarm.delete()
 
-    # 4) assert deletion
+    # 5) assert deletion
     with pytest.raises(KeyError) as e:
         await live_c8y.alarms.get(created_alarm.id)
     assert created_alarm.id in str(e)

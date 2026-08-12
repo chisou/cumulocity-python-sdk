@@ -58,10 +58,14 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
         updated_event = await live_c8y.events.get(created_event.id)
         assert updated_event.text == 'some text'
 
+        # 4) reload should reflect the same state
+        reloaded_event = await updated_event.reload(copy=True)
+        assert reloaded_event.text == updated_event.text
+
     finally:
         await created_event.delete()
 
-    # 4) assert deletion
+    # 5) assert deletion
     with pytest.raises(KeyError) as e:
         await live_c8y.events.get(created_event.id)
         assert created_event.id in str(e)

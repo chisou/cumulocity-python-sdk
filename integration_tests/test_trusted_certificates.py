@@ -54,6 +54,11 @@ async def test_round_trip(live_c8y: CumulocityClient):
         assert cert.fingerprint
         assert cert.certificate_pem
 
+        # 1a) reload should reflect the same state
+        reloaded_cert = await cert.reload(copy=True)
+        assert reloaded_cert.fingerprint == cert.fingerprint
+        assert reloaded_cert.certificate_pem == cert.certificate_pem
+
         # 2) generate a proof-of-possession challenge
         challenged = await live_c8y.trusted_certificates.generate_pop_challenge(cert.fingerprint)
         assert challenged.pop_challenge
