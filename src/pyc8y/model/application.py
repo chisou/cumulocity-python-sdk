@@ -151,6 +151,19 @@ class Application(WithId, CumulocityObject):
         """
         return await self._update(copy)
 
+    async def reload(self, copy: bool = False) -> Self:
+        """Reload this application's data from the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The reloaded Application. By default, this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._reload(copy)
+
     async def delete(self, **_) -> None:
         """Delete the Application within the database."""
         await self._delete()

@@ -140,6 +140,19 @@ class Operation(WithId, CumulocityObject):
         """
         return await self._update(copy)
 
+    async def reload(self, copy: bool = False) -> Self:
+        """Reload this operation's data from the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The reloaded Operation. By default, this is `self`; if `copy=True`,
+            a fresh instance.
+        """
+        return await self._reload(copy)
+
     async def send_to(self, *devices: str | Device, workers: int | None = None) -> None:
         """Send the Operation to devices within the database.
 

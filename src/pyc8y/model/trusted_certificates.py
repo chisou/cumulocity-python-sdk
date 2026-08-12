@@ -134,6 +134,19 @@ class TrustedCertificate(WithId, CumulocityObject):
         """
         return await self._update(copy)
 
+    async def reload(self, copy: bool = False) -> Self:
+        """Reload this certificate's data from the database.
+
+        Args:
+            copy (bool): If True, return a fresh instance with the server's
+                state and leave self unchanged; default False (mutate self).
+
+        Returns:
+            The reloaded TrustedCertificate. By default, this is `self`; if
+            `copy=True`, a fresh instance.
+        """
+        return await self._reload(copy)
+
     async def apply_to(self, other_fingerprint: str) -> Self:
         """Apply changes made to this certificate to another certificate in the database.
 
