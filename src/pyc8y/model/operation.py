@@ -140,21 +140,18 @@ class Operation(WithId, CumulocityObject):
         """
         return await self._update(copy)
 
-    async def send_to(self, *devices: str | Device, workers: int | None = None) -> None:
+    async def send_to(self, *devices: str | Device, workers: int | None = None) -> list[str]:
         """Send the Operation to devices within the database.
 
         Args:
             *devices (str | Device): A collection of devices or device IDs
             workers (int): The number of parallel processes to use
+
+        Returns:
+            The database IDs of the created Operation objects (in order).
         """
         self._assert_c8y()
-        skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
-        operation_json = {k: v for k, v in self.json.items() if k not in skip_keys}
-        await run_batched(
-            ensure_ids(devices),
-            workers,
-            lambda x: self.c8y.post(self.resource_path, json=operation_json | {"deviceId": x}, accept=None),
-        )
+        return await Operations(self.c8y).send_to(self, *devices, workers=workers)  # type: ignore[arg-type]
 
 
 class Operations(CumulocityResource[Operation]):
@@ -519,6 +516,38 @@ class Operations(CumulocityResource[Operation]):
             workers (int):  Number of parallel workers
         """
         await self._update(*operations, workers=workers)
+
+    async def send_to(
+        self, operation: Operation | dict, *device_ids: str | Device, workers: int | None = None
+    ) -> list[str]:
+        """Send an Operation to devices within the database.
+
+        Unlike other batch functions on this class (e.g. `create`, `update`),
+        this returns the created objects' IDs rather than nothing as
+        operations are asynchronous by nature and therefore typically
+        monitored after being sent.
+
+        Args:
+            operation (Operation|dict): The operation (template) to send
+            *device_ids (str|Device): A collection of devices or device IDs
+            workers (int): The number of parallel processes to use
+
+        Returns:
+            The database IDs of the created Operation objects (in order).
+        """
+        skip_keys = {"creationTime", "delivery", "id", "self", "status", "deviceId", "deviceName"}
+        operation_fields = operation.json if isinstance(operation, Operation) else operation
+        operation_json = {k: v for k, v in operation_fields.items() if k not in skip_keys}
+        results = await run_batched(
+            ensure_ids(device_ids),
+            workers,
+            lambda x: self.c8y.post(
+                self.resource_path,
+                json=operation_json | {"deviceId": x},
+                accept=self._meta.object_mime_type,
+            )
+        )
+        return [r["id"] for r in results]
 
 
 class BulkOperationStatus(StrEnum):

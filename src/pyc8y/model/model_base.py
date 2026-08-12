@@ -916,17 +916,21 @@ def ensure_ids(objects):
         return objects
 
 
-async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[Any], Awaitable[Any]]) -> None:
+async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[Any], Awaitable[Any]]) -> list[Any]:
     if workers is None:
-        for thing in things:
-            await op(thing)
-        return
+        return [await op(thing) for thing in things]
 
     errors: list[BaseException] = []
+    results: list[Any] = [None] * len(things)
     for i in range(0, len(things), workers):
         batch = things[i : i + workers]
-        results = await asyncio.gather(*(op(thing) for thing in batch), return_exceptions=True)
-        errors.extend(r for r in results if isinstance(r, BaseException))
+        batch_results = await asyncio.gather(*(op(thing) for thing in batch), return_exceptions=True)
+        for j, r in enumerate(batch_results):
+            if isinstance(r, BaseException):
+                errors.append(r)
+            else:
+                results[i + j] = r
 
     if errors:
         raise BatchError(errors)
+    return results
