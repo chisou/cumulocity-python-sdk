@@ -395,6 +395,10 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         """Query the database for audit records related to a specific object
         and iterate over the results.
 
+        Currently supported object types are: Alarm, Event, Operation,
+        BulkOperation, ManagedObject (incl. Device, DeviceGroup, ...), User,
+        UserGroup, InventoryRole.
+
         This function is implemented in a lazy fashion - results will only be
         fetched from the database as long as there is a consumer for them.
 
@@ -488,6 +492,17 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             workers: int | None = None,
             **kwargs,
     ) -> list[AuditRecord]:
+        """Query the database for audit records related to a specific object
+        and return the result as list.
+
+        This function is a greedy version of the `select` function. All
+        available results are read immediately and returned as list.
+
+        See `select` for a documentation of arguments.
+
+        Returns:
+            List of AuditRecord objects
+        """
         return [
             x
             async for x in self.select_for(
