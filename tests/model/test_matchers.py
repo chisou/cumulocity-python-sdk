@@ -52,8 +52,8 @@ class NotMatchingMatcher(JsonMatcher):
         return False
 
 
-MATCH = MatchingMatcher('MATCH')
-DONT_MATCH = NotMatchingMatcher('DONT_MATCH')
+MATCH = MatchingMatcher("MATCH")
+DONT_MATCH = NotMatchingMatcher("DONT_MATCH")
 
 
 def test_logging(caplog):
@@ -63,38 +63,38 @@ def test_logging(caplog):
     class FailingMatcher(JsonMatcher):
         """Always failing matcher for test purposes."""
         def matches(self, _):
-            raise ValueError('expected')
+            raise ValueError("expected")
 
     # 1) single matcher raises exception
     with pytest.raises(ValueError):
-        FailingMatcher('FAIL').matches({})
+        FailingMatcher("FAIL").matches({})
     assert not caplog.records
 
     # 2) safe_matches returns False and warns
     with caplog.at_level(logging.WARNING):
-        FailingMatcher('FAIL').safe_matches({})
+        FailingMatcher("FAIL").safe_matches({})
     assert len(caplog.records) == 1
     r0 = caplog.records[0]
-    assert r0.name == 'pyc8y.model.matcher'
-    assert r0.levelname == 'WARNING'
-    assert 'FAIL' in r0.message
+    assert r0.name == "pyc8y.model.matcher"
+    assert r0.levelname == "WARNING"
+    assert "FAIL" in r0.message
 
     # 3) nested matcher propagates
     caplog.clear()
     with caplog.at_level(logging.WARNING):
-        match_all(MATCH, MATCH, FailingMatcher('FAIL')).safe_matches({})
+        match_all(MATCH, MATCH, FailingMatcher("FAIL")).safe_matches({})
     assert len(caplog.records) == 1
-    assert re.search(r'MATCH.*AND.*MATCH.*AND.*FAIL', caplog.messages[0])
+    assert re.search(r"MATCH.*AND.*MATCH.*AND.*FAIL", caplog.messages[0])
 
 
 def test_fragment_matcher():
     """Verify that the fragment matchers work as expected."""
-    assert fragment('fragment').matches({'fragment': {}})
-    assert not fragment('fragment').matches({'other': {}})
+    assert fragment("fragment").matches({"fragment": {}})
+    assert not fragment("fragment").matches({"other": {}})
 
 
-@patch('pyc8y.model.matcher._matcher.like')
-@patch('pyc8y.model.matcher._matcher.matches')
+@patch("pyc8y.model.matcher._matcher.like")
+@patch("pyc8y.model.matcher._matcher.matches")
 def test_field_matcher(matches_mock, like_mock):
     """Verify that field matchers work as expected.
 
@@ -104,24 +104,24 @@ def test_field_matcher(matches_mock, like_mock):
     matching attempt is expected.
     """
 
-    valid = {'field': 'text'}
-    not_valid = {'other': 'text'}
+    valid = {"field": "text"}
+    not_valid = {"other": "text"}
 
     # field present, only like matcher is invoked
     like_mock.return_value = True
-    assert field('field', 'expr').matches(valid)
-    like_mock.assert_called_once_with('expr', 'text')
+    assert field("field", "expr").matches(valid)
+    like_mock.assert_called_once_with("expr", "text")
 
     # field present, only like matcher is invoked although not matching
     like_mock.reset_mock()
     like_mock.return_value = False
-    assert not field('field', 'expr').matches(valid)
-    like_mock.assert_called_once_with('expr', 'text')
+    assert not field("field", "expr").matches(valid)
+    like_mock.assert_called_once_with("expr", "text")
     matches_mock.assert_not_called()
 
     # field not present, no matcher invoked
     like_mock.reset_mock()
-    assert not field('field', 'expr').matches(not_valid)
+    assert not field("field", "expr").matches(not_valid)
     like_mock.assert_not_called()
     matches_mock.assert_not_called()
 
@@ -131,8 +131,8 @@ def test_field_matcher(matches_mock, like_mock):
     matches_mock.return_value = True
     # When mode=REGEX, the LIKE side of the boolean is short-circuited by `or`
     # only if REGEX returns True. We rely on the implementation calling matches() first.
-    field('field', 'expr', mode='REGEX').matches(valid)
-    matches_mock.assert_called_once_with('expr', 'text')
+    field("field", "expr", mode="REGEX").matches(valid)
+    matches_mock.assert_called_once_with("expr", "text")
 
 
 def test_all_matcher():
@@ -175,18 +175,18 @@ def test_not_matcher():
 
 def test_description_matcher():
     """Verify that the description matchers are initialized correctly."""
-    matcher = description('MATCH')
+    matcher = description("MATCH")
     assert isinstance(matcher, FieldMatcher)
-    assert matcher.field_name == 'description'
-    assert matcher.expression == 'MATCH'
+    assert matcher.field_name == "description"
+    assert matcher.expression == "MATCH"
 
 
 def test_text_matcher():
     """Verify that the text matchers are initialized correctly."""
-    matcher = text('MATCH')
+    matcher = text("MATCH")
     assert isinstance(matcher, FieldMatcher)
-    assert matcher.field_name == 'text'
-    assert matcher.expression == 'MATCH'
+    assert matcher.field_name == "text"
+    assert matcher.expression == "MATCH"
 
 
 def test_command_matcher():
@@ -195,47 +195,47 @@ def test_command_matcher():
     The command matcher is a regular field matcher, but the matched `text`
     field is nested within a `c8y_Command` fragment.
     """
-    matcher = command('MATCH')
-    with patch.object(FieldMatcher, 'matches') as matches_mock:
+    matcher = command("MATCH")
+    with patch.object(FieldMatcher, "matches") as matches_mock:
         matches_mock.return_value = True
-        assert matcher.matches({'c8y_Command': 'random'})
-        matches_mock.assert_called_once_with('random')
+        assert matcher.matches({"c8y_Command": "random"})
+        matches_mock.assert_called_once_with("random")
 
         matches_mock.reset_mock()
-        assert not matcher.matches({'c8y_Other': 'random'})
+        assert not matcher.matches({"c8y_Other": "random"})
         matches_mock.assert_not_called()
 
 
-@pytest.mark.skipif(pydf is None, reason='pydictdisplayfilter not installed')
+@pytest.mark.skipif(pydf is None, reason="pydictdisplayfilter not installed")
 def test_pydf_matcher():
     """Verify that the pydf matchers work as expected."""
-    assert pydf("name == NAME").matches({'name': 'NAME'})
-    assert pydf("name[0:2] eq NA").matches({'name': 'NAME'})
-    assert pydf("name contains AM").matches({'name': 'NAME'})
-    assert pydf("name in  {'NAME', 'NONAME'}").matches({'name': 'NAME'})
-    assert pydf("lower(name) == name").matches({'name': 'NAME'})
-    assert pydf("len(name) == 4").matches({'name': 'NAME'})
-    assert not pydf("name == 'NAME'").matches({'name': 'RANDOM'})
+    assert pydf("name == NAME").matches({"name": "NAME"})
+    assert pydf("name[0:2] eq NA").matches({"name": "NAME"})
+    assert pydf("name contains AM").matches({"name": "NAME"})
+    assert pydf("name in  {'NAME', 'NONAME'}").matches({"name": "NAME"})
+    assert pydf("lower(name) == name").matches({"name": "NAME"})
+    assert pydf("len(name) == 4").matches({"name": "NAME"})
+    assert not pydf("name == 'NAME'").matches({"name": "RANDOM"})
     with pytest.raises(Exception) as error:
         pydf("*INVALID*").matches({})
     assert "Error parsing display filter" in str(error.value)
 
 
-@pytest.mark.skipif(jmespath is None, reason='jmespath not installed')
+@pytest.mark.skipif(jmespath is None, reason="jmespath not installed")
 def test_jmespath_matcher():
     """Verify that the jmespath matchers work as expected."""
-    assert jmespath("name == 'NAME'").matches({'name': 'NAME'})
-    assert not jmespath("name == 'NAME'").matches({'name': 'RANDOM'})
+    assert jmespath("name == 'NAME'").matches({"name": "NAME"})
+    assert not jmespath("name == 'NAME'").matches({"name": "RANDOM"})
     with pytest.raises(Exception) as error:
         jmespath("*INVALID*").matches({})
     assert "INVALID" in str(error.value)
 
 
-@pytest.mark.skipif(jsonpath is None, reason='jsonpath_ng not installed')
+@pytest.mark.skipif(jsonpath is None, reason="jsonpath_ng not installed")
 def test_jsonpath_matcher():
     """Verify that the jsonpath matchers work as expected."""
-    assert jsonpath('$.array[?(@ == 0)]').matches({'array': [0, 1, 2]})
-    assert not jsonpath('$.array[?(@ == 0)]').matches({})
+    assert jsonpath("$.array[?(@ == 0)]").matches({"array": [0, 1, 2]})
+    assert not jsonpath("$.array[?(@ == 0)]").matches({})
     with pytest.raises(Exception) as error:
         jsonpath("*INVALID*").matches({})
     assert "INVALID" in str(error.value)

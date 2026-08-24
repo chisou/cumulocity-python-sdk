@@ -141,29 +141,29 @@ def isolate_all_call_args(mock: Mock, *args: str, name: str, pos: int | None = N
 
 def b64encode(auth_string: str) -> str:
     """Encode a string with base64. This uses UTF-8 encoding."""
-    return base64.b64encode(auth_string.encode('utf-8')).decode('utf-8')
+    return base64.b64encode(auth_string.encode("utf-8")).decode("utf-8")
 
 
 def build_auth_string(auth_value: str) -> str:
     """Build a complete auth string from a base64 encoded auth value.
     This detects the type based on the `auth_value` contents, assuming
     that JWT tokens always start with an '{'."""
-    auth_type = 'BEARER' if auth_value.startswith('ey') else 'BASIC'
-    return f'{auth_type} {auth_value}'
+    auth_type = "BEARER" if auth_value.startswith("ey") else "BASIC"
+    return f"{auth_type} {auth_value}"
 
 
 def sample_jwt(**kwargs) -> str:
     """Create a test JWT token (as string). Additional claims ca be
     specified via `kwargs`."""
     payload = {
-        'jti': None,
-        'iss': 't12345.cumulocity.com',
-        'aud': 't12345.cumulocity.com',
-        'tci': '0722ff7b-684f-4177-9614-3b7949b0b5c9',
-        'iat': 1638281885,
-        'nbf': 1638281885,
-        'exp': 1639491485,
-        'tfa': False,
-        'xsrfToken': 'something'}
+        "jti": None,
+        "iss": "t12345.cumulocity.com",
+        "aud": "t12345.cumulocity.com",
+        "tci": "0722ff7b-684f-4177-9614-3b7949b0b5c9",
+        "iat": 1638281885,
+        "nbf": 1638281885,
+        "exp": 1639491485,
+        "tfa": False,
+        "xsrfToken": "something"}
     payload.update(**kwargs)
-    return jwt.encode(payload, key='key')
+    return jwt.encode(payload, key="key")

@@ -11,21 +11,21 @@ from util.testing_util import create_random_name
 async def test_CRUD(live_c8y: CumulocityClient, session_device):
     """Verify that basic creation/removal and lookup of ID works as expected."""
 
-    id_ref1 = create_random_name() + '-12345'
-    id_ref2 = create_random_name() + '-12345'
-    id_ref3 = create_random_name() + '-12345'
-    id_type = 'external_id_type'
+    id_ref1 = create_random_name() + "-12345"
+    id_ref2 = create_random_name() + "-12345"
+    id_ref3 = create_random_name() + "-12345"
+    id_type = "external_id_type"
 
     external_id1 = await (ExternalId(
         live_c8y,
         external_id=id_ref1,
-        external_type='external_id_type',
+        external_type="external_id_type",
         managed_object_id=session_device.id,
     )).create()
     external_id2 = ExternalId(
         live_c8y,
         external_id=id_ref2,
-        external_type='external_id_type',
+        external_type="external_id_type",
         managed_object_id=session_device.id,
     )
     # create bulk

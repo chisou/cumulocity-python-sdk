@@ -13,33 +13,33 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Cumulocity Python SDK'
-copyright = '2025, Christoph Souris, Cumulocity GmbH'
-author = 'Christoph Souris, Cumulocity GmbH'
+project = "Cumulocity Python SDK"
+copyright = "2025, Christoph Souris, Cumulocity GmbH"
+author = "Christoph Souris, Cumulocity GmbH"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = [ 'sphinx.ext.doctest',
-               'sphinx.ext.napoleon',
-               'sphinx.ext.intersphinx',
+extensions = [ "sphinx.ext.doctest",
+               "sphinx.ext.napoleon",
+               "sphinx.ext.intersphinx",
               ]
 
 autodoc_default_options = {
-    'autodoc_class_signature': 'separated',
-    'autodoc_member_order': 'bysource',
-    'member-order': 'bysource',
+    "autodoc_class_signature": "separated",
+    "autodoc_member_order": "bysource",
+    "member-order": "bysource",
 }
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = "sphinx_rtd_theme"

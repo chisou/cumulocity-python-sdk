@@ -20,9 +20,9 @@ from util.testing_util import create_random_name
 
 # Configure logging
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.DEBUG)
-logging.getLogger('websockets').setLevel(logging.DEBUG)
-logging.getLogger('pyc8y').setLevel(logging.DEBUG)
+logging.getLogger("urllib3").setLevel(logging.DEBUG)
+logging.getLogger("websockets").setLevel(logging.DEBUG)
+logging.getLogger("pyc8y").setLevel(logging.DEBUG)
 
 
 def pytest_collection_modifyitems(items):
@@ -33,12 +33,12 @@ def pytest_collection_modifyitems(items):
 
 
 
-@pytest.fixture(scope='session', name="logger")
+@pytest.fixture(scope="session", name="logger")
 def fix_logger():
     """Provide a logger for testing."""
     handler = logging.StreamHandler(sys.__stderr__)
-    logger = logging.getLogger('pyc8y.test')
-    logging.getLogger('pyc8y').setLevel(logging.DEBUG)
+    logger = logging.getLogger("pyc8y.test")
+    logging.getLogger("pyc8y").setLevel(logging.DEBUG)
     logging.getLogger("aiohttp.client").setLevel(logging.DEBUG)
     logger.setLevel(logging.DEBUG)
     logger.addHandler(handler)
@@ -46,7 +46,7 @@ def fix_logger():
     return logger
 
 
-@pytest.fixture(scope='session', name="safe_executor")
+@pytest.fixture(scope="session", name="safe_executor")
 def fix_safe_executor(logger):
     """A safe function execution wrapper.
 
@@ -88,28 +88,28 @@ def fix_safe_executor(logger):
 #             logger.warning(f"Caught exception ignored due to safe call: {e}")
 
 
-@pytest.fixture(scope='session', name="test_environment")
+@pytest.fixture(scope="session", name="test_environment")
 def fix_test_environment(logger):
     """Prepare the environment, i.e. read a .env file if found."""
 
     # check if there is a .env file
-    if os.path.exists('.env'):
+    if os.path.exists(".env"):
         logger.info("Environment file (.env) exists and will be considered.")
         # check if any C8Y_ variable is already defined
         predefined_keys = c8y_keys()
         if predefined_keys:
             logger.fatal("The following environment variables are already defined and may be overridden: "
-                         + ', '.join(predefined_keys))
+                         + ", ".join(predefined_keys))
         load_dotenv()
     # list C8Y_* keys
     defined_keys = c8y_keys()
     logger.info(f"Found the following keys: {', '.join(defined_keys)}.")
 
 
-@pytest.fixture(scope='session', name="live_c8y")
+@pytest.fixture(scope="session", name="live_c8y")
 async def fix_live_c8y(request, test_environment):
     """Provide a live CumulocityApi instance as defined by the environment."""
-    if 'C8Y_BASEURL' not in os.environ:
+    if "C8Y_BASEURL" not in os.environ:
         raise RuntimeError("Missing Cumulocity environment variables (C8Y_*). Cannot create CumulocityApi instance. "
                            "Please define the required variables directly or setup a .env file.")
 
@@ -118,7 +118,7 @@ async def fix_live_c8y(request, test_environment):
     await c8y.close()
 
 
-@pytest.fixture(scope='function', name="safe_create")
+@pytest.fixture(scope="function", name="safe_create")
 async def fix_safe_create(logger, live_c8y, request):
     """Wrap a created Cumulocity object so that it will automatically be deleted
     after a test regardless of an exception or failure.
@@ -207,7 +207,7 @@ async def fix_session_factory(logger, live_c8y: CumulocityClient, request):
 
 
 
-@pytest.fixture(scope='session', name="app_factory")
+@pytest.fixture(scope="session", name="app_factory")
 async def fix_app_factory(logger, live_c8y: CumulocityClient):
     """Provide an application (microservice) factory which creates a
     microservice application within Cumulocity, registers itself as
@@ -238,7 +238,7 @@ async def fix_app_factory(logger, live_c8y: CumulocityClient):
         app = await Application(
             live_c8y,
             name=name,
-            key=f'{name}-key',
+            key=f"{name}-key",
             type=Application.MICROSERVICE_TYPE,
             availability=Application.PRIVATE_AVAILABILITY,
             context_path=name,
@@ -247,20 +247,20 @@ async def fix_app_factory(logger, live_c8y: CumulocityClient):
         created.append(app)
 
         # (3) Subscribe to newly created microservice
-        subscription_json = {'application': {'id': app.id}}
-        await live_c8y.post(f'tenant/tenants/{live_c8y.tenant_id}/applications',
+        subscription_json = {"application": {"id": app.id}}
+        await live_c8y.post(f"tenant/tenants/{live_c8y.tenant_id}/applications",
                             json=subscription_json)
         logger.info(f"Microservice application '{name}' (ID {app.id}) created. "
                     f"Tenant '{live_c8y.tenant_id}' subscribed.")
 
         # (4) Read bootstrap user details
-        bootstrap_user_json = await live_c8y.get(f'application/applications/{app.id}/bootstrapUser')
+        bootstrap_user_json = await live_c8y.get(f"application/applications/{app.id}/bootstrapUser")
 
         # (5) Create bootstrap instance
         bootstrap_c8y = CumulocityClient(
             base_url=live_c8y.base_url,
-            tenant_id=bootstrap_user_json['tenant'],
-            auth=BasicAuth(bootstrap_user_json['name'], bootstrap_user_json['password']),
+            tenant_id=bootstrap_user_json["tenant"],
+            auth=BasicAuth(bootstrap_user_json["name"], bootstrap_user_json["password"]),
         )
         logger.info(f"Bootstrap instance created. Tenant: {bootstrap_c8y.tenant_id}, "
                     f"User: {bootstrap_user_json['name']}")
@@ -286,7 +286,7 @@ async def fix_app_factory(logger, live_c8y: CumulocityClient):
 #     return obj
 #
 #
-@pytest.fixture(scope='session', name="session_device")
+@pytest.fixture(scope="session", name="session_device")
 async def fix_session_device(logger: logging.Logger, live_c8y: CumulocityClient):
     """Provide a sample device, just for testing purposes."""
 

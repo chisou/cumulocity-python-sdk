@@ -17,7 +17,7 @@ from pyc8y.model.model_util import now_datetime
 from util.testing_util import create_random_name
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 async def sample_events(live_c8y: CumulocityClient, session_device: Device, module_factory) -> list[Event]:
     """Provide a set of sample Event instances."""
     typename = create_random_name()
@@ -25,7 +25,7 @@ async def sample_events(live_c8y: CumulocityClient, session_device: Device, modu
 
     return [
         await module_factory(
-            Event(type=f'{typename}_{i}', text=f'{typename} text', source=session_device.id,
+            Event(type=f"{typename}_{i}", text=f"{typename} text", source=session_device.id,
                   time=now + timedelta(minutes=i))
         )
         for i in range(1, 6)
@@ -36,7 +36,7 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
     """Verify that basic CRUD functionality works."""
 
     typename = create_random_name()
-    event = Event(live_c8y, type=typename, text=f'{typename} text', time='now', source=session_device.id)
+    event = Event(live_c8y, type=typename, text=f"{typename} text", time="now", source=session_device.id)
 
     created_event = await event.create()
     try:
@@ -48,15 +48,15 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
         assert created_event.creation_time
 
         # 2) update updatable fields
-        created_event.text = f'{typename} updated'
+        created_event.text = f"{typename} updated"
         updated_event = await created_event.update(copy=True)
         assert updated_event.text == created_event.text
 
         # 3) use apply_to
-        model_event = Event(live_c8y, text='some text')
+        model_event = Event(live_c8y, text="some text")
         await model_event.apply_to(created_event.id)
         updated_event = await live_c8y.events.get(created_event.id)
-        assert updated_event.text == 'some text'
+        assert updated_event.text == "some text"
 
         # 4) reload should reflect the same state
         reloaded_event = await updated_event.reload(copy=True)
@@ -75,8 +75,8 @@ async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # no
     """Verify that basic CRUD functionality via the API works."""
 
     typename = create_random_name()
-    event1 = Event(live_c8y, time="now", type=typename, text=f'{typename} text', source=session_device.id)
-    event2 = Event(live_c8y, time="now", type=typename, text=f'{typename} text', source=session_device.id)
+    event1 = Event(live_c8y, time="now", type=typename, text=f"{typename} text", source=session_device.id)
+    event2 = Event(live_c8y, time="now", type=typename, text=f"{typename} text", source=session_device.id)
 
     # 1) create multiple events and read from Cumulocity
     await live_c8y.events.create(event1, event2)
@@ -95,30 +95,30 @@ async def test_CRUD_2(live_c8y: CumulocityClient, session_device: Device):  # no
 
         # 3) update updatable fields
         for event in events:
-            event.text = 'new text'
+            event.text = "new text"
         await live_c8y.events.update(*events)
         events = await live_c8y.events.get_all(type=typename)
         assert len(events) == 2
 
         # 4) assert updates
         for event in events:
-            assert event.text == 'new text'
+            assert event.text == "new text"
 
         # 5) apply updates via Event object
-        model = Event(text='another update', simple_attribute='value')
+        model = Event(text="another update", simple_attribute="value")
         await live_c8y.events.apply_to(model, *event_ids)
 
         events = await live_c8y.events.get_all(type=typename)
         assert len(events) == 2
-        assert all(e.text == 'another update' for e in events)
+        assert all(e.text == "another update" for e in events)
 
         # 6) apply updates via dict
-        await live_c8y.events.apply_to({'text': 'updated text', 'add_info': 'yes'}, *event_ids)
+        await live_c8y.events.apply_to({"text": "updated text", "add_info": "yes"}, *event_ids)
 
         events = await live_c8y.events.get_all(type=typename)
         assert len(events) == 2
-        assert all(e.text == 'updated text' for e in events)
-        assert all(e['add_info'] == 'yes' for e in events)
+        assert all(e.text == "updated text" for e in events)
+        assert all(e["add_info"] == "yes" for e in events)
 
     finally:
         await live_c8y.events.delete(*event_ids)
@@ -133,7 +133,7 @@ async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
     device_id = session_device.id
     now = now_datetime()
     events = await asyncio.gather(*[
-        Event(live_c8y, type=typename, text=f'Event{i}', source=device_id, time=now + timedelta(minutes=i)).create()
+        Event(live_c8y, type=typename, text=f"Event{i}", source=device_id, time=now + timedelta(minutes=i)).create()
         for i in range(3)
     ])
 
@@ -210,15 +210,15 @@ async def test_CRUD_attachments(live_c8y: CumulocityClient, session_device: Devi
     logging.basicConfig(level=logging.INFO)
 
     event = sample_events[0]
-    random_text_1 = create_random_name().encode('utf-8')
-    random_text_2 = create_random_name().encode('utf-8')
+    random_text_1 = create_random_name().encode("utf-8")
+    random_text_2 = create_random_name().encode("utf-8")
 
     # add a binary attachment via filename
     with tempfile.NamedTemporaryFile(delete=False) as file:
         try:
             file.write(random_text_1)
             file.close()
-            await event.create_attachment(file=file.name, content_type='text/plain')
+            await event.create_attachment(file=file.name, content_type="text/plain")
         finally:
             os.unlink(file.name)
 
@@ -246,15 +246,15 @@ async def test_CRUD_attachments_2(live_c8y: CumulocityClient, session_device: De
     event attachment via the API works as expected."""
 
     event = sample_events[0]
-    random_text_1 = create_random_name().encode('utf-8')
-    random_text_2 = create_random_name().encode('utf-8')
+    random_text_1 = create_random_name().encode("utf-8")
+    random_text_2 = create_random_name().encode("utf-8")
 
     # add a binary attachment via filename
     with tempfile.NamedTemporaryFile(delete=False) as file:
         try:
             file.write(random_text_1)
             file.close()
-            await live_c8y.events.create_attachment(event.id, file=file.name, content_type='text/plain')
+            await live_c8y.events.create_attachment(event.id, file=file.name, content_type="text/plain")
         finally:
             os.unlink(file.name)
 

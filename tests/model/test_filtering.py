@@ -12,7 +12,7 @@ from pyc8y.model.inventory import Inventory, DeviceInventory, DeviceGroupInvento
 from pyc8y.model.operation import Operations
 
 
-@pytest.mark.parametrize('resource_class', [
+@pytest.mark.parametrize("resource_class", [
     Events,
     Alarms,
     Operations,
@@ -30,7 +30,7 @@ async def test_client_side_filtering(resource_class):
     """
     # create mock CumulocityClient instance
     c8y = MagicMock()
-    c8y.tenant_id = 't123'
+    c8y.tenant_id = "t123"
     resource = resource_class(c8y=c8y)
     collection_name = resource._meta.collection_name
 
@@ -38,9 +38,9 @@ async def test_client_side_filtering(resource_class):
     # the get function is invoked until there are no results (empty list), the results
     # are stored in an array by collection name
     get_data = [
-        {collection_name: x, 'statistics': {'totalPages': 1}} for x in
+        {collection_name: x, "statistics": {"totalPages": 1}} for x in
         [
-            [{'id': 1, 'source': {'id': 1}}, {'id': 2, 'source': {'id': 2}}, {'id': 3, 'source': {'id': 3}}],
+            [{"id": 1, "source": {"id": 1}}, {"id": 2, "source": {"id": 2}}, {"id": 3, "source": {"id": 3}}],
             [],
         ]
     ]
@@ -56,7 +56,7 @@ async def test_client_side_filtering(resource_class):
 
     # -> result should only contain filtered documents
     #    1,2,3 -> 1,3 -> 3
-    assert ['3'] == [str(x.id) for x in result]
+    assert ["3"] == [str(x.id) for x in result]
     # -> include matcher should have been called for each document
     assert include_matcher.safe_matches.call_count == len(include_results)
     # -> exclude matcher should have been called for each included

@@ -21,17 +21,17 @@ async def fix_mutable_object(module_factory, request) -> ManagedObject:
     """Provide a single managed object ready to be changed during a test."""
 
     name = create_random_name()
-    mo = ManagedObject(name=name, type=name, **{name: {'key': 'value'}})
+    mo = ManagedObject(name=name, type=name, **{name: {"key": "value"}})
     return await module_factory(mo)
 
 
 async def test_update(mutable_object: ManagedObject):
     """Verify that updating managed objects works as expected."""
 
-    mutable_object.name = mutable_object.name + '_altered'
-    mutable_object.type = mutable_object.type + '_altered'
-    mutable_object['new_attribute'] = 'value1'
-    mutable_object['new_fragment'] = {'key': 'value2'}
+    mutable_object.name = mutable_object.name + "_altered"
+    mutable_object.type = mutable_object.type + "_altered"
+    mutable_object["new_attribute"] = "value1"
+    mutable_object["new_fragment"] = {"key": "value2"}
     updated_object = await mutable_object.update(copy=True)
 
     assert updated_object.name == mutable_object.name
@@ -73,10 +73,10 @@ async def test_get_all(live_c8y: CumulocityClient):
     assert all("c8y_IsDeviceGroup" in g for g in groups)
 
 
-@pytest.mark.parametrize('key, value_fun', [
-    ('type', lambda mo: mo.type),
-    ('name', lambda mo: mo.type + '*'),
-    ('fragment', lambda mo: mo.type + '_fragment')
+@pytest.mark.parametrize("key, value_fun", [
+    ("type", lambda mo: mo.type),
+    ("name", lambda mo: mo.type + "*"),
+    ("fragment", lambda mo: mo.type + "_fragment")
 ])
 async def test_get_by_something(live_c8y: CumulocityClient, similar_objects: List[ManagedObject], key, value_fun):
     """Verify that managed objects can be selected by common type."""
@@ -86,15 +86,15 @@ async def test_get_by_something(live_c8y: CumulocityClient, similar_objects: Lis
     assert await live_c8y.inventory.get_count(**kwargs) == len(similar_objects)
 
 
-@pytest.mark.parametrize('query, value_fun', [
-    ('type eq {}', lambda mo: mo.type),
-    ('$filter=type eq {} $orderby=id', lambda mo: mo.type),
-    ('$filter=name eq {}', lambda mo: mo.type + '*'),
-    ('has({})', lambda mo: mo.type + '_fragment'),
+@pytest.mark.parametrize("query, value_fun", [
+    ("type eq {}", lambda mo: mo.type),
+    ("$filter=type eq {} $orderby=id", lambda mo: mo.type),
+    ("$filter=name eq {}", lambda mo: mo.type + "*"),
+    ("has({})", lambda mo: mo.type + "_fragment"),
 ])
 async def test_get_by_query(live_c8y: CumulocityClient, similar_objects: List[ManagedObject], query: str, value_fun):
     """Verify that the selection by query works as expected."""
-    query = query.replace('{}', value_fun(similar_objects[0]))
+    query = query.replace("{}", value_fun(similar_objects[0]))
     selected_mos = await live_c8y.inventory.get_all(query=query)
     assert set(ensure_ids(similar_objects)) == set(ensure_ids(selected_mos))
     assert await live_c8y.inventory.get_count(query=query) == len(similar_objects)
@@ -105,8 +105,8 @@ async def test_filtering(live_c8y: CumulocityClient, safe_create):
     async def create_test_object(n):
         return await safe_create(ManagedObject(
             live_c8y,
-            type='c8y_TestObject',
-            name=f'c8y_TestObject_{n}',
+            type="c8y_TestObject",
+            name=f"c8y_TestObject_{n}",
             array=random.choices(range(10), k=5)
         ))
 
@@ -117,12 +117,12 @@ async def test_filtering(live_c8y: CumulocityClient, safe_create):
     # using filter parameter (JSONPath)
     filtered_1 = await live_c8y.inventory.get_all(
         limit=None,
-        type='c8y_TestObject',
-        fragment='array',
-        include=jsonpath('$.array[?(@ == 0)]'))
+        type="c8y_TestObject",
+        fragment="array",
+        include=jsonpath("$.array[?(@ == 0)]"))
     # using Python means
     filtered_2 = [
-            mo async for mo in live_c8y.inventory.select(limit=None, type='c8y_TestObject', fragment='array')
+            mo async for mo in live_c8y.inventory.select(limit=None, type="c8y_TestObject", fragment="array")
             if 0 in mo.get("array", ())
     ]
     # -> no difference
@@ -140,32 +140,32 @@ async def test_get_single_by_query(live_c8y: CumulocityClient, module_factory):
 
     # create a couple of objects with two types
     objects = [
-        await module_factory(ManagedObject(name=f'{basename}_1', type=f'{typename}_A')),
-        await module_factory(ManagedObject(name=f'{basename}_2', type=f'{typename}_A')),
-        await module_factory(ManagedObject(name=f'{basename}_3', type=f'{typename}_B')),
+        await module_factory(ManagedObject(name=f"{basename}_1", type=f"{typename}_A")),
+        await module_factory(ManagedObject(name=f"{basename}_2", type=f"{typename}_A")),
+        await module_factory(ManagedObject(name=f"{basename}_3", type=f"{typename}_B")),
     ]
 
     # -> single matching query returns expected object
-    assert (await live_c8y.inventory.get_by(type=f'{typename}_B')).id == objects[2].id
+    assert (await live_c8y.inventory.get_by(type=f"{typename}_B")).id == objects[2].id
 
     # -> not matching query returns expected object
     with pytest.raises(ValueError) as error:
-        await live_c8y.inventory.get_by(type=f'{typename}_C')
+        await live_c8y.inventory.get_by(type=f"{typename}_C")
     assert "no matching object found" in str(error).lower()
 
     # -> not matching query returns expected object
     with pytest.raises(ValueError) as error:
-        await live_c8y.inventory.get_by(type=f'{typename}_A')
+        await live_c8y.inventory.get_by(type=f"{typename}_A")
     assert "ambiguous" in str(error).lower()
 
 
 async def test_get_availability(live_c8y: CumulocityClient, session_device: Device):
     """Verify that the latest availability can be retrieved."""
     # set a required update interval
-    session_device['c8y_RequiredAvailability'] = {'responseInterval': 10}
+    session_device["c8y_RequiredAvailability"] = {"responseInterval": 10}
     await session_device.update()
     # create an event to trigger update
-    await live_c8y.events.create(Event(type='c8y_TestEvent', time='now', source=session_device.id, text='Event!'))
+    await live_c8y.events.create(Event(type="c8y_TestEvent", time="now", source=session_device.id, text="Event!"))
     # verify availability information is defined
     # -> the information is updated asynchronously, hence this may be delayed
     availability = None
@@ -189,24 +189,24 @@ async def test_reload(live_c8y):
     by other inventory objects is verified through a unit test.
     """
     name = create_random_name()
-    obj0 = await ManagedObject(live_c8y, name=f'Root-{name}', type=f'Root-{name}').create()
+    obj0 = await ManagedObject(live_c8y, name=f"Root-{name}", type=f"Root-{name}").create()
 
     # add a fragment
-    await live_c8y.inventory.apply_to({'c8y_AdditionalFragment': {'key': 'value'}}, obj0.id)
+    await live_c8y.inventory.apply_to({"c8y_AdditionalFragment": {"key": "value"}}, obj0.id)
     obj1 = await obj0.reload()
     # -> should be read from Cumulocity
     assert obj1.name == obj0.name
     assert obj1.creation_time == obj0.creation_time
-    assert obj1.get("c8y_AdditionalFragment.key") == 'value'
+    assert obj1.get("c8y_AdditionalFragment.key") == "value"
 
     # remove a fragment
-    await live_c8y.inventory.apply_to({'c8y_AdditionalFragment': None}, obj0.id)
+    await live_c8y.inventory.apply_to({"c8y_AdditionalFragment": None}, obj0.id)
     obj2 = await obj0.reload()
     # -> should be removed when reloaded
     assert "c8y_AdditionalFragment" not in obj2
 
 
-@pytest.fixture(name='asset_hierarchy_root_id', scope='module')
+@pytest.fixture(name="asset_hierarchy_root_id", scope="module")
 async def fix_asset_hierarchy_root_id(module_factory):
     """Provide a (read-only) sample asset hierarchy for corresponding tests.
 
@@ -218,10 +218,10 @@ async def fix_asset_hierarchy_root_id(module_factory):
     """
     name = create_random_name()
     obj, addition, asset, device = await asyncio.gather(
-        module_factory(ManagedObject(name=f'Root-{name}', type=f'Root-{name}')),
-        module_factory(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}')),
-        module_factory(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}')),
-        module_factory(Device(name=f'Device-{name}', type=f'Device-{name}')),
+        module_factory(ManagedObject(name=f"Root-{name}", type=f"Root-{name}")),
+        module_factory(ManagedObject(name=f"Addition-{name}", type=f"Addition-{name}")),
+        module_factory(ManagedObject(name=f"Asset-{name}", type=f"Asset-{name}")),
+        module_factory(Device(name=f"Device-{name}", type=f"Device-{name}")),
     )
 
     await asyncio.gather(
@@ -230,7 +230,7 @@ async def fix_asset_hierarchy_root_id(module_factory):
         obj.add_child_device(device),
     )
 
-    sub_addition =  await module_factory(ManagedObject(name=f'SubAddition-{name}', type=f'Addition-{name}'))
+    sub_addition =  await module_factory(ManagedObject(name=f"SubAddition-{name}", type=f"Addition-{name}"))
     await asyncio.gather(
         addition.add_child_addition(sub_addition),
         asset.add_child_addition(sub_addition),
@@ -284,7 +284,7 @@ async def test_references(live_c8y: CumulocityClient, asset_hierarchy_root_id):
     assert not result.child_additions[0].name
 
 
-@pytest.mark.parametrize('child_type', ['asset', 'device', 'addition'])
+@pytest.mark.parametrize("child_type", ["asset", "device", "addition"])
 async def test_parent_references(live_c8y: CumulocityClient, asset_hierarchy_root_id, child_type):
     """Verify that parent references are handles as expected.
 
@@ -320,10 +320,10 @@ async def test_deletion(live_c8y: CumulocityClient, safe_create):
     (using the delete_tree function).
     """
     name = create_random_name()
-    obj = await safe_create(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
-    addition = await safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}'))
-    asset = await safe_create(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}'))
-    device = await safe_create(Device(name=f'Device-{name}', type=f'Device-{name}'))
+    obj = await safe_create(ManagedObject(name=f"Root-{name}", type=f"Root-{name}"))
+    addition = await safe_create(ManagedObject(name=f"Addition-{name}", type=f"Addition-{name}"))
+    asset = await safe_create(ManagedObject(name=f"Asset-{name}", type=f"Asset-{name}"))
+    device = await safe_create(Device(name=f"Device-{name}", type=f"Device-{name}"))
     await asyncio.gather(
         obj.add_child_addition(addition),
         obj.add_child_asset(asset),
@@ -348,7 +348,7 @@ async def test_deletion(live_c8y: CumulocityClient, safe_create):
     )
 
     # assign to a new root
-    obj = await safe_create(ManagedObject(name=f'Root-{name}', type=f'Root-{name}'))
+    obj = await safe_create(ManagedObject(name=f"Root-{name}", type=f"Root-{name}"))
     await asyncio.gather(
         obj.add_child_addition(addition),
         obj.add_child_asset(asset),
@@ -374,10 +374,10 @@ async def test_device_deletion(live_c8y: CumulocityClient, safe_create):
     """
     name = create_random_name()
     async with asyncio.TaskGroup() as tg:
-        t_obj = tg.create_task(safe_create(Device(name=f'Root-{name}', type=f'Root-{name}')))
-        t_addition = tg.create_task(safe_create(ManagedObject(name=f'Addition-{name}', type=f'Addition-{name}')))
-        t_asset = tg.create_task(safe_create(ManagedObject(name=f'Asset-{name}', type=f'Asset-{name}')))
-        t_device = tg.create_task(safe_create(Device(name=f'Device-{name}', type=f'Device-{name}')))
+        t_obj = tg.create_task(safe_create(Device(name=f"Root-{name}", type=f"Root-{name}")))
+        t_addition = tg.create_task(safe_create(ManagedObject(name=f"Addition-{name}", type=f"Addition-{name}")))
+        t_asset = tg.create_task(safe_create(ManagedObject(name=f"Asset-{name}", type=f"Asset-{name}")))
+        t_device = tg.create_task(safe_create(Device(name=f"Device-{name}", type=f"Device-{name}")))
     obj, addition, asset, device = t_obj.result(), t_addition.result(), t_asset.result(), t_device.result()
 
     async with asyncio.TaskGroup() as tg:
@@ -402,7 +402,7 @@ async def test_device_deletion(live_c8y: CumulocityClient, safe_create):
         tg.create_task(device.reload())
 
     # assign to a new root
-    obj = await safe_create(Device(name=f'Root-{name}', type=f'Root-{name}'))
+    obj = await safe_create(Device(name=f"Root-{name}", type=f"Root-{name}"))
     async with asyncio.TaskGroup() as tg:
         tg.create_task(obj.add_child_addition(addition))
         tg.create_task(obj.add_child_asset(asset))
@@ -424,13 +424,13 @@ async def fix_object_with_measurements(live_c8y: CumulocityClient, mutable_objec
     ms = [
         Measurement(
             live_c8y,
-            type='c8y_TestMeasurementType',
+            type="c8y_TestMeasurementType",
             source=mutable_object.id,
-            time='now',
+            time="now",
             series=("c8y_Counter.N", i , "#"),
             c8y_Integers = {
-                'V1': Value(i, ''),
-                'V2' : Value(i*i, '')
+                "V1": Value(i, ""),
+                "V2" : Value(i*i, "")
             })
         for i in range(5)
     ]
@@ -441,22 +441,22 @@ async def fix_object_with_measurements(live_c8y: CumulocityClient, mutable_objec
 async def test_get_supported_measurements(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurements can be retrieved."""
     result = await live_c8y.inventory.get_supported_measurements(object_with_measurements.id)
-    assert set(result) == {'c8y_Counter', 'c8y_Integers'}
+    assert set(result) == {"c8y_Counter", "c8y_Integers"}
 
 
 async def test_get_supported_measurements_2(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurements can be retrieved."""
     result = await object_with_measurements.get_supported_measurements()
-    assert set(result) == {'c8y_Counter', 'c8y_Integers'}
+    assert set(result) == {"c8y_Counter", "c8y_Integers"}
 
 
 async def test_get_supported_series(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurement series can be retrieved."""
     result = await live_c8y.inventory.get_supported_series(object_with_measurements.id)
-    assert set(result) == {'c8y_Counter.N', 'c8y_Integers.V1', 'c8y_Integers.V2'}
+    assert set(result) == {"c8y_Counter.N", "c8y_Integers.V1", "c8y_Integers.V2"}
 
 
 async def test_get_supported_series_2(live_c8y: CumulocityClient, object_with_measurements: ManagedObject):
     """Verify that the supported measurement series can be retrieved."""
     result = await object_with_measurements.get_supported_series()
-    assert set(result) == {'c8y_Counter.N', 'c8y_Integers.V1', 'c8y_Integers.V2'}
+    assert set(result) == {"c8y_Counter.N", "c8y_Integers.V1", "c8y_Integers.V2"}

@@ -20,13 +20,13 @@ async def test_CR(live_c8y: CumulocityClient, session_device: Device):  # noqa (
     before = datetime.now(timezone.utc)
     record = await AuditRecord(
         live_c8y,
-        type=f'{name}_type',
+        type=f"{name}_type",
         source=session_device.id,
-        time='now',
+        time="now",
         severity=AuditSeverity.INFORMATION,
-        activity=f'{name} activity',
-        text=f'detailed {name} text',
-        application=f'{name}_app',
+        activity=f"{name} activity",
+        text=f"detailed {name} text",
+        application=f"{name}_app",
         user=live_c8y.username,
     ).create()
     after = datetime.now(timezone.utc)

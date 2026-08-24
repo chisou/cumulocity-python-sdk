@@ -501,7 +501,7 @@ async def test_subscriber_timeout(live_c8y: CumulocityClient, sample_object):
         # start 1st listener
         l1.start(receive_notification1)
         await asyncio.sleep(5)  # ensure creation
-        await mo.apply({'test_CustomFragment': {'num': 1}})
+        await mo.apply({"test_CustomFragment": {"num": 1}})
         await asyncio.sleep(3)  # ensure processing
         assert receive_notification1.call_count == 1
 
@@ -511,7 +511,7 @@ async def test_subscriber_timeout(live_c8y: CumulocityClient, sample_object):
         l2.start(receive_notification2)
         l2.retry_max_delay = 0.5  # l2 should retry frequently
         await asyncio.sleep(5)  # ensure creation
-        await mo.apply({'test_CustomFragment': {'num': 2}})
+        await mo.apply({"test_CustomFragment": {"num": 2}})
         await asyncio.sleep(3)  # ensure processing
         assert receive_notification1.call_count == 2
         assert receive_notification2.call_count == 0
@@ -521,7 +521,7 @@ async def test_subscriber_timeout(live_c8y: CumulocityClient, sample_object):
         l1._create_connection = AsyncMock(side_effect=lambda: asyncio.sleep(30), return_value=None)  # l1 will not be able to reconnect
         await l1._connection.close()
         await asyncio.sleep(5)  # ensure connection of l2
-        await mo.apply({'test_CustomFragment': {'num': 3}})
+        await mo.apply({"test_CustomFragment": {"num": 3}})
         await asyncio.sleep(5)  # ensure processing
         assert receive_notification1.call_count == 2
         assert receive_notification2.call_count == 1

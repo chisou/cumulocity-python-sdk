@@ -67,6 +67,14 @@ dev = [
 line-length = 120
 target-version = "py311"
 
+[tool.ruff.lint]
+extend-select = ["Q"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyc8y"]
 

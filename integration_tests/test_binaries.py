@@ -16,7 +16,7 @@ def create_random_text() -> str:
     return " ".join([x for y in [coolname.generate(3) for _ in range(30)] for x in y])
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def file_factory(logger):
     """Provide a file factory which creates test files and deletes them
     after the session."""
@@ -25,7 +25,7 @@ def file_factory(logger):
     def create_file() -> (str, str):
         data = create_random_text()
         file = NamedTemporaryFile(delete=False)
-        file.write(bytes(data, 'utf-8'))
+        file.write(bytes(data, "utf-8"))
         file.close()
         logger.info(f"Created temporary file: {file.name}")
         created_files.append(file.name)
@@ -43,29 +43,29 @@ async def test_CRUD(live_c8y: CumulocityClient, file_factory):
 
     file1_name, file1_data = file_factory()
     file2_name, file2_data = file_factory()
-    binary = Binary(live_c8y, name='some_file.py', type='text/raw', file=file1_name, custom_attribute=False)
+    binary = Binary(live_c8y, name="some_file.py", type="text/raw", file=file1_name, custom_attribute=False)
 
     await binary.create()
     try:
         assert binary.id
         assert binary.is_binary
-        assert binary['c8y_IsBinary'] is not None
-        assert binary['custom_attribute'] is False
+        assert binary["c8y_IsBinary"] is not None
+        assert binary["custom_attribute"] is False
         assert binary.content_type == binary.type
         assert binary.length == len(file1_data)
 
-        assert file1_data == (await binary.read_file()).content.decode('utf-8')
+        assert file1_data == (await binary.read_file()).content.decode("utf-8")
 
-        assert await live_c8y.binaries.get_count(type='text/raw') >= 1
-        assert binary.id in await live_c8y.binaries.get_all(type='text/raw', limit=100, as_values='id')
+        assert await live_c8y.binaries.get_count(type="text/raw") >= 1
+        assert binary.id in await live_c8y.binaries.get_all(type="text/raw", limit=100, as_values="id")
         assert binary.id, len(file1_data) == (await live_c8y.binaries.get_all(
-            type='text/raw', limit=100, as_values=['id', 'length'], include=field('id', binary.id)))[0]
+            type="text/raw", limit=100, as_values=["id", "length"], include=field("id", binary.id)))[0]
 
         binary.file = file2_name
         binary.content_type = "text/text"
-        binary['custom_attribute'] = True
+        binary["custom_attribute"] = True
         await binary.update()
-        new_data = (await binary.read_file()).content.decode('utf-8')
+        new_data = (await binary.read_file()).content.decode("utf-8")
         assert new_data == file2_data
 
         await binary.delete()
@@ -83,22 +83,22 @@ async def test_CRUD2(live_c8y: CumulocityClient, file_factory):
     file1_name, file1_data = file_factory()
     file2_name, file2_data = file_factory()
 
-    created = await live_c8y.binaries.upload(file=file1_name, name='test.txt', type='text/raw')
+    created = await live_c8y.binaries.upload(file=file1_name, name="test.txt", type="text/raw")
     try:
         assert created.id
         assert created.is_binary
-        assert created['c8y_IsBinary'] is not None
+        assert created["c8y_IsBinary"] is not None
         assert created.content_type == created.type
         assert created.length == len(file1_data)
 
         content, filename = await live_c8y.binaries.read_file(created.id)
-        assert content.decode('utf-8') == file1_data
+        assert content.decode("utf-8") == file1_data
         assert filename == "test.txt"
 
         await live_c8y.binaries.update(created.id, file=file2_name)
 
         content, _ = await live_c8y.binaries.read_file(created.id)
-        assert content.decode('utf-8') == file2_data
+        assert content.decode("utf-8") == file2_data
 
     finally:
         await live_c8y.binaries.delete(created.id)

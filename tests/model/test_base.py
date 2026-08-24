@@ -130,13 +130,13 @@ def test_set_creates_missing_intermediates():
 
 @pytest.mark.parametrize("json, path, default, expected", [
     ({}, "some", None, None),
-    ({'a': 1}, 'a', 'x', 1),
-    ({'x': 1}, 'a', 1, 1),
-    ({'a': 1, 'b': 2}, 'b', None, 2),
-    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.b', None, 1),
-    ({'a': {'b': 1, 'c': 2}, 'm': '3'}, 'a.c', None, 2),
-    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'm', None, 3),
-    ({'a': {'b': 1, 'c': 2}, 'm': 3}, 'a.d', 4, 4),
+    ({"a": 1}, "a", "x", 1),
+    ({"x": 1}, "a", 1, 1),
+    ({"a": 1, "b": 2}, "b", None, 2),
+    ({"a": {"b": 1, "c": 2}, "m": "3"}, "a.b", None, 1),
+    ({"a": {"b": 1, "c": 2}, "m": "3"}, "a.c", None, 2),
+    ({"a": {"b": 1, "c": 2}, "m": 3}, "m", None, 3),
+    ({"a": {"b": 1, "c": 2}, "m": 3}, "a.d", 4, 4),
 ])
 def test_get_by(json, path, default, expected):
     """Verify that get by path works as expected."""
@@ -166,116 +166,116 @@ def test_resolve_page_size(limit, page_size, include, exclude, expected_page_siz
 
 
 @pytest.mark.parametrize("paths, expected", [
-    (['x'], (None,)),
-    (['a'], (1,)),
-    (['bb.b1'], (True,)),
-    (['bb.b2'], (False,)),
-    (['ccc.c1'], ([],)),
-    (['ccc.c2'], ([1, 2, 3],)),
-    (['ccc.c3'], (None,)),
-    (['snake_case'], ('v',)),
-    (['pascalCase'], ('v',)),
-    (['pascal_case'], ('v',)),
-    (['mixed_case.caseMixed'], ('v',)),
-    (['mixed_case.case_mixed'], ('v',)),
-    (['a', 'bb.b1', 'ccc.c2'], (1, True, [1, 2, 3])),
-    (['bb.b2', 'ccc.c3'], (False, None)),
-    (['a', 'bb.b3', 'ccc.c2'], (1, None, [1, 2, 3])),
-    (['a', ('bb.b3', '-'), 'ccc.c2'], (1, '-', [1, 2, 3])),
+    (["x"], (None,)),
+    (["a"], (1,)),
+    (["bb.b1"], (True,)),
+    (["bb.b2"], (False,)),
+    (["ccc.c1"], ([],)),
+    (["ccc.c2"], ([1, 2, 3],)),
+    (["ccc.c3"], (None,)),
+    (["snake_case"], ("v",)),
+    (["pascalCase"], ("v",)),
+    (["pascal_case"], ("v",)),
+    (["mixed_case.caseMixed"], ("v",)),
+    (["mixed_case.case_mixed"], ("v",)),
+    (["a", "bb.b1", "ccc.c2"], (1, True, [1, 2, 3])),
+    (["bb.b2", "ccc.c3"], (False, None)),
+    (["a", "bb.b3", "ccc.c2"], (1, None, [1, 2, 3])),
+    (["a", ("bb.b3", "-"), "ccc.c2"], (1, "-", [1, 2, 3])),
 
 ], ids=[
-    'none',
-    'int',
-    'nested_True',
-    'nested_False',
-    'nested_empty',
-    'nested_list',
-    'nested_None',
-    'snake_case',
-    'pascal_case_1',
-    'pascal_case_2',
-    'mixed_case_1',
-    'mixed_case_2',
-    'multi_1',
-    'multi_2',
-    'multi_default_1',
-    'multi_default_2',
+    "none",
+    "int",
+    "nested_True",
+    "nested_False",
+    "nested_empty",
+    "nested_list",
+    "nested_None",
+    "snake_case",
+    "pascal_case_1",
+    "pascal_case_2",
+    "mixed_case_1",
+    "mixed_case_2",
+    "multi_1",
+    "multi_2",
+    "multi_default_1",
+    "multi_default_2",
 ])
 def test_as_tuples(paths, expected):
     """Verify that the as_tuple function works as expected."""
     json = {
         # types
-        'a': 1,
-        'bb': {
-            'b1': True,
-            'b2': False},
-        'ccc': {
-            'c1': [],
-            'c2': [1, 2, 3],
-            'c3': None,
+        "a": 1,
+        "bb": {
+            "b1": True,
+            "b2": False},
+        "ccc": {
+            "c1": [],
+            "c2": [1, 2, 3],
+            "c3": None,
         },
-        'snake_case': 'v',
-        'pascalCase': 'v',
-        'mixed_case': {'caseMixed': 'v'}
+        "snake_case": "v",
+        "pascalCase": "v",
+        "mixed_case": {"caseMixed": "v"}
     }
 
     assert as_tuple(json, paths) == expected
 
 
 @pytest.mark.parametrize("mapping, expected", [
-    ({'r': 'x'}, {'r': None}),
-    ({'r': 'a'}, {'r': 1}),
-    ({'r': ('x', '-')}, {'r': '-'}),
-    ({'r': 'bb.b1'}, {'r': True}),
-    ({'r': 'bb.b2'}, {'r': False}),
-    ({'r': 'ccc.c1'}, {'r': []}),
-    ({'r': 'ccc.c2'}, {'r': [1, 2, 3]}),
-    ({'r': 'ccc.c3'}, {'r': None}),
-    ({'r': 'snake_case'}, {'r': 'v'}),
-    ({'r': 'pascalCase'}, {'r': 'v'}),
-    ({'r': 'pascal_case'}, {'r': 'v'}),
-    ({'r': 'mixed_case.caseMixed'}, {'r': 'v'}),
-    ({'r': 'mixed_case.case_mixed'}, {'r': 'v'}),
-    ({'r': 'a', 's': 'bb.b1', 't': 'ccc.c2'}, {'r': 1, 's': True, 't': [1, 2, 3]}),
-    ({'r': 'bb.b2', 's': 'ccc.c3'}, {'r': False, 's': None}),
-    ({'r': 'a', 's': 'bb.b3', 't': 'ccc.c2'}, {'r': 1, 's': None, 't': [1, 2, 3]}),
-    ({'r': 'a', 's': ('bb.b3', '-'), 't': 'ccc.c2'}, {'r': 1, 's': '-', 't': [1, 2, 3]}),
+    ({"r": "x"}, {"r": None}),
+    ({"r": "a"}, {"r": 1}),
+    ({"r": ("x", "-")}, {"r": "-"}),
+    ({"r": "bb.b1"}, {"r": True}),
+    ({"r": "bb.b2"}, {"r": False}),
+    ({"r": "ccc.c1"}, {"r": []}),
+    ({"r": "ccc.c2"}, {"r": [1, 2, 3]}),
+    ({"r": "ccc.c3"}, {"r": None}),
+    ({"r": "snake_case"}, {"r": "v"}),
+    ({"r": "pascalCase"}, {"r": "v"}),
+    ({"r": "pascal_case"}, {"r": "v"}),
+    ({"r": "mixed_case.caseMixed"}, {"r": "v"}),
+    ({"r": "mixed_case.case_mixed"}, {"r": "v"}),
+    ({"r": "a", "s": "bb.b1", "t": "ccc.c2"}, {"r": 1, "s": True, "t": [1, 2, 3]}),
+    ({"r": "bb.b2", "s": "ccc.c3"}, {"r": False, "s": None}),
+    ({"r": "a", "s": "bb.b3", "t": "ccc.c2"}, {"r": 1, "s": None, "t": [1, 2, 3]}),
+    ({"r": "a", "s": ("bb.b3", "-"), "t": "ccc.c2"}, {"r": 1, "s": "-", "t": [1, 2, 3]}),
 
 ], ids=[
-    'none',
-    'int',
-    'default',
-    'nested_True',
-    'nested_False',
-    'nested_empty',
-    'nested_list',
-    'nested_None',
-    'snake_case',
-    'pascal_case_1',
-    'pascal_case_2',
-    'mixed_case_1',
-    'mixed_case_2',
-    'multi_1',
-    'multi_2',
-    'multi_default_1',
-    'multi_default_2',
+    "none",
+    "int",
+    "default",
+    "nested_True",
+    "nested_False",
+    "nested_empty",
+    "nested_list",
+    "nested_None",
+    "snake_case",
+    "pascal_case_1",
+    "pascal_case_2",
+    "mixed_case_1",
+    "mixed_case_2",
+    "multi_1",
+    "multi_2",
+    "multi_default_1",
+    "multi_default_2",
 ])
 def test_as_record(mapping, expected):
     """Verify that the as_record function works as expected."""
     json = {
         # types
-        'a': 1,
-        'bb': {
-            'b1': True,
-            'b2': False},
-        'ccc': {
-            'c1': [],
-            'c2': [1, 2, 3],
-            'c3': None,
+        "a": 1,
+        "bb": {
+            "b1": True,
+            "b2": False},
+        "ccc": {
+            "c1": [],
+            "c2": [1, 2, 3],
+            "c3": None,
         },
-        'snake_case': 'v',
-        'pascalCase': 'v',
-        'mixed_case': {'caseMixed': 'v'}
+        "snake_case": "v",
+        "pascalCase": "v",
+        "mixed_case": {"caseMixed": "v"}
     }
 
     assert as_record(json, mapping) == expected
@@ -285,24 +285,24 @@ def test_object_parsing():
     """Verify that complex object parsing works as expected."""
 
     obj_json = {
-        'id': 'some id',
-        'self': 'some reference',
-        'c8y_field': 'field data',
-        'c8y_fixed': 12,
-        'c8y_simple': 'simple attribute like fragment',
-        'c8y_complex': {'field': 'value'}
+        "id": "some id",
+        "self": "some reference",
+        "c8y_field": "field data",
+        "c8y_fixed": 12,
+        "c8y_simple": "simple attribute like fragment",
+        "c8y_complex": {"field": "value"}
     }
 
     # parsing the object JSON into a new object instance
     parsed_obj = CumulocityObjectWithId.from_json(obj_json)
 
     # -> all standard properties are set
-    assert parsed_obj.id == obj_json['id']
-    assert parsed_obj['c8y_field'] == obj_json['c8y_field']
-    assert parsed_obj['c8y_fixed'] == obj_json['c8y_fixed']
+    assert parsed_obj.id == obj_json["id"]
+    assert parsed_obj["c8y_field"] == obj_json["c8y_field"]
+    assert parsed_obj["c8y_fixed"] == obj_json["c8y_fixed"]
     # -> all fragments are set
-    assert parsed_obj['c8y_simple'] == obj_json['c8y_simple']
-    assert parsed_obj['c8y_complex.field'] == obj_json['c8y_complex']['field']
+    assert parsed_obj["c8y_simple"] == obj_json["c8y_simple"]
+    assert parsed_obj["c8y_complex.field"] == obj_json["c8y_complex"]["field"]
     # -> no update should be recorded
     assert not parsed_obj._staged_json
 
@@ -314,25 +314,25 @@ def test_object_instantiation_and_formatting():
     # 1) when using the constructor and standard functions, the
     # write access is not recorded (it is in pyc8y's model — kwargs are staged)
     obj = CumulocityObjectWithId(
-        field='field value',
+        field="field value",
         fixed_field=123,
         simple=True,
-        complex={'a': 'valueA', 'b': 'valueB'},
+        complex={"a": "valueA", "b": "valueB"},
         additionalField=True,
-        additionalFragment={'value1': "A", 'value2': "B"}
+        additionalFragment={"value1": "A", "value2": "B"}
     )
 
     # -> all standard properties are set
     assert obj.id is None
-    assert obj['field'] == 'field value'
-    assert obj['fixed_field'] == 123
+    assert obj["field"] == "field value"
+    assert obj["fixed_field"] == 123
     # -> all fragments are set
-    assert obj['simple'] is True
-    assert obj['complex.a'] == 'valueA'
-    assert obj['complex.b'] == 'valueB'
-    assert obj['additionalField'] is True
-    assert obj['additionalFragment.value1'] == 'A'
-    assert obj['additionalFragment.value2'] == 'B'
+    assert obj["simple"] is True
+    assert obj["complex.a"] == "valueA"
+    assert obj["complex.b"] == "valueB"
+    assert obj["additionalField"] is True
+    assert obj["additionalFragment.value1"] == "A"
+    assert obj["additionalFragment.value2"] == "B"
 
 
 async def test_iteration():
@@ -342,7 +342,7 @@ async def test_iteration():
     limit = 100
     expected = 100
 
-    all_items = [{'i': i} for i in range(num_all)]
+    all_items = [{"i": i} for i in range(num_all)]
 
     # returns a 'page' from all items
     async def fetch_page(page, **_):
@@ -365,7 +365,7 @@ async def test_iteration():
         include=None,
         exclude=None,
     ):
-        result_ids.append(x._source_json['i'])
+        result_ids.append(x._source_json["i"])
 
     # check expectation
     assert result_ids == list(range(expected))
@@ -391,7 +391,7 @@ async def test_iterate_concurrent_unbounded_returns_all_items():
     """workers>1 + limit=None: every item is yielded across full pages and partials."""
     page_size = 10
     num_all = 95  # 9 full pages + a partial (5 items on page 10)
-    all_items = [{'i': i} for i in range(num_all)]
+    all_items = [{"i": i} for i in range(num_all)]
 
     res = _make_paged_resource(all_items, page_size)
 
@@ -400,7 +400,7 @@ async def test_iterate_concurrent_unbounded_returns_all_items():
         expression=None, params=None, page_number=None, limit=None,
         include=None, exclude=None, workers=5, preserve_order=False,
     ):
-        result_ids.append(x._source_json['i'])
+        result_ids.append(x._source_json["i"])
 
     assert sorted(result_ids) == list(range(num_all))
 
@@ -410,7 +410,7 @@ async def test_iterate_concurrent_with_limit():
     page_size = 10
     num_all = 100
     limit = 25
-    all_items = [{'i': i} for i in range(num_all)]
+    all_items = [{"i": i} for i in range(num_all)]
 
     res = _make_paged_resource(all_items, page_size)
 
@@ -419,7 +419,7 @@ async def test_iterate_concurrent_with_limit():
         expression=None, params=None, page_number=None, limit=limit,
         include=None, exclude=None, workers=5, preserve_order=False,
     ):
-        result_ids.append(x._source_json['i'])
+        result_ids.append(x._source_json["i"])
 
     assert len(result_ids) == limit
 
@@ -428,7 +428,7 @@ async def test_iterate_single_worker_sequential():
     """workers<=1: sequential streaming path."""
     page_size = 10
     num_all = 35
-    all_items = [{'i': i} for i in range(num_all)]
+    all_items = [{"i": i} for i in range(num_all)]
 
     res = _make_paged_resource(all_items, page_size)
 
@@ -437,7 +437,7 @@ async def test_iterate_single_worker_sequential():
         expression=None, params=None, page_number=None, limit=None,
         include=None, exclude=None, workers=1, preserve_order=False,
     ):
-        result_ids.append(x._source_json['i'])
+        result_ids.append(x._source_json["i"])
 
     assert result_ids == list(range(num_all))
 
@@ -449,7 +449,7 @@ async def test_stream_pages_unordered_no_data_loss_when_empties_race_ahead():
     remaining in-flight valid pages are still yielded."""
     page_size = 10
     valid_pages = 8  # pages 1..8 have data; page 9+ return empty
-    all_items = [{'i': i} for i in range(page_size * valid_pages)]
+    all_items = [{"i": i} for i in range(page_size * valid_pages)]
 
     async def fetch_page(page, **_):
         items = all_items[page_size * (page - 1): page_size * page]
@@ -469,7 +469,7 @@ async def test_stream_pages_unordered_no_data_loss_when_empties_race_ahead():
         if page:
             yielded.extend(page)
 
-    assert sorted(p['i'] for p in yielded) == [p['i'] for p in all_items]
+    assert sorted(p["i"] for p in yielded) == [p["i"] for p in all_items]
 
 
 async def test_stream_pages_ordered_preserves_launch_order():
@@ -477,7 +477,7 @@ async def test_stream_pages_ordered_preserves_launch_order():
     finish first."""
     page_size = 10
     total_pages = 6
-    all_items = [{'i': i} for i in range(page_size * total_pages)]
+    all_items = [{"i": i} for i in range(page_size * total_pages)]
 
     async def fetch_page(page, **_):
         items = all_items[page_size * (page - 1): page_size * page]
@@ -494,6 +494,6 @@ async def test_stream_pages_ordered_preserves_launch_order():
         fetch_page, start_page=1, workers=4, expression=None, params=None,
     ):
         if page:
-            yielded_ids.extend(p['i'] for p in page)
+            yielded_ids.extend(p["i"] for p in page)
 
-    assert yielded_ids == [p['i'] for p in all_items]
+    assert yielded_ids == [p["i"] for p in all_items]

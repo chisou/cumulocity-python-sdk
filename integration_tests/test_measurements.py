@@ -35,9 +35,9 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
 
         # 1) create device
         if not device:
-            device = await module_factory(Device(c8y=live_c8y, type=f'{type}_device', name=type, test_marker={'name': type}))
+            device = await module_factory(Device(c8y=live_c8y, type=f"{type}_device", name=type, test_marker={"name": type}))
             created_devices.append(device)
-            logging.info(f'Created device #{device.id}')
+            logging.info(f"Created device #{device.id}")
 
         # 2) create measurements
         ms = []
@@ -46,10 +46,10 @@ async def fix_measurement_factory(live_c8y: CumulocityClient, module_factory):
             measurement_time = datetime.fromtimestamp(now - i*60, timezone.utc)
             m = Measurement(c8y=live_c8y, type=type, source=device.id, time=measurement_time)
             # m[series] = {series: Value(random.randint(1000, 9999), '#')}
-            m[series] = {'series': Value(random.randint(1000, 9999), '#')}
-            m['marker'] = {'id': f'{device.id}_{type}_{series}_{i}'}
+            m[series] = {"series": Value(random.randint(1000, 9999), "#")}
+            m["marker"] = {"id": f"{device.id}_{type}_{series}_{i}"}
             await m.create()
-            logging.info(f'Created measurement #{m.id}: {m.json}')
+            logging.info(f"Created measurement #{m.id}: {m.json}")
             ms.append(m)
         return ms
 
@@ -61,7 +61,7 @@ async def test_select(live_c8y: CumulocityClient, measurement_factory):
     # pylint: disable=too-many-statements)
 
     name = create_random_name()
-    other_name = f'other_{name}'
+    other_name = f"other_{name}"
 
     # create a couple of measurements (at a new device)
     created_ms = await measurement_factory(10, type=name, series=name)
@@ -190,62 +190,62 @@ async def test_single_page_select(live_c8y: CumulocityClient, measurement_factor
     assert all(i in set(created_ids) for i in selected_ids)
 
 
-@pytest.fixture(scope='session', name='sample_series_device')
+@pytest.fixture(scope="session", name="sample_series_device")
 async def fix_sample_series_device(live_c8y: CumulocityClient, session_device: Device) -> Device:
     """Add measurement series to the sample device."""
     # create 12K measurements, 2 every minute
-    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
-    ms_iter = [Measurement(type='c8y_TestMeasurement',
+    start_time = datetime.fromisoformat("2020-01-01 00:00:00+00:00")
+    ms_iter = [Measurement(type="c8y_TestMeasurement",
                            source=session_device.id,
                            time=start_time + (i * timedelta(seconds=30)),
-                           c8y_Iteration={'c8y_Counter': Count(i)},
+                           c8y_Iteration={"c8y_Counter": Count(i)},
                            ) for i in range(0, 1000)]
-    ms_temps = [Measurement(type='c8y_TestMeasurement',
+    ms_temps = [Measurement(type="c8y_TestMeasurement",
                             source=session_device.id,
                             time=start_time + (i * timedelta(seconds=100)),
-                            c8y_Temperature={'c8y_AverageTemperature': Kelvin(i * 0.2)},
+                            c8y_Temperature={"c8y_AverageTemperature": Kelvin(i * 0.2)},
                             ) for i in range(0, 1000)]
     await live_c8y.measurements.create(*ms_iter, workers=50)
     await live_c8y.measurements.create(*ms_temps, workers=50)
 
-    session_device['c8y_SupportedSeries'] = [
-        'c8y_Temperature.c8y_AverageTemperature',
-        'c8y_Iteration.c8y_Counter']
+    session_device["c8y_SupportedSeries"] = [
+        "c8y_Temperature.c8y_AverageTemperature",
+        "c8y_Iteration.c8y_Counter"]
     return await session_device.update()
 
 
-@pytest.fixture(name="unaggregated_series_result", scope='session')
+@pytest.fixture(name="unaggregated_series_result", scope="session")
 async def fix_unaggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
     """Provide an unaggregated series result."""
-    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    start_time = datetime.fromisoformat("2020-01-01 00:00:00+00:00")
     return await live_c8y.measurements.get_series(
         source=sample_series_device.id,
         series=sample_series_device["c8y_SupportedSeries"],
-        after=start_time, before='now'
+        after=start_time, before="now"
     )
 
 
-@pytest.fixture(name="aggregated_series_result", scope='session')
+@pytest.fixture(name="aggregated_series_result", scope="session")
 async def fix_aggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
     """Provide an aggregated series result."""
-    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    start_time = datetime.fromisoformat("2020-01-01 00:00:00+00:00")
     return await live_c8y.measurements.get_series(
         source=sample_series_device.id,
         series=sample_series_device["c8y_SupportedSeries"],
         aggregation=AggregationType.HOURLY,
-        after=start_time, before='now'
+        after=start_time, before="now"
     )
 
-@pytest.fixture(name="new_aggregated_series_result", scope='session')
+@pytest.fixture(name="new_aggregated_series_result", scope="session")
 async def fix_new_aggregated_series_result(live_c8y: CumulocityClient, sample_series_device: Device) -> Series:
     """Provide an aggregated series result."""
-    start_time = datetime.fromisoformat('2020-01-01 00:00:00+00:00')
+    start_time = datetime.fromisoformat("2020-01-01 00:00:00+00:00")
     return await live_c8y.measurements.get_series(
         source=sample_series_device.id,
         series=sample_series_device["c8y_SupportedSeries"],
         aggregation_function=["min", "max"],
         aggregation_interval="1h",
-        after=start_time, before='now'
+        after=start_time, before="now"
     )
 
 @pytest.mark.parametrize("name", ["aggregated", "unaggregated", "new_aggregated"])
@@ -259,7 +259,7 @@ async def test_collect_single_series(name, aggregated_series_result, unaggregate
         "new_aggregated": new_aggregated_series_result,
     }[name]
     for spec in series_result.specs:
-        values = series_result.values_of(series=spec.series, value='min')
+        values = series_result.values_of(series=spec.series, value="min")
         # -> None values should be filtered out
         assert values
         assert all(v is not None for v in values)
@@ -281,7 +281,7 @@ async def test_collect_multiple_series(name, aggregated_series_result, unaggrega
         "new_aggregated": new_aggregated_series_result,
     }[name]
     series_names = [s.series for s in series_result.specs]
-    values = series_result.collect(series=series_names, value='min')
+    values = series_result.collect(series=series_names, value="min")
     assert values
     # -> Each element should be an n-tuple (n as number of series)
     assert all(isinstance(v, tuple) for v in values)
@@ -301,8 +301,8 @@ async def test_get_and_collect_series(live_c8y, sample_series_device):
         source=sample_series_device.id,
         series=sample_series_device["c8y_SupportedSeries"],
         aggregation=AggregationType.HOURLY,
-        after='1970-01-01',
-        before='now'
+        after="1970-01-01",
+        before="now"
     )
 
     # multiple series
@@ -311,8 +311,8 @@ async def test_get_and_collect_series(live_c8y, sample_series_device):
         source=sample_series_device.id,
         series=sample_series_device["c8y_SupportedSeries"],
         aggregation=AggregationType.HOURLY,
-        after='1970-01-01',
-        before='now'
+        after="1970-01-01",
+        before="now"
     )
     assert collected == directly_collected
 
@@ -323,16 +323,16 @@ async def test_get_and_collect_series(live_c8y, sample_series_device):
             source=sample_series_device.id,
             series=series_name,
             aggregation=AggregationType.HOURLY,
-            after='1970-01-01',
-            before='now'
+            after="1970-01-01",
+            before="now"
         )
         # we have to filter None rows because pulling a single series would do the same
         assert [x for x in collected if x[0] is not None] == directly_collected
 
 
-@pytest.mark.parametrize('aggregation_function', [
-    'min',
-    ['max', 'avg'],
+@pytest.mark.parametrize("aggregation_function", [
+    "min",
+    ["max", "avg"],
     ("avg", "sum", "count"),
 ], ids=["min", "max-avg", "max-sum-count"])
 async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
@@ -343,8 +343,8 @@ async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_
             series=series_name,
             aggregation_function=aggregation_function,
             aggregation_interval="1h",
-            after='1970-01-01',
-            before='now'
+            after="1970-01-01",
+            before="now"
         )
 
         # collect all functions
@@ -364,9 +364,9 @@ async def test_new_aggregation_single(live_c8y: CumulocityClient, sample_series_
             assert isinstance(collected[0], float)
 
 
-@pytest.mark.parametrize('aggregation_function', [
-    'min',
-    ['max', 'avg'],
+@pytest.mark.parametrize("aggregation_function", [
+    "min",
+    ["max", "avg"],
     ("avg", "sum", "count"),
 ],ids=["min", "max-avg", "max-sum-count"])
 async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_device: Device, aggregation_function):
@@ -376,8 +376,8 @@ async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_d
         series=sample_series_device["c8y_SupportedSeries"],
         aggregation_function=aggregation_function,
         aggregation_interval="1h",
-        after='1970-01-01',
-        before='now'
+        after="1970-01-01",
+        before="now"
     )
 
     # collect all functions

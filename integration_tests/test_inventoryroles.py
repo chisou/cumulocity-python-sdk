@@ -14,24 +14,24 @@ async def test_crud(live_c8y: CumulocityClient):
     try:
         permissions = [
             ReadPermission(scope=Permission.Scope.ANY),
-            WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom'),
-            AnyPermission(scope=Permission.Scope.ALARM, type='*'),
+            WritePermission(scope=Permission.Scope.MEASUREMENT, type="c8y_Custom"),
+            AnyPermission(scope=Permission.Scope.ALARM, type="*"),
         ]
         role = await InventoryRole(
-            live_c8y, name=create_random_name(), description='SomeDescription', permissions=permissions
+            live_c8y, name=create_random_name(), description="SomeDescription", permissions=permissions
         ).create()
 
         assert role.id
         assert all(p.id for p in role.permissions)
 
         # update: change description and remove first permission
-        role.description = 'new description'
+        role.description = "new description"
         perms = role.permissions[1:]
         role.permissions = perms
         updated = await role.update(copy=True)
 
         assert updated.id == role.id
-        assert updated.description == 'new description'
+        assert updated.description == "new description"
         assert {p.id for p in updated.permissions} == {p.id for p in role.permissions}
 
         # delete
@@ -51,10 +51,10 @@ async def test_crud_2(live_c8y: CumulocityClient):
     try:
         permissions = [
             ReadPermission(scope=Permission.Scope.ANY),
-            WritePermission(scope=Permission.Scope.MEASUREMENT, type='c8y_Custom'),
-            AnyPermission(scope=Permission.Scope.ALARM, type='*'),
+            WritePermission(scope=Permission.Scope.MEASUREMENT, type="c8y_Custom"),
+            AnyPermission(scope=Permission.Scope.ALARM, type="*"),
         ]
-        role = InventoryRole(name=create_random_name(), description='SomeDescription', permissions=permissions)
+        role = InventoryRole(name=create_random_name(), description="SomeDescription", permissions=permissions)
         await live_c8y.inventory_roles.create(role)
 
         # find just-created role
@@ -62,11 +62,11 @@ async def test_crud_2(live_c8y: CumulocityClient):
         created = next(r for r in all_roles if r.name == role.name)
 
         # update via API
-        created.description = 'new description'
+        created.description = "new description"
         await live_c8y.inventory_roles.update(created)
 
         updated = await live_c8y.inventory_roles.get(created.id)
-        assert updated.description == 'new description'
+        assert updated.description == "new description"
 
         # delete via API
         await live_c8y.inventory_roles.delete(created.id)
@@ -91,19 +91,19 @@ async def test_select(live_c8y: CumulocityClient):
     assert all_roles
 
     # client-side include filter
-    without_desc = await live_c8y.inventory_roles.get_all(limit=None, include='not description')
+    without_desc = await live_c8y.inventory_roles.get_all(limit=None, include="not description")
     with_desc = [r for r in all_roles if r.description]
     assert {r.id for r in with_desc} == {r.id for r in all_roles} - {r.id for r in without_desc}
 
 
 async def test_assignments(live_c8y: CumulocityClient, session_device, module_factory):
     """Verify that inventory roles can be assigned, retrieved and unassigned."""
-    email = f'user_{create_random_name()}@test.com'
-    role1 = await module_factory(InventoryRole(name=f'role_{create_random_name()}', permissions=[
+    email = f"user_{create_random_name()}@test.com"
+    role1 = await module_factory(InventoryRole(name=f"role_{create_random_name()}", permissions=[
         ReadPermission(scope=Permission.Scope.ALARM),
         WritePermission(scope=Permission.Scope.AUDIT),
     ]))
-    role2 = await module_factory(InventoryRole(name=f'role_{create_random_name()}', permissions=[
+    role2 = await module_factory(InventoryRole(name=f"role_{create_random_name()}", permissions=[
         ReadPermission(scope=Permission.Scope.ANY),
         WritePermission(scope=Permission.Scope.MEASUREMENT),
     ]))

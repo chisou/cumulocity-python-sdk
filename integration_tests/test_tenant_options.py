@@ -16,22 +16,22 @@ async def test_crud(live_c8y: CumulocityClient):
     option = None
     try:
         # 1) create an option
-        option = await TenantOption(live_c8y, category=category, key='my_key', value='test value').create()
+        option = await TenantOption(live_c8y, category=category, key="my_key", value="test value").create()
 
         # 2) verify option values
         assert option.key == "my_key"
         assert option.value == "test value"
 
         # 3) verify reread from database
-        assert (await live_c8y.tenant_options.get(option.category, option.key)).value == 'test value'
-        assert (await live_c8y.tenant_options.get_all(limit=None, as_map=True))[category]['my_key'] == 'test value'
-        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
+        assert (await live_c8y.tenant_options.get(option.category, option.key)).value == "test value"
+        assert (await live_c8y.tenant_options.get_all(limit=None, as_map=True))[category]["my_key"] == "test value"
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == "test value"
 
         # 2) update the option
-        option.value = 'new value'
+        option.value = "new value"
         await option.update()
-        assert option.value == 'new value'
-        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
+        assert option.value == "new value"
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == "new value"
 
         # 3) delete the option
         await option.delete()
@@ -52,14 +52,14 @@ async def test_crud_2(live_c8y: CumulocityClient):
     option = None
     try:
         # 1) create an option
-        option = TenantOption(live_c8y, category=category, key='my_key', value='test value')
+        option = TenantOption(live_c8y, category=category, key="my_key", value="test value")
         await live_c8y.tenant_options.create(option)
-        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'test value'
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == "test value"
 
         # 2) update the option
-        option.value = 'new value'
+        option.value = "new value"
         await live_c8y.tenant_options.update(option)
-        assert await live_c8y.tenant_options.get_value(option.category, option.key) == 'new value'
+        assert await live_c8y.tenant_options.get_value(option.category, option.key) == "new value"
 
         # 3) delete the option
         await live_c8y.tenant_options.delete(option)
@@ -89,14 +89,14 @@ async def test_set_value_and_update_values_and_delete(live_c8y: CumulocityClient
     """Verify that functions set_value, update_values and delete work as expected."""
 
     category = create_random_name()
-    key = 'my_key'
+    key = "my_key"
     try:
         # 1) create an option
-        await live_c8y.tenant_options.set_value(category=category, key=key, value='test value')
+        await live_c8y.tenant_options.set_value(category=category, key=key, value="test value")
 
         # 2) update the option
-        await live_c8y.tenant_options.update_values(category, {key: 'new value'})
-        assert await live_c8y.tenant_options.get_value(category, key) == 'new value'
+        await live_c8y.tenant_options.update_values(category, {key: "new value"})
+        assert await live_c8y.tenant_options.get_value(category, key) == "new value"
 
         # 3) delete the option
         await live_c8y.tenant_options.delete(category=category, key=key)

@@ -18,8 +18,8 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
     operation = await Operation(
         live_c8y,
         device_id=session_device.id,
-        description=f'Description {name}',
-        c8y_Command={'text': 'Command text'},
+        description=f"Description {name}",
+        c8y_Command={"text": "Command text"},
     ).create()
 
     # -> operation should have been created and in PENDING state
@@ -33,17 +33,17 @@ async def test_CRUD(live_c8y: CumulocityClient, session_device: Device):  # noqa
 
     # (2) update operation
     operation.status = OperationStatus.EXECUTING
-    operation.description = 'New description'
-    operation['c8y_Command'] = {'text': 'Updated command text'}
-    operation['c8y_CustomCommand'] = {'value': 'good'}
+    operation.description = "New description"
+    operation["c8y_Command"] = {"text": "Updated command text"}
+    operation["c8y_CustomCommand"] = {"value": "good"}
     await operation.update()
 
     # -> all fields have been updated in Cumulocity
     operation2 = await live_c8y.operations.get(operation.id)
     assert operation2.status == operation.status
     assert operation2.description == operation.description
-    assert operation2['c8y_Command.text'] == operation['c8y_Command.text']
-    assert operation2['c8y_CustomCommand.value'] == operation['c8y_CustomCommand.value']
+    assert operation2["c8y_Command.text"] == operation["c8y_Command.text"]
+    assert operation2["c8y_CustomCommand.value"] == operation["c8y_CustomCommand.value"]
 
     # (3) delete operation
     await live_c8y.operations.delete_by(device_id=session_device.id)
@@ -59,8 +59,8 @@ async def test_get_last(live_c8y: CumulocityClient, session_device: Device):
         Operation(
             live_c8y,
             device_id=session_device.id,
-            description=f'{name}_{i}',
-            c8y_Command={'text': 'Command text'},
+            description=f"{name}_{i}",
+            c8y_Command={"text": "Command text"},
         ).create()
         for i in range(3)
     ])
@@ -106,8 +106,8 @@ async def test_get(live_c8y: CumulocityClient, session_device: Device):
         Operation(
             live_c8y,
             device_id=session_device.id,
-            description=f'Description {i}',
-            c8y_Command={'text': 'Command text'},
+            description=f"Description {i}",
+            c8y_Command={"text": "Command text"},
         ).create()
         for i in range(5)
     ]))

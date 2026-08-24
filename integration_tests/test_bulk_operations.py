@@ -12,7 +12,7 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
     """Verify that basic creation, lookup and update of Bulk Operations works as expected."""
 
     # (1) Create a device group for the sample device
-    group: DeviceGroup = await DeviceGroup(live_c8y, root=True, name=session_device.name + '_Group').create()
+    group: DeviceGroup = await DeviceGroup(live_c8y, root=True, name=session_device.name + "_Group").create()
     await group.add_child_asset(session_device)
 
     try:
@@ -20,11 +20,11 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
         bulk: BulkOperation = await BulkOperation(
             live_c8y,
             group_id=group.id,
-            start_time='now',
+            start_time="now",
             creation_ramp=1,
             operation_prototype={
-                'description': f"Update firmware for device group '{group.name}'.",
-                'c8y_FirmWare': {'version': '1.0.0'},
+                "description": f"Update firmware for device group '{group.name}'.",
+                "c8y_FirmWare": {"version": "1.0.0"},
             },
         ).create()
 
@@ -48,8 +48,8 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
         bulk = await live_c8y.bulk_operations.get(bulk.id)
         assert bulk.general_status == BulkOperationGeneralStatus.EXECUTING
         assert bulk.status == BulkOperationStatus.COMPLETED
-        assert bulk['progress']['all'] == 1
-        assert bulk['progress']['pending'] == 1
+        assert bulk["progress"]["all"] == 1
+        assert bulk["progress"]["pending"] == 1
 
         # (4) find child operations
         op = (await live_c8y.operations.get_all(bulk_id=bulk.id))[0]
@@ -65,8 +65,8 @@ async def test_CRU(live_c8y: CumulocityClient, session_device: Device):  # noqa 
             BulkOperationGeneralStatus.COMPLETED_WITH_FAILURES,
             BulkOperationGeneralStatus.FAILED,
         ]
-        assert bulk['progress']['all'] == 1
-        assert bulk['progress']['failed'] == 1
+        assert bulk["progress"]["all"] == 1
+        assert bulk["progress"]["failed"] == 1
         assert await live_c8y.operations.get_count(bulk_id=bulk.id) == 1
 
     finally:

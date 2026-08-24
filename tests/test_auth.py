@@ -9,9 +9,9 @@ from pyc8y.auth import JWT, BasicAuth, BearerAuth, parse_auth
 from tests.utils import b64encode, sample_jwt, build_auth_string
 
 
-@pytest.mark.parametrize('auth_value, tenant_id', [
-    (b64encode('t12345/some@domain.com:password'), 't12345'),
-    (sample_jwt(sub='someuser@domain.com', ten='t12345'), 't12345'),
+@pytest.mark.parametrize("auth_value, tenant_id", [
+    (b64encode("t12345/some@domain.com:password"), "t12345"),
+    (sample_jwt(sub="someuser@domain.com", ten="t12345"), "t12345"),
 ])
 def test_get_tenant_id(auth_value, tenant_id):
     """Verify that the tenant ID can be resolved from any Auth instance."""
@@ -19,8 +19,8 @@ def test_get_tenant_id(auth_value, tenant_id):
     assert auth.get_tenant_id() == tenant_id
 
 
-@pytest.mark.parametrize('auth_value', [
-    b64encode('some@domain.com:password'),
+@pytest.mark.parametrize("auth_value", [
+    b64encode("some@domain.com:password"),
 ])
 def test_get_tenant_id_bad(auth_value):
     """Verify that a missing tenant ID in the authorization information
@@ -30,10 +30,10 @@ def test_get_tenant_id_bad(auth_value):
         auth.get_tenant_id()
 
 
-@pytest.mark.parametrize('auth_value, username', [
-    (b64encode('t12345/some@domain.com:password'), 'some@domain.com'),
-    (b64encode('someone@domain.com:password'), 'someone@domain.com'),
-    (sample_jwt(sub='someuser@domain.com', ten='t12345'), 'someuser@domain.com'),
+@pytest.mark.parametrize("auth_value, username", [
+    (b64encode("t12345/some@domain.com:password"), "some@domain.com"),
+    (b64encode("someone@domain.com:password"), "someone@domain.com"),
+    (sample_jwt(sub="someuser@domain.com", ten="t12345"), "someuser@domain.com"),
 ])
 def test_get_username(auth_value, username):
     """Verify that the username can be resolved from any Auth instance."""
@@ -43,10 +43,10 @@ def test_get_username(auth_value, username):
 
 def test_parse_auth_basic():
     """Verify that a BASIC authentication string can be parsed."""
-    auth_value = b64encode('t123/some@domain.com:password')
+    auth_value = b64encode("t123/some@domain.com:password")
 
     auth1 = BasicAuth.parse(auth_value)
-    assert auth1.username == 't123/some@domain.com'
+    assert auth1.username == "t123/some@domain.com"
 
     auth2 = parse_auth(build_auth_string(auth_value))
     assert isinstance(auth2, BasicAuth)
@@ -55,12 +55,12 @@ def test_parse_auth_basic():
 
 def test_parse_auth_bearer():
     """Verify that a BEARER authentication string can be parsed."""
-    auth_value = sample_jwt(ten='t543', sub='someuser@domain.com')
+    auth_value = sample_jwt(ten="t543", sub="someuser@domain.com")
 
     auth1 = BearerAuth.parse(auth_value)
     jwt1 = JWT(auth1.token)
-    assert jwt1.tenant_id == 't543'
-    assert jwt1.username == 'someuser@domain.com'
+    assert jwt1.tenant_id == "t543"
+    assert jwt1.username == "someuser@domain.com"
 
     auth2 = parse_auth(build_auth_string(auth_value))
     assert isinstance(auth2, BearerAuth)
