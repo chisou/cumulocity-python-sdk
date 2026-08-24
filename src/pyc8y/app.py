@@ -608,7 +608,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         return CumulocityClient(
             base_url=base_url,
             tenant_id=tenant_id,
-            auth=BasicAuth(username, password),
+            auth=BasicAuth(f"{tenant_id}/{username}", password),
             application_key=application_key,
             processing_mode=processing_mode,
             connector_factory=connector_factory,
