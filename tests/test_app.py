@@ -150,6 +150,11 @@ def test_multi_tenant__bootstrap_instance():
     assert c8y.application_key == env_multi_tenant['APPLICATION_KEY']
     # -> properties are inherited
     assert c8y.processing_mode == 'proc-mode'
+    # -> auth username is prefixed with the tenant ID, as Cumulocity's Basic
+    # Auth requires; without it, every request via this instance (e.g. the
+    # subscriptions lookup in `get_tenant_instance`) is rejected with 401
+    assert c8y.auth.username == f"{env_multi_tenant['C8Y_BOOTSTRAP_TENANT']}/{env_multi_tenant['C8Y_BOOTSTRAP_USER']}"
+    assert c8y.auth.get_tenant_id() == env_multi_tenant['C8Y_BOOTSTRAP_TENANT']
 
 
 @mock.patch.dict(os.environ, env_multi_tenant, clear=True)
