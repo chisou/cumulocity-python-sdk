@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator
+from typing import ClassVar, Sequence, Self, Iterable, AsyncIterator, Any
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -695,7 +695,7 @@ class Measurements(CumulocityResource[Measurement]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[Measurement]:
@@ -792,7 +792,7 @@ class Measurements(CumulocityResource[Measurement]):
         date_to: str | datetime | None = None,
         before: str | datetime | None = None,
         min_age: str | timedelta | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         **kwargs,
     ) -> Measurement | None:
         """Query the database and return the last matching measurement.
@@ -818,10 +818,11 @@ class Measurements(CumulocityResource[Measurement]):
             date_to (str|datetime): Same as `before`
             min_age (timedelta):  Timedelta object. Only measurements of
                 at least this age are returned.
-            as_values: (*str|tuple):  Don't parse object, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
+
         Returns:
             Last matching Measurement object or values/value tuples if the
                 `as_values` parameter is defined.
@@ -898,7 +899,7 @@ class Measurements(CumulocityResource[Measurement]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> AsyncIterator[Measurement]:
@@ -946,10 +947,10 @@ class Measurements(CumulocityResource[Measurement]):
                 set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int): The number of parallel processes to use
 
         Returns:

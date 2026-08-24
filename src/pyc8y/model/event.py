@@ -1,7 +1,7 @@
 import io
 import os
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, Any
 
 from pyc8y.rest import CumulocityRestClient, FileDownload
 from pyc8y.model.model_base import (
@@ -278,7 +278,7 @@ class Events(CumulocityResource[Event]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> AsyncIterator[Event]:
@@ -331,7 +331,10 @@ class Events(CumulocityResource[Event]):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int): Pull a specific page only.
-            as_values: Extract values at JSON paths as tuples.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's as_tuple function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int): Number of parallel page-fetch workers.
 
         Returns:
@@ -415,7 +418,7 @@ class Events(CumulocityResource[Event]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[Event]:

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, Any
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.model_base import (
@@ -176,7 +176,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
     ) -> AsyncIterator[TenantOption]:
         """Query the database for tenant options and iterate over the results.
@@ -194,10 +194,10 @@ class TenantOptions(CumulocityResource[TenantOption]):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int):  Pull a specific page only
-            as_values: (str|tuple|list[str|tuple]):  Don't parse objects, but
-                directly extract the values at certain JSON paths as tuples;
-                If the path is not defined in a result, None is used; Specify
-                a tuple to define a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -224,7 +224,7 @@ class TenantOptions(CumulocityResource[TenantOption]):
         page_size: int | None = None,
         page_number: int | None = None,
         as_map: bool = False,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
     ) -> list[TenantOption] | dict[str, str] | dict[str, dict[str, str]]:
         """Query the database for tenant options and return the results as list.
@@ -239,10 +239,10 @@ class TenantOptions(CumulocityResource[TenantOption]):
             as_map(bool): Whether the categories should be returned as dict
                 of keys and values (grouped by category if category is not
                 specified). Defaults to False.
-            as_values: (str|tuple|list[str|tuple]):  Don't parse objects, but
-                directly extract the values at certain JSON paths as tuples;
-                If the path is not defined in a result, None is used; Specify
-                a tuple to define a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:

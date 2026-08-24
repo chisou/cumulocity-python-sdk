@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Christoph Souris
 
 import datetime as dt
-from typing import Sequence, AsyncIterator, Self
+from typing import Sequence, AsyncIterator, Self, Any
 
 from pyc8y.model.model_base import (
     JsonObject,
@@ -51,7 +51,7 @@ class _DailyDeviceStatistics(CumulocityResource):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
         page_size = resolve_page_size(page_size, limit)
@@ -88,7 +88,7 @@ class _MonthlyDeviceStatistics(CumulocityResource):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
         page_size = resolve_page_size(page_size, limit)
@@ -130,7 +130,7 @@ class _UsageStatistics(CumulocityResource):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[UsageStatistics]:
@@ -255,7 +255,7 @@ class _StatisticsFiles(CumulocityResource):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[TenantStatisticsFile]:
@@ -344,7 +344,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
         """Iterate over a tenant's daily device statistics.
@@ -358,10 +358,10 @@ class TenantStatistics:
                 (default), inferred from `limit`.
             page_number (int):  Pull a specific page only; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -385,7 +385,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> list[DeviceStatistics]:
         """Query the database for a tenant's daily device statistics and
@@ -417,7 +417,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[DeviceStatistics]:
         """Iterate over a tenant's monthly device statistics.
@@ -431,10 +431,10 @@ class TenantStatistics:
                 (default), inferred from `limit`.
             page_number (int):  Pull a specific page only; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -458,7 +458,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> list[DeviceStatistics]:
         """Query the database for a tenant's monthly device statistics and
@@ -497,7 +497,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[UsageStatistics]:
@@ -522,10 +522,10 @@ class TenantStatistics:
                 set.
             page_number (int):  Pull a specific page only; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -560,7 +560,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> list[UsageStatistics]:
@@ -680,7 +680,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[TenantStatisticsFile]:
@@ -704,10 +704,10 @@ class TenantStatistics:
                 set.
             page_number (int):  Pull a specific page only; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -742,7 +742,7 @@ class TenantStatistics:
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> list[TenantStatisticsFile]:

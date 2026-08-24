@@ -1,6 +1,6 @@
 # Copyright (c) 2026 Christoph Souris
 
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, Any
 
 from pyc8y.model.application import Application
 from pyc8y.model.model_base import (
@@ -163,7 +163,7 @@ class Tenants(CumulocityResource[Tenant]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> AsyncIterator[Tenant]:
@@ -184,10 +184,10 @@ class Tenants(CumulocityResource[Tenant]):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int):  Pull a specific page only
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of parallel page-fetch workers
 
         Returns:
@@ -225,7 +225,7 @@ class Tenants(CumulocityResource[Tenant]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[Tenant]:

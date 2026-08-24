@@ -421,9 +421,30 @@ class CumulocityObject(Mapping):
         return self
 
     def as_tuple(self, *paths: str | tuple[str, Any]) -> tuple:
+        """Return selected field values as tuple.
+
+        Args:
+            paths (*str | tuple[str | Any]): Path-like expressions
+                (dot-notation); each "expression" can be a tuple to specify
+                a default value if path is not found, otherwise None is used.
+
+        Returns:
+            The extracted values (or defaults it specified) as tuple.
+        """
         return as_tuple(self.json, list(paths))
 
-    def as_record(self, mapping: dict[str, str | tuple[str | Any]]) -> dict:
+    def as_record(self, **mapping: str | tuple[str | Any]) -> dict:
+        """Return selected field values as dict.
+
+        Args:
+            mapping (**str | tuple[str | Any]): Mapping of result keys to
+                path-like expressions (dot-notation); each "expression"
+                can be a tuple to specify a default value if path is not
+                found, otherwise None is used.
+
+        Returns:
+            The extracted values (or defaults it specified) as dictionary.
+        """
         return as_record(self.json, mapping)
 
     async def _create(self, copy: bool = False, **params) -> Self:
@@ -580,7 +601,7 @@ class CumulocityResource(Generic[CO]):
         self,
         expression: str | None,
         params: dict | Sequence[tuple[str, Any]] | None = None,
-        as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
     ) -> CO | None:
         if expression:
             result_json = await self.c8y.get(
@@ -623,7 +644,7 @@ class CumulocityResource(Generic[CO]):
         limit: int | None = None,
         include: str | JsonMatcher | None = None,
         exclude: str | JsonMatcher | None = None,
-        as_values: str | tuple[str, Any] | Sequence[str | tuple[str, Any]] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         preserve_order: bool = True,
         fetch_page: PageFetcher | None = None,

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Self, AsyncIterator, Sequence, TYPE_CHECKING
+from typing import Self, AsyncIterator, Sequence, TYPE_CHECKING, Any
 
 from pyc8y.base_util import ensure_sequence
 from pyc8y.model.matcher import JsonMatcher
@@ -232,7 +232,7 @@ class UserGroups(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[UserGroup]:
         """Iterate over user groups.
@@ -256,10 +256,10 @@ class UserGroups(CumulocityResource):
                 set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (*str|tuple):  Don't parse objects, but directly extract
-                the values at certain JSON paths as tuples; If the path is not
-                defined in a result, None is used; Specify a tuple to define
-                a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int):  Number of pages to fetch in parallel; defaults to sequential
 
         Returns:
@@ -299,7 +299,7 @@ class UserGroups(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> list[UserGroup]:
         """Query the database for user groups and return the results as a list.
@@ -689,7 +689,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         exclude: str | JsonMatcher | None = None,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
     ) -> AsyncIterator[InventoryRole]:
         """Iterate over all defined inventory roles.
@@ -706,7 +706,10 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int): Pull a specific page only
-            as_values: Extract values at JSON paths instead of parsing objects
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's as_tuple function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int): Number of parallel page requests
 
         Returns:
@@ -734,7 +737,7 @@ class InventoryRoles(CumulocityResource[InventoryRole]):
         exclude: str | JsonMatcher | None = None,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
     ) -> list[InventoryRole]:
         """Query the database for inventory roles and return the results as a list.
@@ -1115,7 +1118,7 @@ class Users(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> AsyncIterator[User]:
         """Iterate over users.
@@ -1139,7 +1142,10 @@ class Users(CumulocityResource):
                 (default), inferred from `limit` and whether client-side filters are
                 set.
             page_number (int): Pull a specific page only
-            as_values: Extract values at JSON paths instead of parsing objects
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's as_tuple function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int): Number of parallel page requests
 
         Note:
@@ -1203,7 +1209,7 @@ class Users(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
     ) -> list[User]:
         """Query the database for users and return the results as a list.

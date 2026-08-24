@@ -4,7 +4,7 @@ import csv
 import io
 from datetime import datetime
 from enum import StrEnum
-from typing import Sequence, AsyncIterator, Self, TYPE_CHECKING
+from typing import Sequence, AsyncIterator, Self, TYPE_CHECKING, Any
 
 from pyc8y.model.model_util import coerce_timestring
 
@@ -218,7 +218,7 @@ class TrustedCertificates(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[TrustedCertificate]:
@@ -250,10 +250,10 @@ class TrustedCertificates(CumulocityResource):
                 set.
             page_number (int): Pull a specific page; this effectively disables
                 automatic follow-up page retrieval.
-            as_values: (str|tuple|list[str|tuple]): Don't parse objects, but
-                directly extract the values at certain JSON paths as tuples;
-                If the path is not defined in a result, None is used; Specify
-                a tuple to define a proper default value for each path.
+            as_values: (str | Sequence[str | tuple]):  Don't return objects but
+                directly extract values similar to the object's `as_tuple` function.
+                A scalar string expression will extract scalar values; a sequence of
+                expressions will extract a tuple of the same length.
             workers (int): The number of parallel processes to use
 
         Returns:
@@ -294,7 +294,7 @@ class TrustedCertificates(CumulocityResource):
             exclude: str | JsonMatcher | None = None,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> list[TrustedCertificate]:

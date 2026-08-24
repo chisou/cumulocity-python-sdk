@@ -2,7 +2,7 @@
 
 import io
 import os
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, Any
 
 import aiohttp
 
@@ -291,7 +291,7 @@ class Applications(CumulocityResource[Application]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> AsyncIterator[Application]:
@@ -386,7 +386,7 @@ class Applications(CumulocityResource[Application]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[Application]:

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import AsyncIterator, Self, Sequence
+from typing import AsyncIterator, Self, Sequence, Any
 
 from pyc8y.rest import CumulocityRestClient
 from pyc8y.model.matcher import JsonMatcher
@@ -207,7 +207,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> AsyncIterator[AuditRecord]:
@@ -293,7 +293,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
         limit: int | None = 5,
         page_size: int | None = None,
         page_number: int | None = None,
-        as_values: str | tuple | Sequence[str | tuple] | None = None,
+        as_values: str | Sequence[str | tuple[str, Any]] | None = None,
         workers: int | None = None,
         **kwargs,
     ) -> list[AuditRecord]:
@@ -388,7 +388,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> AsyncIterator[AuditRecord]:
@@ -488,7 +488,7 @@ class AuditRecords(CumulocityResource[AuditRecord]):
             limit: int | None = 5,
             page_size: int | None = None,
             page_number: int | None = None,
-            as_values: str | tuple | Sequence[str | tuple] | None = None,
+            as_values: str | Sequence[str | tuple[str, Any]] | None = None,
             workers: int | None = None,
             **kwargs,
     ) -> list[AuditRecord]:
