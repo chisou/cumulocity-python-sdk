@@ -9,31 +9,41 @@
         show_root_heading: false
         show_root_toc_entry: false
         members:
-            - ManagedObject
-            - Device
-            - DeviceGroup
-            - ExternalId
-            - Binary
-            - Measurement
-            - Event
+            - AggregationType
             - Alarm
-            - Series
-            - Subscription
-            - Availability
-            - User
-            - CurrentUser
-            - UserGroup
-            - TfaSettings
-            - Permission
-            - ReadPermission
-            - WritePermission
+            - AlarmSeverity
+            - AlarmStatus
             - AnyPermission
-            - Operation
-            - BulkOperation
             - Application
             - ApplicationSubscription
-            - TenantOption
             - AuditRecord
+            - AuditSeverity
+            - AuditType
+            - Availability
+            - Binary
+            - BulkOperation
+            - BulkOperationGeneralStatus
+            - BulkOperationStatus
             - Change
+            - CurrentUser
+            - Device
+            - DeviceGroup
+            - Event
+            - ExternalId
+            - ManagedObject
+            - Measurement
+            - Operation
+            - OperationStatus
+            - Permission
+            - ReadPermission
+            - Series
+            - Subscription
+            - TenantOption
             - TenantStatisticsFile
+            - TfaSettings
             - TrustedCertificate
+            - TrustedCertificateStatus
+            - Units
+            - User
+            - UserGroup
+            - WritePermission

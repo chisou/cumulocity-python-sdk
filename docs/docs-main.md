@@ -9,24 +9,24 @@
         show_root_heading: false
         show_root_toc_entry: false
         members:
-            -  Inventory
-            -  DeviceInventory
-            -  DeviceGroupInventory
-            -  Identity
-            -  Binaries
-            -  Measurements
-            -  Events
             -  Alarms
-            -  Users
-            -  UserGroups
-            -  InventoryRoles
-            -  Subscriptions
-            -  Tokens
-            -  Operations
-            -  BulkOperations
             -  Applications
-            -  Tenants
+            -  AuditRecords 
+            -  Binaries
+            -  BulkOperations
+            -  DeviceGroupInventory
+            -  DeviceInventory
+            -  Events
+            -  Identity
+            -  Inventory
+            -  InventoryRoles
+            -  Measurements
+            -  Operations
+            -  Subscriptions
             -  TenantOptions
             -  TenantStatistics
+            -  Tenants
+            -  Tokens
             -  TrustedCertificates        
-            -  AuditRecords 
+            -  UserGroups
+            -  Users

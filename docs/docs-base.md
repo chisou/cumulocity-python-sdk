@@ -12,4 +12,5 @@
             - CumulocityClient
             - CumulocityRestClient
             - DeviceRegistryClient
+            - ProcessingMode
 

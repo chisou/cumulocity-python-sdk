@@ -45,3 +45,4 @@ nav:
   - Main API classes: docs-main.md
   - Object model classes: docs-model.md
   - Measurement extensions: docs-measurements.md
+  - Notification 2.0 extensions: docs-n20.md

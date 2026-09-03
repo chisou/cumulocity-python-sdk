@@ -23,7 +23,8 @@ from pyc8y.model import (
     Value,
 )
 from pyc8y.model.alarm import AlarmSeverity
-from pyc8y.notification2 import Listener, QueueListener, Subscription
+from pyc8y.model.notification2 import Subscription
+from pyc8y.notification2 import Listener, QueueListener
 from pyc8y.notification2.listener import Message
 from tests.utils import assert_in_any, assert_no_failures
 

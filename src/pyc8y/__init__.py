@@ -15,6 +15,7 @@ from pyc8y.app import (
 from pyc8y.client import CumulocityClient as CumulocityClient
 from pyc8y.registry import DeviceRegistryClient as DeviceRegistryClient
 from pyc8y.rest import (
+    ProcessingMode as ProcessingMode,
     AccessDeniedError as AccessDeniedError,
     BatchError as BatchError,
     CumulocityRestClient as CumulocityRestClient,
