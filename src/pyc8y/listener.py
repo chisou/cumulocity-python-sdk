@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import time
-from typing import Callable, Self
+from typing import Callable, Self, Awaitable
 
 from pyc8y.app import MultiTenantCumulocityApp
 
@@ -20,7 +20,7 @@ class SubscriptionListener:
     def __init__(
         self,
         app: MultiTenantCumulocityApp,
-        callback: Callable[[set[str]], None] | None = None,
+        callback: Callable[[set[str]], Awaitable[None]] | None = None,
         sequential: bool = False,
         polling_interval: float = 3600,
         startup_delay: float = 60,
@@ -89,7 +89,7 @@ class SubscriptionListener:
         else:
             raise ValueError(f"Invalid activation mode: {when}")
 
-    def on_add(self, callback: Callable[[str], None] ) -> Self:
+    def on_add(self, callback: Callable[[str], Awaitable[None]] ) -> Self:
         """Add a callback for added subscriptions.
 
         Args:
@@ -102,7 +102,7 @@ class SubscriptionListener:
         self.callbacks_on_add.append(callback)
         return self
 
-    def on_remove(self, callback: Callable[[str], None] ) -> Self:
+    def on_remove(self, callback: Callable[[str], Awaitable[None]] ) -> Self:
         """Add a callback for removed subscriptions.
 
         Args:
@@ -115,7 +115,7 @@ class SubscriptionListener:
         self.callbacks_on_remove.append(callback)
         return self
 
-    def on_change(self, callback: Callable[[set[str]], None] ) -> Self:
+    def on_change(self, callback: Callable[[set[str]], Awaitable[None]] ) -> Self:
         """Add a callback for changed subscriptions.
 
         callback: Async function invoked on subscription changes. Receives
