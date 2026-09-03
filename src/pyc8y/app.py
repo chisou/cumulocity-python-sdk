@@ -560,7 +560,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         """
         return [x["tenant"] for x in await self._read_subscriptions(self.bootstrap_instance)]
 
-    def create_listener(
+    def create_subscription_listener(
             self,
             callback: Callable[[set[str]], None] | None = None,
             sequential: bool = False,
@@ -583,6 +583,7 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
         Returns:
             A SubscriptionListener instance.
         """
+        from pyc8y.listener import SubscriptionListener
         return SubscriptionListener(
             app=self,
             callback=callback,
