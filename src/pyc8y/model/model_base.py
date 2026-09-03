@@ -271,7 +271,11 @@ class JsonObject(dict):
     def __getitem__(self, path) -> Any:
         return get_by(self, path, fail=True)
 
-    def get(self, path, default: Any = None) -> Any:
+    @overload
+    def get(self, path: str) -> Any | None: ...
+    @overload
+    def get(self, path: str, default: T) -> Any | T: ...
+    def get(self, path: str, default: Any = None) -> Any:
         return get_by(self, path, default=default)
 
 
@@ -364,7 +368,11 @@ class CumulocityObject(Mapping):
     def __getitem__(self, path) -> Any:
         return get_by(self.json, path, fail=True)
 
-    def get(self, path, default: Any = None) -> Any:
+    @overload
+    def get(self, path: str) -> Any | None: ...
+    @overload
+    def get(self, path: str, default: T) -> Any | T: ...
+    def get(self, path: str, default: Any = None) -> Any:
         return get_by(self.json, path, default=default)
 
     def _set(self, path: str, value: Any, fail: bool):
