@@ -400,17 +400,17 @@ async def test_get_tenant_instance_missing_auth_info():
     c8y_factory = MultiTenantCumulocityApp()
 
     # missing auth information in headers
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(ValueError) as e:
         await c8y_factory.get_tenant_instance(headers={"random": "header"})
     assert "random" in str(e)
 
     # missing auth information in cookies
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(ValueError) as e:
         await c8y_factory.get_tenant_instance(cookies={"random": "cookie"})
     assert "random" in str(e)
 
     # missing auth information in headers and cookies
-    with pytest.raises(KeyError) as e:
+    with pytest.raises(ValueError) as e:
         await c8y_factory.get_tenant_instance(headers={"header": "1"}, cookies={"cookie": "2"})
     assert "header" in str(e) and "cookie" in str(e)
 

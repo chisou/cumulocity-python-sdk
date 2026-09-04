@@ -303,7 +303,7 @@ class _CumulocityAppBase(ABC):
             return header_auth
 
         keys = ", ".join(dict.fromkeys([*headers.keys(), *cookies.keys()])) or "None"
-        raise KeyError(f"Unable to resolve Authorization information. Found keys: {keys}.")
+        raise ValueError(f"Unable to resolve Authorization information. Found keys: {keys}.")
 
     @staticmethod
     def _get_env(name: str, default: str | None = _undefined) -> str | None:  # type: ignore[assignment]
@@ -669,8 +669,6 @@ class MultiTenantCumulocityApp(_CumulocityAppBase):
             raise RuntimeError("At least one of 'tenant_id', 'headers' or cookies must be specified.")
 
         auth_header = self._get_auth_header(headers, cookies)
-        if not auth_header:
-            raise ValueError("Missing authentication information. Unable to resolve tenant ID.")
 
         tenant_id = parse_auth(auth_header).get_tenant_id()
         return await self._get_tenant_instance(tenant_id)
