@@ -22,5 +22,5 @@ build:
 docs:
     uv run --with-requirements docs/requirements.txt mkdocs build
 
-docs-serve:
-    uv run --with-requirements docs/requirements.txt mkdocs serve
+docs-serve port='8000':
+    uv run --with-requirements docs/requirements.txt mkdocs serve -a 127.0.0.1:{{port}}
