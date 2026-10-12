@@ -12,7 +12,7 @@ See also the [documentation on _Read the Docs_](https://cumulocity-python-sdk.re
 
 > [!IMPORTANT]
 > The `pyc8y` package is the successor of the `c8y_api` package - re-envisioned and reimplemented for asyncio. 
-**It is currently in alpha state.** Please use [c8y_api](https://pypi.org/project/c8y_api/) for production code. 
+You can continue to use [c8y_api](https://pypi.org/project/c8y_api/) for legacy code which will still receive important fixes for some time. 
 
 
 ## Installation
