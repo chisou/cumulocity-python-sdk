@@ -7,14 +7,12 @@
 * All batch functions that accept both objects or just ID now support mixing them.
 
 * `Measurements.create` accepts a new `batch_size` parameter. If set, measurements are submitted in bulk, i.e. multiple
-  measurements per request, which is considerably faster. As before, nothing is returned.
-
-* Added `Measurements.create_bulk` which submits measurements in bulk like `create(batch_size=...)` but returns the
-  created measurements (in order).
+  measurements per request, which is considerably faster. It still works completely asynchronous, i.e. no result is
+  returned. To support results, `Measurements.create_bulk` was added to explicitly submit bulks and receive results.
 
 * _Beta_: `BatchError` has a new `contexts` attribute which provides context information for each wrapped error
-  (parallel to `errors`), e.g. the objects of a failed bulk request, so that they can be retried. It is only populated
-  if operations are processed concurrently (`workers`). The content of the contexts may change in minor releases.
+  (parallel to `errors`), e.g. the objects of a failed bulk request, so that they can be retried. Marked as _beta_,
+  i.e. the content of the contexts may change in minor releases.
 
 
 ## Version 4.0.0
