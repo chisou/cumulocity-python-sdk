@@ -1,10 +1,18 @@
 # Changelog
 
-* The `sent_to` function in the `Operation` model class now returns the database of the created Operation objects.
+* The `sent_to` function in the `Operation` model class now returns the database ID of the created Operation objects.
   As operations as asynchronous by nature they are usually monitored after creation which become a lot easier with
   this change. Also added the same function to the `Operations` class for completeness.
 
 * All batch functions that accept both objects or just ID now support mixing them.
+
+* `Measurements.create` accepts a new `batch_size` parameter. If set, measurements are submitted in bulk, i.e. multiple
+  measurements per request, which is considerably faster. It still works completely asynchronous, i.e. no result is
+  returned. To support results, `Measurements.create_bulk` was added to explicitly submit bulks and receive results.
+
+* _Beta_: `BatchError` has a new `contexts` attribute which provides context information for each wrapped error
+  (parallel to `errors`), e.g. the objects of a failed bulk request, so that they can be retried. Marked as _beta_,
+  i.e. the content of the contexts may change in minor releases.
 
 
 ## Version 4.0.0

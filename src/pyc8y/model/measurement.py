@@ -1143,8 +1143,38 @@ class Measurements(CumulocityResource[Measurement]):
         )
         return result.collect(series=series, value=value, timestamps=timestamps)
 
-    async def create(self, *objects: Measurement, workers: int | None = None) -> None:
-        await self._create(*objects, workers=workers)
+    async def create(self, *objects: Measurement, batch_size: int | None = None, workers: int | None = None) -> None:
+        """Create measurements.
+
+        Args:
+            *objects (Measurement):  The measurements to create.
+            batch_size (int):  If set, measurements are submitted in bulk, i.e. up to `batch_size`
+                measurements per request, using the measurement collection media type.
+            workers (int):  Number of concurrent requests.
+        """
+        if batch_size:
+            await self._create_bulk(*objects, batch_size=batch_size, workers=workers)
+        else:
+            await self._create(*objects, workers=workers)
+
+    async def create_bulk(
+        self, *objects: Measurement, batch_size: int | None = None, workers: int | None = None
+    ) -> list[Measurement]:
+        """Create measurements in bulk and return the created measurements.
+
+        In contrast to `create`, this is not fire and forget: the server response
+        is requested and parsed.
+
+        Args:
+            *objects (Measurement):  The measurements to create.
+            batch_size (int):  Maximum number of measurements per request. If omitted,
+                all measurements are submitted in a single request.
+            workers (int):  Number of concurrent requests.
+
+        Returns:
+            The created measurements (including their IDs), in submission order.
+        """
+        return await self._create_bulk(*objects, batch_size=batch_size, workers=workers, collect=True)
 
     async def delete(self, *objects: str | Measurement, workers: int | None = None) -> None:
         await self._delete(*objects, workers=workers)

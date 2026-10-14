@@ -7,6 +7,7 @@ import ssl
 from asyncio import Semaphore
 from collections import Counter
 from contextlib import asynccontextmanager, nullcontext
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Awaitable, Callable, NamedTuple, Self, Sequence, Any, Mapping
@@ -85,12 +86,31 @@ class AccessDeniedError(HttpError):
         super().__init__(method, url, 403, message)
 
 
-class BatchError(Exception):
-    """Error raised after a batch processing."""
+@dataclass(frozen=True)
+class BatchContext:
+    """Context of a failed operation in a batch processing."""
 
-    def __init__(self, errors: list[BaseException]):
+    item: Any
+    """The item the failed operation was working on, e.g. the objects
+    submitted with a failed bulk request, or an ID or object for single operations."""
+
+
+class BatchError(Exception):
+    """Error raised after a batch processing.
+
+    Attributes:
+        errors: The exceptions raised by the failed operations.
+        contexts: (beta) A `BatchContext` for each failed operation, parallel
+            to `errors`. Only populated if the operations ran concurrently
+            (i.e. `workers` was set); entries are None otherwise. Its type and
+            content may change in minor releases (e.g. fields may be added to
+            `BatchContext`).
+    """
+
+    def __init__(self, errors: list[BaseException], contexts: list[Any] | None = None):
         super().__init__(self._build_message(errors))
         self.errors = errors
+        self.contexts: list[Any] = contexts if contexts is not None else [None] * len(errors)
 
     @staticmethod
     def _build_message(errors) -> str:

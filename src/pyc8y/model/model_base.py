@@ -16,7 +16,7 @@ from typing import (
     overload,
 )
 
-from pyc8y.rest import CumulocityRestClient, BatchError
+from pyc8y.rest import CumulocityRestClient, BatchError, BatchContext
 from pyc8y.base_util import ensure_sequence, is_sequence
 from pyc8y.model.model_util import (
     as_tuple,
@@ -863,21 +863,35 @@ class CumulocityResource(Generic[CO]):
         path: str | None = None,
         batch_size: int | None = None,
         workers: int | None = None,
-    ) -> None:
+        collect: bool = False,
+    ) -> list[CO]:
+        """Create objects in bulk, i.e. multiple objects per request.
+
+        Args:
+            collect (bool):  Ask the server to return the created objects. If False
+                (fire and forget) no response body is requested and an empty list is returned.
+
+        Returns:
+            The created objects in submission order if `collect` is True, else an empty list.
+        """
         target = path or self.resource_path
         chunks = (
             [objects] if not batch_size
             else [objects[i : i + batch_size] for i in range(0, len(objects), batch_size)]
         )
 
-        async def post_chunk(chunk: Sequence[CO]) -> None:
-            await self.c8y.post(
+        async def post_chunk(chunk: Sequence[CO]) -> list[CO]:
+            result = await self.c8y.post(
                 target,
                 json={self._meta.collection_name: [o.json for o in chunk]},
                 content_type=self.collection_mime_type,
+                accept=self.collection_mime_type if collect else None,
             )
+            if not collect:
+                return []
+            return [self._object_type.from_json(j, c8y=self.c8y) for j in result.get(self._meta.collection_name, [])]
 
-        await run_batched(chunks, workers, post_chunk)
+        return [o for created in await run_batched(chunks, workers, post_chunk) for o in created]
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
@@ -949,6 +963,7 @@ async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[
         return [await op(thing) for thing in things]
 
     errors: list[BaseException] = []
+    contexts: list[Any] = []
     results: list[Any] = [None] * len(things)
     for i in range(0, len(things), workers):
         batch = things[i : i + workers]
@@ -956,9 +971,10 @@ async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[
         for j, r in enumerate(batch_results):
             if isinstance(r, BaseException):
                 errors.append(r)
+                contexts.append(BatchContext(batch[j]))
             else:
                 results[i + j] = r
 
     if errors:
-        raise BatchError(errors)
+        raise BatchError(errors, contexts)
     return results

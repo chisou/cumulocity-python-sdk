@@ -414,3 +414,41 @@ async def test_new_aggregation_multi(live_c8y: CumulocityClient, sample_series_d
                 assert isinstance(collected[0], tuple)
                 assert len(collected[0]) == 2
 
+
+
+async def test_create_bulk(live_c8y: CumulocityClient, module_factory):
+    """Verify that measurements can be created in bulk, with and without getting the created objects back."""
+    name = create_random_name()
+    device = await module_factory(Device(c8y=live_c8y, type=f"{name}_device", name=name))
+    now = datetime.now(timezone.utc)
+
+    def new_measurements(prefix: str, n: int) -> List[Measurement]:
+        ms = []
+        for i in range(n):
+            m = Measurement(c8y=live_c8y, type=name, source=device.id, time=now - timedelta(minutes=i))
+            m["c8y_Test"] = {"series": Value(i, "#")}
+            m["marker"] = {"id": f"{prefix}_{i}"}
+            ms.append(m)
+        return ms
+
+    try:
+        # (1) bulk creation returning the created measurements, split into 3 requests
+        created = await live_c8y.measurements.create_bulk(*new_measurements("a", 5), batch_size=2, workers=2)
+
+        # -> all have been created, in submission order
+        assert [m["marker.id"] for m in created] == [f"a_{i}" for i in range(5)]
+        assert all(m.id for m in created)
+        assert all(m.source == device.id for m in created)
+
+        # (2) fire and forget
+        assert await live_c8y.measurements.create(*new_measurements("b", 4), batch_size=3) is None
+
+        # -> everything is available in the database
+        result = await live_c8y.measurements.get_all(type=name, source=device.id, limit=None)
+        assert len(result) == 9
+        assert {m["marker.id"] for m in result} == {f"{p}_{i}" for p, n in (("a", 5), ("b", 4)) for i in range(n)}
+
+        # -> returned measurements are the stored ones
+        assert {m.id for m in created} <= {m.id for m in result}
+    finally:
+        await live_c8y.measurements.delete_by(source=device.id)
