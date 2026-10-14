@@ -20,7 +20,7 @@ from pyc8y.model.model_base import (
     run_batched,
 )
 from pyc8y.model.model_util import as_record, as_tuple, get_by
-from pyc8y.rest import BatchError
+from pyc8y.rest import BatchContext, BatchError
 
 
 class CumulocityObjectWithId(WithId, CumulocityObject):
@@ -535,6 +535,8 @@ async def test_run_batched_concurrent_collects_errors():
         await run_batched([1, 2, 3, 4], 2, op)
 
     assert [type(e) for e in exc_info.value.errors] == [ValueError, KeyError]
+    # each error comes with the item that caused it
+    assert exc_info.value.contexts == [BatchContext(2), BatchContext(4)]
     assert op.await_count == 4
 
 

@@ -879,23 +879,19 @@ class CumulocityResource(Generic[CO]):
             [objects] if not batch_size
             else [objects[i : i + batch_size] for i in range(0, len(objects), batch_size)]
         )
-        positions = {id(chunk): i for i, chunk in enumerate(chunks)}
-        created: dict[int, list[CO]] = {}
 
-        async def post_chunk(chunk: Sequence[CO]) -> None:
+        async def post_chunk(chunk: Sequence[CO]) -> list[CO]:
             result = await self.c8y.post(
                 target,
                 json={self._meta.collection_name: [o.json for o in chunk]},
                 content_type=self.collection_mime_type,
                 accept=self.collection_mime_type if collect else None,
             )
-            if collect:
-                created[positions[id(chunk)]] = [
-                    self._object_type.from_json(j, c8y=self.c8y) for j in result.get(self._meta.collection_name, [])
-                ]
+            if not collect:
+                return []
+            return [self._object_type.from_json(j, c8y=self.c8y) for j in result.get(self._meta.collection_name, [])]
 
-        await run_batched(chunks, workers, post_chunk)
-        return [o for i in sorted(created) for o in created[i]]
+        return [o for created in await run_batched(chunks, workers, post_chunk) for o in created]
 
     async def _update(self, *objects: CO, workers: int | None = None) -> None:
         await run_batched(
