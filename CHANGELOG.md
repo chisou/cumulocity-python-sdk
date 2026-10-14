@@ -1,5 +1,12 @@
 # Changelog
 
+* The `sent_to` function in the `Operation` model class now returns the database of the created Operation objects.
+  As operations as asynchronous by nature they are usually monitored after creation which become a lot easier with
+  this change. Also added the same function to the `Operations` class for completeness.
+
+* All batch functions that accept both objects or just ID now support mixing them.
+
+
 ## Version 4.0.0
 
 * Forked from _Cumulocity Python API_ (`c8y_api`), version 3.7.2

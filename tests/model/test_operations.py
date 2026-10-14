@@ -4,7 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from pyc8y.model.managed_object import Device
 from pyc8y.model.operation import Operation, Operations, OperationStatus
+from pyc8y.types import MimeType
 
 from tests.model.conftest import load_sample_file
 
@@ -123,3 +125,28 @@ async def test_get_last(operation_json):
 
     assert isinstance(result, Operation)
     assert result.id == operation_json["id"]
+
+
+async def test_send_to(operation_json):
+    """Verify that send_to creates one operation per device and returns their IDs."""
+    c8y = MagicMock()
+    c8y.post = AsyncMock(side_effect=[{"id": "a"}, {"id": "b"}])
+
+    ids = await Operations(c8y).send_to(operation_json, *[Device.from_json({"id": d}) for d in ("1", "2")])
+
+    assert ids == ["a", "b"]
+    calls = c8y.post.call_args_list
+    assert [c.kwargs["json"]["deviceId"] for c in calls] == ["1", "2"]
+    # server-side fields are not copied, the response body is requested
+    assert all(c.kwargs["json"].keys() == {"deviceId", "description", "c8y_Command"} for c in calls)
+    assert all(c.kwargs["accept"] == MimeType.OPERATION for c in calls)
+
+
+async def test_operation_send_to(operation_json):
+    """Verify that Operation.send_to delegates to the API and returns the created IDs."""
+    c8y = MagicMock()
+    c8y.post = AsyncMock(side_effect=[{"id": "a"}, {"id": "b"}])
+
+    ids = await Operation.from_json(operation_json, c8y=c8y).send_to("1", "2")
+
+    assert ids == ["a", "b"]

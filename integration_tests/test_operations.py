@@ -150,3 +150,38 @@ async def test_get(live_c8y: CumulocityClient, session_device: Device):
 
     finally:
         await live_c8y.operations.delete_by(device_id=session_device.id)
+
+
+async def test_send_to(live_c8y: CumulocityClient, session_device: Device, module_factory):
+    """Verify that operations can be sent to multiple devices and that the created IDs are returned."""
+    name = create_random_name()
+    devices = [session_device] + [
+        await module_factory(Device(live_c8y, type=name, name=f"{name}_{i}", com_cumulocity_model_Agent={}))
+        for i in range(2)
+    ]
+    template = Operation(description=f"Description {name}", c8y_Command={"text": "Command text"})
+
+    try:
+        # (1) send to all devices, concurrently
+        ids = await live_c8y.operations.send_to(template, *devices, workers=2)
+
+        # -> one PENDING operation per device, IDs are in device order
+        assert len(ids) == len(devices)
+        operations = [await live_c8y.operations.get(i) for i in ids]
+        assert [o.device_id for o in operations] == [d.id for d in devices]
+        assert all(o.status == OperationStatus.PENDING for o in operations)
+        assert all(o.description == template.description for o in operations)
+
+        # (2) send via the operation itself
+        template.c8y = live_c8y
+        ids = await template.send_to(*devices[1:])
+
+        # -> new operations for the requested devices only
+        assert len(ids) == 2
+        operations = [await live_c8y.operations.get(i) for i in ids]
+        assert [o.device_id for o in operations] == [d.id for d in devices[1:]]
+        assert len(await live_c8y.operations.get_all(device_id=devices[1].id)) == 2
+        assert len(await live_c8y.operations.get_all(device_id=session_device.id)) == 1
+    finally:
+        for device in devices:
+            await live_c8y.operations.delete_by(device_id=device.id)
