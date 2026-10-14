@@ -4,6 +4,8 @@
   As operations as asynchronous by nature they are usually monitored after creation which become a lot easier with
   this change. Also added the same function to the `Operations` class for completeness.
 
+* All batch functions that accept both objects or just ID now support mixing them.
+
 
 ## Version 4.0.0
 
