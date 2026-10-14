@@ -1,6 +1,6 @@
 # Changelog
 
-* The `sent_to` function in the `Operation` model class now returns the database of the created Operation objects.
+* The `sent_to` function in the `Operation` model class now returns the database ID of the created Operation objects.
   As operations as asynchronous by nature they are usually monitored after creation which become a lot easier with
   this change. Also added the same function to the `Operations` class for completeness.
 
