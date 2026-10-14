@@ -11,8 +11,16 @@ from unittest.mock import AsyncMock, MagicMock
 from deepdiff import DeepDiff
 import pytest
 
-from pyc8y.model.model_base import CumulocityObject, CumulocityResource, WithId, resolve_page_size
+from pyc8y.model.model_base import (
+    CumulocityObject,
+    CumulocityResource,
+    WithId,
+    ensure_ids,
+    resolve_page_size,
+    run_batched,
+)
 from pyc8y.model.model_util import as_record, as_tuple, get_by
+from pyc8y.rest import BatchError
 
 
 class CumulocityObjectWithId(WithId, CumulocityObject):
@@ -497,3 +505,44 @@ async def test_stream_pages_ordered_preserves_launch_order():
             yielded_ids.extend(p["i"] for p in page)
 
     assert yielded_ids == [p["i"] for p in all_items]
+
+
+@pytest.mark.parametrize("workers", [None, 1, 2, 10])
+async def test_run_batched_returns_results_in_input_order(workers):
+    """Verify that results are in input order, regardless of the order in which the operations complete."""
+    async def op(i):
+        await asyncio.sleep(0.01 * (5 - i))  # later items complete first
+        return i * 10
+
+    assert await run_batched(list(range(5)), workers, op) == [0, 10, 20, 30, 40]
+
+
+async def test_run_batched_sequential_stops_at_first_error():
+    """Verify that sequential processing raises the original error and stops."""
+    op = AsyncMock(side_effect=[1, ValueError("boom"), 3])
+
+    with pytest.raises(ValueError):
+        await run_batched([1, 2, 3], None, op)
+
+    assert op.await_count == 2
+
+
+async def test_run_batched_concurrent_collects_errors():
+    """Verify that concurrent processing attempts all items and raises a single BatchError."""
+    op = AsyncMock(side_effect=[1, ValueError("a"), 3, KeyError("b")])
+
+    with pytest.raises(BatchError) as exc_info:
+        await run_batched([1, 2, 3, 4], 2, op)
+
+    assert [type(e) for e in exc_info.value.errors] == [ValueError, KeyError]
+    assert op.await_count == 4
+
+
+def test_ensure_ids_mixed_input():
+    """Verify that objects and IDs can be mixed."""
+    obj = CumulocityObjectWithId.from_json({"id": "2"})
+
+    assert ensure_ids(["1", "3"]) == ["1", "3"]
+    assert ensure_ids([obj, obj]) == ["2", "2"]
+    assert ensure_ids(("1", obj, "3")) == ["1", "2", "3"]
+    assert ensure_ids([]) == []

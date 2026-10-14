@@ -939,10 +939,9 @@ def resolve_page_size(
 
 
 def ensure_ids(objects):
-    try:
-        return [o.id for o in objects]  # noqa (id)
-    except AttributeError:
-        return objects
+    """Resolve IDs for a collection of objects or IDs; each element is
+    handled individually, i.e. objects and plain IDs can be mixed."""
+    return [getattr(o, "id", o) for o in objects]
 
 
 async def run_batched(things: Sequence[Any], workers: int | None, op: Callable[[Any], Awaitable[Any]]) -> list[Any]:
